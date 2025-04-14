@@ -49,6 +49,14 @@ SBERT_CONFIGS = [
     },
     # Add more configurations here if needed
 ]
+
+    # {
+    #     "method_key": "sbert_cosine_linq_embed_mistral",
+    #     "model_id": "Linq-AI-Research/Linq-Embed-Mistral",
+    #     "tokenizer_id": "Linq-AI-Research/Linq-Embed-Mistral",
+    #     "model_kwargs": {}, # No special args needed
+    #     "tokenizer_kwargs": {},
+    # },
 # Note: Models with `trust_remote_code=True` might execute code from the model's repository.
 # Ensure you trust the source before using them.
 
@@ -71,10 +79,19 @@ Thought 2:
 Similarity Score (0.0-1.0):
 """
 
+# --- Gemini Configuration ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Store the base model ID here
+GEMINI_EMBEDDING_MODEL_ID = "text-embedding-004"
+# GEMINI_EMBEDDING_MODEL_ID = "gemini-embedding-exp-03-07"
+# We'll add the 'models/' prefix within the scorer when calling the API
+GEMINI_TASK_TYPE = "SEMANTIC_SIMILARITY"
+
 # --- Similarity Method Keys (Prefixes/Constants) ---
 METHOD_TFIDF = "tfidf_cosine"
 METHOD_SBERT_PREFIX = "sbert_cosine" # Used mainly for grouping concept now
 METHOD_LLM = "llm_judge_similarity"
+METHOD_GEMINI = "gemini_cosine"
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
