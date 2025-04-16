@@ -1,11 +1,14 @@
 # gpqa_utils.py
 import random
 import re
-import os
 from datasets import load_dataset
 # import huggingface_hub # Keep commented unless login is strictly needed now
 from typing import List, Dict, Tuple, Optional
-import transformers # For token counting if needed later
+import transformers
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def load_data_gpqa(dataset_name: str = "gpqa_diamond", split: str = "train") -> List[Dict]:
@@ -23,10 +26,10 @@ def load_data_gpqa(dataset_name: str = "gpqa_diamond", split: str = "train") -> 
         examples = [row for row in df]
         # Attach a random permutation (0..3) to each example
         examples = [example | {"permutation": rng.sample(range(4), 4)} for example in examples]
-        print(f"Loaded {len(examples)} examples from GPQA {dataset_name} split {split}.")
+        logger.info(f"Loaded {len(examples)} examples from GPQA {dataset_name} split {split}.")
         return examples
     except Exception as e:
-        print(f"Error loading GPQA dataset: {e}")
+        logger.exception(f"[red]Error loading GPQA dataset[/red]")
         # Consider raising the exception or returning empty list based on desired behavior
         raise e # Re-raise to stop execution if dataset loading fails
 
@@ -126,12 +129,12 @@ def count_tokens(text: str, tokenizer_path: Optional[str] = None) -> Optional[in
     # Load or reload tokenizer if path is provided and different from loaded one, or if not loaded yet
     if tokenizer_path and (tokenizer_path != _tokenizer_path_loaded or _tokenizer is None):
         try:
-            # print(f"Loading tokenizer from {tokenizer_path}...") # Verbose
+            # logger.info(f"Loading tokenizer from {tokenizer_path}...") # Verbose
             _tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
             _tokenizer_path_loaded = tokenizer_path
-            # print("Tokenizer loaded.") # Verbose
+            # logger.info("Tokenizer loaded.") # Verbose
         except Exception as e:
-            print(f"ERROR: Failed to load tokenizer from {tokenizer_path}: {e}. Token counting disabled.")
+            logger.exception(f"[red]ERROR: Failed to load tokenizer from {tokenizer_path}. Token counting disabled.[/red]")
             _tokenizer = None
             _tokenizer_path_loaded = None
             return None # Indicate failure
@@ -140,12 +143,12 @@ def count_tokens(text: str, tokenizer_path: Optional[str] = None) -> Optional[in
         try:
             return len(_tokenizer.encode(text))
         except Exception as e:
-            print(f"ERROR: Failed to encode text with tokenizer: {e}")
+            logger.exception(f"[red]ERROR: Failed to encode text with tokenizer[/red]")
             return None # Indicate failure
     else:
          # Only print warning if path was ever provided but failed, or never provided
          if tokenizer_path or _tokenizer_path_loaded is None:
               # This warning might be noisy if path is intentionally omitted
-              # print("Warning: Tokenizer not available. Cannot count tokens.")
+              # logger.warning("Tokenizer not available. Cannot count tokens.")
               pass
          return None # Indicate unavailability/failure
