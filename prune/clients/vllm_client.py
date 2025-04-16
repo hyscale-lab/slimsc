@@ -1,10 +1,14 @@
-# slimsc/prune/vllm_client.py
+# slimsc/prune/clients/vllm_client.py
 import asyncio
 import aiohttp
 import json
 import time
 from typing import Dict, Optional, List, AsyncGenerator
 import random
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Use a single session for connection pooling
 _aiohttp_session = None
@@ -67,7 +71,7 @@ async def stream_vllm_request(
 
     session = await get_aiohttp_session()
     start_time = time.time()
-    # print(f"Starting stream request {request_id}...") # Verbose
+    logging.debug(f"Starting stream request {request_id}...")
 
     retries = 0
     backoff = initial_backoff
@@ -81,28 +85,28 @@ async def stream_vllm_request(
                     if line.startswith("data:"):
                         data_str = line[len("data:"):].strip()
                         if data_str == "[DONE]":
-                            # print(f"Stream {request_id} received [DONE]")
+                            logging.debug(f"Stream {request_id} received [DONE]")
                             break # Stream finished
                         try:
                             chunk_data = json.loads(data_str)
                             yield chunk_data # Yield the parsed chunk
                         except json.JSONDecodeError:
-                            print(f"Warning: Failed to decode JSON chunk for {request_id}: {data_str}")
+                            logger.exception(f"[red]Warning: Failed to decode JSON chunk for {request_id}: {data_str}[/red]")
                     elif line: # Handle potential non-SSE lines if needed
-                        print(f"Warning: Received non-SSE line for {request_id}: {line}")
+                        logger.warning(f"[yellow]Warning: Received non-SSE line for {request_id}: {line}[/yellow]")
 
                 elapsed_time = time.time() - start_time
-                # print(f"Stream {request_id} finished in {elapsed_time:.2f}s") # Verbose
+                logging.debug(f"Stream {request_id} finished in {elapsed_time:.2f}s") # Verbose
                 return # Exit the retry loop
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e: # Catch potentially transient errors
             retries += 1
             if retries > max_retries:
-                print(f"Max retries reached for {request_id}. Error: {e}")
+                logging.exception(f"[red]Max retries reached for {request_id}.[/red]")
                 yield {"error": {"status": "failed_after_retries", "message": str(e), "request_id": request_id}}
                 return # Stop retrying
 
-            print(f"Warning: Request {request_id} failed (Attempt {retries}/{max_retries}). Retrying in {backoff:.2f}s. Error: {e}")
+            logging.warning(f"[yellow]Request {request_id} failed (Attempt {retries}/{max_retries}). Retrying in {backoff:.2f}s.[/yellow]")
             await asyncio.sleep(backoff)
             # Exponential backoff with jitter
             backoff = min(max_backoff, backoff * 2) + random.uniform(0, 1)
@@ -110,7 +114,7 @@ async def stream_vllm_request(
 
         except Exception as e: # Catch unexpected errors - maybe don't retry these
              yield {"error": {"status": "unexpected", "message": f"{type(e).__name__}: {e}", "request_id": request_id}}
-             print(f"Unexpected Error during stream {request_id} (not retrying): {type(e).__name__} - {e}")
+             logging.exception(f"[red]Unexpected Error during stream {request_id} (not retrying): {type(e).__name__}[/red]")
              return # Stop on non-retryable errors
 
 
