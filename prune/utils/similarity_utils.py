@@ -259,28 +259,46 @@ class FaissIndexManager:
              logger.error(f"Query dim mismatch: expected {self.dimension}, got {query_embedding.shape[1]}. Skip search.")
              return None
 
-        k = min(10, self.index.ntotal) # Search more neighbors to increase chance of finding one from another chain
+        # Ensure k is at least 1 if index is not empty
+        k = min(max(1, self.index.ntotal), 10) # Search more neighbors to increase chance of finding one from another chain
+        if k == 0: # Double check after calculation, should be redundant now but safe
+            logger.debug("FAISS index is empty, cannot search.")
+            return None
+
         try:
             D, I = self.index.search(query_embedding.astype(np.float32), k)
         except Exception as e:
             logger.exception(f"[red]FAISS search failed: {e}[/red]")
             return None
 
+        stale_ids_found = [] # Keep track of stale IDs encountered in this search
         for i in range(I.shape[1]): # Iterate through returned neighbors
             faiss_id = I[0, i]
-            if faiss_id == -1 or faiss_id >= self.next_id: continue # Invalid index
+            # FAISS can return -1 if fewer than k neighbors are found
+            if faiss_id == -1: continue
+
+            # Check if the ID exists in our authoritative metadata map
             if faiss_id in self.metadata_map:
                 neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
+                # Check if the neighbor belongs to a different chain
                 if neighbor_chain_id != query_chain_id:
                     similarity_score = float(D[0, i])
-                    # Clamp score just in case of float issues with normalized vectors
                     similarity_score = np.clip(similarity_score, -1.0, 1.0)
-                    # logger.debug(f"NN for {query_chain_id}: score={similarity_score:.4f}, neighbor={neighbor_chain_id} (thought {neighbor_thought_idx})")
+                    # Log if we encountered stale IDs before finding this valid one (optional debug)
+                    # if stale_ids_found:
+                    #    logger.debug(f"Search for {query_chain_id} skipped stale FAISS IDs {stale_ids_found} before finding valid neighbor.")
                     return similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text
+                # else: The neighbor is from the same chain, continue searching
             else:
-                 logger.warning(f"FAISS ID {faiss_id} in search result but not in metadata_map.")
+                 # Log as DEBUG instead of WARNING, as we handle it.
+                 # This indicates a FAISS internal lag, not a bug in our map.
+                 logger.debug(f"FAISS ID {faiss_id} returned by search but not in metadata_map (likely stale due to recent prune). Skipping.")
+                 stale_ids_found.append(faiss_id) # Keep track for comprehensive debug log below
 
-        # logger.debug(f"No valid neighbor found for {query_chain_id} from other chains.")
+        # If we exit the loop, no valid neighbor from another chain was found
+        if stale_ids_found:
+             logger.debug(f"Search for {query_chain_id} found neighbors, but all were either from the same chain or had stale FAISS IDs ({stale_ids_found}) not in metadata map.")
+        # else: logger.debug(f"No valid neighbor found for {query_chain_id} from other chains among the top {k} results.")
         return None # No neighbor found from a different chain
 
     def remove_chain_embeddings(self, chain_id_to_remove: str):
@@ -290,6 +308,7 @@ class FaissIndexManager:
 
         try:
             # Using list of IDs directly for removal selector
+            # logger.info(f"[red]IDs to remove: {ids_to_remove}[/red]")
             remove_selector = faiss.IDSelectorBatch(np.array(ids_to_remove, dtype='int64'))
             num_removed = self.index.remove_ids(remove_selector)
             # If num_removed != len(ids_to_remove): logger.warning("FAISS remove_ids count mismatch") # Optional check
@@ -297,9 +316,12 @@ class FaissIndexManager:
             logger.info(f"Removed {num_removed} embeddings from FAISS for pruned chain {chain_id_to_remove}.")
             # Update metadata map safely
             current_keys = list(self.metadata_map.keys())
+            # logger.info(f"[red]Before remove keys: {current_keys}[/red]")
             for faiss_id in current_keys:
-                 if self.metadata_map[faiss_id][0] == chain_id_to_remove:
-                      del self.metadata_map[faiss_id]
+                # logger.info(f"[red]Faiss ID: {faiss_id}[/red]")
+                if self.metadata_map[faiss_id][0] == chain_id_to_remove:
+                    del self.metadata_map[faiss_id]
+            # logger.info(f"[red]After remove keys: {list(self.metadata_map.keys())}[/red]")
 
         except Exception as e:
              logger.exception(f"[red]Failed to remove embeddings for chain {chain_id_to_remove}: {e}[/red]")
