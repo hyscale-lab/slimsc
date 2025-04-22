@@ -5,7 +5,8 @@ import torch # Import torch early for device detection
 
 # --- General Configuration ---
 YAML_FILE_PATH = "similar.yml"
-RESULTS_DIR = "results"
+SCRIPT_DIR_ABS = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(SCRIPT_DIR_ABS, "results")
 SECTION_SCORES_FILE = os.path.join(RESULTS_DIR, "section_scores.json")
 AVERAGE_SCORES_FILE = os.path.join(RESULTS_DIR, "average_scores.json")
 
