@@ -132,8 +132,9 @@ async def process_question_similarity_prune(
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
-    Pruning only occurs during the reasoning phase (before server sends 'content').
+    Pruning only occurs during the reasoning phase (before server sends non-empty 'content').
     The first two thoughts (idx 0, 1) are never pruned but their embeddings are added.
+    Stops analysis loop if only one chain remains active.
     """
     logger.info(f"--- Processing Question {iteration} (N={n_chains_start}, SimPrune-Continuous Thresh={similarity_threshold}) ---")
     question_id = example.get("id", f"index_{iteration-1}")
@@ -166,15 +167,15 @@ async def process_question_similarity_prune(
         # Create the long-running stream request
         stream_generator = stream_vllm_request(
             prompt=prompt, vllm_url=vllm_url, model_name=model_name,
-            request_id=chain_id, # Use chain_id as the persistent request_id
+            request_id=chain_id,
             temperature=0.6,
-            max_tokens=MAX_TOKENS_PER_STREAM, # Request a large number of tokens
+            max_tokens=MAX_TOKENS_PER_STREAM,
             logprobs=None
         )
         # Create and store the consumer task
         task = asyncio.create_task(
             stream_processing_worker(chain_id, stream_generator, active_chains[chain_id], all_tasks_done_event),
-            name=f"worker_{chain_id}" # Name task for easier debugging
+            name=f"worker_{chain_id}"
         )
         consumer_tasks[chain_id] = task
 
@@ -184,18 +185,26 @@ async def process_question_similarity_prune(
         analysis_step += 1
         logger.info(f"[bold cyan][Q{iteration} Analysis Interval {analysis_step}] Checking chains...[/bold cyan]")
 
-        # --- Check for newly completed thoughts across all *active* chains ---
+        # --- Check active chains ---
         active_chain_ids_now = [cid for cid, state in active_chains.items() if state["is_active"] and not state["finished"]]
+
+        # --- OPTIMIZATION CHECK ---
+        # If only one chain is left, stop the analysis loop and just wait for it
+        if len(active_chain_ids_now) == 1:
+            the_last_chain_id = active_chain_ids_now[0]
+            logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] Only chain {the_last_chain_id} remains active. Halting periodic analysis.")
+            break # Exit the analysis loop early
+
+        # Check if no chains remain
         if not active_chain_ids_now:
              logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] No active chains remain. Stopping analysis.")
-             break # Exit analysis loop if all chains are done/pruned/errored
+             break # Exit analysis loop
 
+        # --- Continue with analysis ONLY if > 1 chain is active ---
         all_new_thoughts_texts: List[Tuple[str, int, str]] = [] # (chain_id, thought_idx, text)
 
         for chain_id in active_chain_ids_now:
              chain_state = active_chains[chain_id]
-             # Use the full text received so far, even if it mixes reasoning/content
-             # Thought boundaries are based on keywords, independent of server separation
              new_segments, updated_boundaries = find_newly_completed_thoughts(
                  chain_state["full_text"],
                  chain_state["processed_boundaries"],
@@ -232,14 +241,10 @@ async def process_question_similarity_prune(
                  if chain_id in chains_to_prune_this_interval or not active_chains[chain_id]["is_active"]: continue
 
                  chain_state = active_chains[chain_id]
-                 # Pruning Check Logic:
-                 # 1. Must be the 3rd thought or later (thought_idx >= 2).
-                 # 2. Reasoning must NOT be complete yet (!chain_state["reasoning_complete"]).
-                 # 3. There must be at least one other chain's embedding in the index.
                  can_check_pruning = (
                      thought_idx >= 2 and
                      not chain_state["reasoning_complete"] and
-                     index_manager.get_num_active_chains() >= 1
+                     index_manager.get_num_active_chains() >= 1 # This check implies > 1 chain exists overall
                  )
 
                  if can_check_pruning:
@@ -258,9 +263,8 @@ async def process_question_similarity_prune(
                  elif thought_idx < 2:
                      logger.debug(f"Chain {chain_id} (T{thought_idx}): Skipping pruning check (thought < 2).")
                  elif chain_state["reasoning_complete"]:
-                     logger.debug(f"Chain {chain_id} (T{thought_idx}): Skipping pruning check (reasoning already complete).")
+                     logger.debug(f"Chain {chain_id} (T{thought_idx}): Skipping pruning check (reasoning already complete based on server stream).")
 
-                 # Always prepare to add embedding if not pruned in this interval
                  if chain_id not in chains_to_prune_this_interval:
                      embeddings_to_add_to_index.append((embedding, chain_id, thought_idx, text))
 
@@ -277,7 +281,6 @@ async def process_question_similarity_prune(
                         consumer_tasks[prune_id].cancel()
                     index_manager.remove_chain_embeddings(prune_id)
 
-        # Add embeddings for non-pruned thoughts
         for emb, cid, tidx, txt in embeddings_to_add_to_index:
              if active_chains[cid]["is_active"] and not active_chains[cid]["finished"]:
                   index_manager.add_embedding(emb, cid, tidx, txt)
@@ -285,9 +288,9 @@ async def process_question_similarity_prune(
 
         # --- Wait for next interval or task completion ---
         logger.debug(f"Analysis interval {analysis_step} done. Waiting...")
-        running_consumer_tasks = [t for t in consumer_tasks.values() if not t.done()]
+        running_consumer_tasks = [t for t in consumer_tasks.values() if not t.done()] # Re-check needed? Maybe not critical here.
         if not running_consumer_tasks:
-            logger.info("No running consumer tasks left. Exiting analysis loop.")
+            logger.info("No running consumer tasks left after analysis interval. Exiting analysis loop.")
             break
 
         all_tasks_done_event.clear()
@@ -298,14 +301,26 @@ async def process_question_similarity_prune(
             logger.debug(f"Woke up from wait: Timeout reached.")
             pass
 
-    # --- Analysis loop finished ---
-    logger.info(f"Analysis loop completed after {analysis_step} intervals.")
+    # --- Analysis loop finished (either by max_steps, no chains left, or only one left) ---
+    logger.info(f"Analysis loop concluded after {analysis_step} intervals.")
 
     # --- Ensure all tasks are truly finished ---
+    # This section now correctly handles waiting for the single remaining task if we broke early
     remaining_tasks = [t for t in consumer_tasks.values() if not t.done()]
     if remaining_tasks:
-        logger.info(f"Waiting for {len(remaining_tasks)} remaining worker tasks to finalize...")
-        await asyncio.wait(remaining_tasks, timeout=10)
+        logger.info(f"Waiting for {len(remaining_tasks)} remaining worker task(s) to finalize...")
+        # Use a generous timeout for the final wait, allowing the last chain(s) to finish naturally
+        final_wait_timeout = 300 # 5 minutes, adjust as needed
+        try:
+            _, pending = await asyncio.wait(remaining_tasks, timeout=final_wait_timeout)
+            if pending:
+                 logger.warning(f"[yellow]Timeout ({final_wait_timeout}s) reached while waiting for final {len(pending)} tasks to complete.[/yellow]")
+                 # Optionally, cancel the pending tasks if they timed out
+                 # for task in pending:
+                 #     task.cancel()
+        except asyncio.CancelledError:
+             logger.warning("[yellow]Final wait was cancelled.[/yellow]")
+
 
     end_process_time = time.time()
     total_duration = end_process_time - start_process_time
@@ -318,21 +333,29 @@ async def process_question_similarity_prune(
     avg_kv_usage = kv_cache_stats.get('avg_kv_cache_usage')
     max_kv_usage = kv_cache_stats.get('max_kv_cache_usage')
 
-
     # --- Post-Processing, Voting, Saving ---
+    # This part remains the same, collecting results from the final state of `active_chains`
     final_active_chains_data = []
     pruned_chains_data = []
     error_chains_data = []
     for chain_id, state in active_chains.items():
+        # Ensure we check the 'finished' flag which should be set even if the final wait timed out
+        if not state.get('finished'):
+             logger.warning(f"Chain {chain_id} did not have 'finished=True' flag set at the end. Status: {state.get('finish_reason')}, Active: {state.get('is_active')}")
+             # Decide how to classify - treat as error or incomplete?
+             if not state.get('error'): state['error'] = 'Incomplete: Did not finish processing loop.'
+             error_chains_data.append(state)
+             continue # Skip further classification
+
         if state.get("finish_reason") == "pruned_similarity":
             pruned_chains_data.append(state)
         elif state.get("error"):
             error_chains_data.append(state)
-        elif state.get("finished"):
-             if state.get("finish_reason") not in ["pruned_similarity", "cancelled_pruned", "cancelled_inactive"]:
+        #elif state.get("finished"): # Already checked 'finished' above
+        elif state.get("finish_reason") not in ["pruned_similarity", "cancelled_pruned", "cancelled_inactive"]:
                  final_active_chains_data.append(state)
 
-    logger.info(f"Q{iteration} Final Status: {len(final_active_chains_data)} chains completed, {len(pruned_chains_data)} pruned, {len(error_chains_data)} errors.")
+    logger.info(f"Q{iteration} Final Status: {len(final_active_chains_data)} chains completed, {len(pruned_chains_data)} pruned, {len(error_chains_data)} errors/incomplete.")
 
     # Prepare results for voting
     successful_chain_results = []
@@ -340,11 +363,9 @@ async def process_question_similarity_prune(
     total_prompt_tokens_agg = 0
 
     for chain_state in final_active_chains_data:
-        extracted_answer = extract_answer_gpqa(chain_state["full_text"]) # Extract from full text
-        # We don't have a clean split of reasoning/final_answer text based on server fields here
-        # Keep the structure but use full_text for reasoning
+        extracted_answer = extract_answer_gpqa(chain_state["full_text"])
         reasoning_text = chain_state["full_text"]
-        final_answer_text = "" # Assume answer is captured by extract_answer_gpqa
+        final_answer_text = ""
 
         result_data = {
             "chain_index": int(chain_state['id'].split('_c')[-1]),
@@ -375,11 +396,11 @@ async def process_question_similarity_prune(
     for chain_id, chain_state in active_chains.items():
          chain_idx = int(chain_id.split('_c')[-1])
          final_status = "unknown"
-         if chain_state.get("error"): final_status = "error"
+         if chain_state.get("error"): final_status = "error" # Includes incomplete now
          elif chain_state.get("finish_reason") in ["pruned_similarity", "cancelled_pruned", "cancelled_inactive"]:
              final_status = "pruned"
          elif chain_state.get("finished"): final_status = "finished"
-         else: final_status = "incomplete"
+         else: final_status = "incomplete" # Fallback, though should be caught earlier
 
          chain_filename = os.path.join(paths["chains"], f"question_{iteration}_chain_{chain_idx}_{final_status}.txt")
          try:
@@ -387,7 +408,7 @@ async def process_question_similarity_prune(
                  f.write(f"--- Chain {chain_idx} for Question {iteration} ---\n")
                  f.write(f"Status: {final_status.upper()}\n")
                  f.write(f"Finish Reason: {chain_state.get('finish_reason', 'N/A')}\n")
-                 f.write(f"Reasoning Complete Flag (based on server content start): {chain_state.get('reasoning_complete', 'N/A')}\n") # Add flag info
+                 f.write(f"Reasoning Complete Flag (based on server content start): {chain_state.get('reasoning_complete', 'N/A')}\n")
                  f.write(f"Error: {chain_state.get('error', 'N/A')}\n")
                  f.write(f"Prompt Tokens (Usage): {chain_state.get('prompt_tokens', 'N/A')}\n")
                  f.write(f"Completion Tokens (Usage): {chain_state.get('completion_tokens', 'N/A')}\n")
@@ -398,7 +419,7 @@ async def process_question_similarity_prune(
          except IOError as e:
              logger.exception(f"[red]Error writing chain output file {chain_filename}[/red]")
 
-    # Save summary JSON (structure remains the same)
+    # --- Save summary JSON --- (remains the same)
     summary_data = {
         "iteration": iteration, "question_id": question_id,
         "status": "SUCCESS" if successful_chain_results else "ALL_PRUNED_OR_ERROR",
@@ -412,7 +433,7 @@ async def process_question_similarity_prune(
         "voted_answer": voted_answer,
         "final_score": final_score,
         "processing_duration_sec": f"{total_duration:.1f}",
-        "total_analysis_intervals": analysis_step,
+        "total_analysis_intervals": analysis_step, # Number of intervals *completed*
         "avg_kv_cache_usage": f"{avg_kv_usage:.4f}" if avg_kv_usage is not None else None,
         "max_kv_cache_usage": f"{max_kv_usage:.4f}" if max_kv_usage is not None else None,
         "usage_aggregated": {
@@ -443,7 +464,7 @@ async def process_question_similarity_prune(
     except TypeError as e:
          logger.exception(f"[red]Error serializing summary data to JSON: {e}[/red]")
 
-    # Return data for final CSV
+    # --- Return data for final CSV --- (remains the same)
     return {
         "iteration": iteration,
         "question_id": question_id,
