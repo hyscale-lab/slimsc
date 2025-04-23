@@ -41,7 +41,8 @@ def extract_kv_cache_usage_for_question(
 
     Returns:
         Dict[str, Optional[float]]: Dictionary with 'avg_kv_cache_usage'
-                                     and 'max_kv_cache_usage', or None if unavailable.
+                                    and 'max_kv_cache_usage' for the time window,
+                                    or None if data is unavailable or an error occurs.
     """
     source_file = paths.get('source_usage_file')
     save_dir = paths.get('kvcache_usages_dir')
@@ -51,9 +52,6 @@ def extract_kv_cache_usage_for_question(
     if not source_file:
         logger.warning(f"[yellow][Q{iteration}]: Source KV cache usage file path not configured.[/yellow]")
         return results
-    if not save_dir:
-        logger.warning(f"[yellow][Q{iteration}]: KV cache usage save directory path not configured.[/yellow]")
-        # Continue to calculate aggregates if possible, but cannot save per-question log
     if not os.path.exists(source_file):
         logger.warning(f"[yellow][Q{iteration}]: KV cache usage file not found at {source_file}. Cannot analyze or save.[/yellow]")
         return results
@@ -61,18 +59,13 @@ def extract_kv_cache_usage_for_question(
     try:
         # Define expected header names from server log
         header_names = ['timestamp', 'gpu_cache_usage_perc']
-        # Try reading, explicitly providing names and setting header=0 if file has header
-        # Adjust header=0/None based on whether your server log *actually* writes a header row
+        # Try reading the whole file first, handle potential errors and missing header
         try:
-            df = pd.read_csv(source_file) # Try reading normally first
-            if list(df.columns) != header_names:
-                 logger.warning(f"[yellow][Q{iteration}]: Header mismatch in {source_file}. Expected {header_names}, got {list(df.columns)}. Attempting recovery.[/yellow]")
-                 # Reread forcing names, skipping the actual header row if present
-                 df = pd.read_csv(source_file, names=header_names, header=0, skiprows=[0] if os.path.getsize(source_file)>0 else None)
-        except pd.errors.ParserError:
-             # Fallback if parsing fails, maybe due to bad lines or no header
-             logger.warning(f"[yellow][Q{iteration}]: ParserError reading {source_file}. Attempting read with explicit names and no header.[/yellow]")
-             df = pd.read_csv(source_file, names=header_names, header=None)
+            # Read the file, assuming no header by default, provide column names
+            df = pd.read_csv(source_file, names=header_names, header=None, on_bad_lines='skip')
+        except Exception as e:
+             logger.exception(f"[red]Error reading initial KV cache file {source_file} for Q{iteration}.[/red]")
+             return results
 
 
         if df.empty:
@@ -87,15 +80,16 @@ def extract_kv_cache_usage_for_question(
                        logger.exception(f"[red]Error saving empty KV log for Q{iteration} to {empty_save_path}[/red]")
              return results
 
-        # Ensure columns are numeric
+        # Ensure columns are numeric, coercing errors
         df['timestamp'] = pd.to_numeric(df['timestamp'], errors='coerce')
         df['gpu_cache_usage_perc'] = pd.to_numeric(df['gpu_cache_usage_perc'], errors='coerce')
-        df = df.dropna(subset=['timestamp', 'gpu_cache_usage_perc'])
+        # Drop rows where timestamp or usage is NaN after coercion
+        df = df.dropna(subset=['timestamp', 'gpu_cache_usage_perc']).reset_index(drop=True)
 
         # Filter based on the processing time window for this question
         df_filtered = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)].copy()
 
-        # Save the filtered df ****
+        # Save the filtered df
         if save_dir:
             saved_log_path = os.path.join(save_dir, f"question_{iteration}_kvcache_usage.csv")
             try:
@@ -126,14 +120,11 @@ def extract_kv_cache_usage_for_question(
                   f"Avg={results['avg_kv_cache_usage']:.4f}, Max={results['max_kv_cache_usage']:.4f}")
 
     except pd.errors.EmptyDataError:
-         logger.exception(f"[red]Warning [Q{iteration}]: KV cache usage file {source_file} is empty or header-only.[/red]")
+         logger.warning(f"[yellow][Q{iteration}]: KV cache usage file {source_file} is empty or header-only after initial read.[/yellow]")
     except FileNotFoundError:
-         logger.exception(f"[red]Warning [Q{iteration}]: KV cache usage file not found at {source_file}.[/red]")
+         # This case should be caught by the os.path.exists check, but here as backup
+         logger.warning(f"[yellow][Q{iteration}]: KV cache usage file not found at {source_file}.[/yellow]")
     except Exception as e:
         logger.exception(f"[red]Error processing KV cache usage for Question {iteration} from {source_file}[/red]")
-        import traceback
-        traceback.print_exc() # More detailed error
 
-    # Add saved path to results for potential logging elsewhere if needed (optional)
-    # results['saved_kv_log_path'] = saved_log_path
     return results

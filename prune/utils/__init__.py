@@ -9,5 +9,7 @@ from .similarity_utils import (
     find_thought_boundaries,
     find_newly_completed_thoughts,
     extract_final_thought,
-    FaissIndexManager
+    FaissIndexManager,
+    MIN_SEGMENT_TOKENS,
+    TARGET_PHRASES
 )
