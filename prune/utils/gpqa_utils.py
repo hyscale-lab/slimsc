@@ -1,4 +1,4 @@
-# # slimsc/prune/utils/gpqa_utils.py
+# slimsc/prune/utils/gpqa_utils.py
 import random
 import re
 from datasets import load_dataset
@@ -29,8 +29,7 @@ def load_data_gpqa(dataset_name: str = "gpqa_diamond", split: str = "train") -> 
         logger.info(f"Loaded {len(examples)} examples from GPQA {dataset_name} split {split}.")
         return examples
     except Exception as e:
-        logger.exception(f"[red]Error loading GPQA dataset[/red]")
-        # Consider raising the exception or returning empty list based on desired behavior
+        logger.exception(f"[red]Error loading GPQA dataset '{dataset_name}'. Check dataset name and internet connection.[/red]")
         raise e # Re-raise to stop execution if dataset loading fails
 
 
@@ -38,34 +37,48 @@ def create_prompt_gpqa(example: Dict) -> Tuple[str, List[str], str]:
     """Create a prompt, choices list, and correct answer letter from the example for GPQA."""
     # Randomly permute the four options using the pre-assigned permutation
     choices_pool = [
-        example["Correct Answer"],
-        example["Incorrect Answer 1"],
-        example["Incorrect Answer 2"],
-        example["Incorrect Answer 3"],
+        example.get("Correct Answer", "N/A"),
+        example.get("Incorrect Answer 1", "N/A"),
+        example.get("Incorrect Answer 2", "N/A"),
+        example.get("Incorrect Answer 3", "N/A"),
     ]
     permutation = example.get("permutation")
     if not permutation or len(permutation) != 4:
          # Fallback if permutation missing (shouldn't happen with load_data_gpqa)
         permutation = random.sample(range(4), 4)
 
-    choices = [choices_pool[idx] for idx in permutation]
+    try:
+        choices = [choices_pool[idx] for idx in permutation]
+    except IndexError:
+        logger.error(f"[red]Index error when applying permutation {permutation} to choices pool {choices_pool}. Example ID: {example.get('id', 'N/A')}[/red]")
+        choices = [choices_pool[i] for i in range(4)] # Use default order as fallback
 
     # Identify which choice is correct
-    correct_index = choices.index(example["Correct Answer"])
-    correct_answer_letter = "ABCD"[correct_index]
+    correct_answer_text = example.get("Correct Answer", "N/A")
+    correct_answer_letter = "E" # Default to E (error)
+    try:
+        correct_index = choices.index(correct_answer_text)
+        correct_answer_letter = "ABCD"[correct_index]
+    except ValueError:
+        # This can happen if "Correct Answer" is not found in the permuted choices.
+        # This shouldn't happen if choices_pool was constructed correctly from the example.
+        # But if choices_pool failed or correct_answer_text was missing/invalid, this will occur.
+        logger.error(f"[red]Correct answer text '{correct_answer_text}' not found in generated choices {choices}. Example ID: {example.get('id', 'N/A')}. Correct answer letter set to '{correct_answer_letter}'.[/red]")
+    except IndexError:
+         logger.error(f"[red]Index error when getting correct answer letter from permutation index. Example ID: {example.get('id', 'N/A')}[/red]")
 
     # Build the multiple-choice prompt with clear instructions
     prompt = f"""Answer the following multiple-choice science question.
 Think step-by-step to reach the solution.
 Conclude your response with a single line containing the answer letter formatted exactly as 'Answer: $LETTER'.
 
-Question: {example['question']}
+Question: {example.get('question', 'N/A')}
 
 Options:
-A) {choices[0]}
-B) {choices[1]}
-C) {choices[2]}
-D) {choices[3]}
+A) {choices[0] if len(choices) > 0 else 'N/A'}
+B) {choices[1] if len(choices) > 1 else 'N/A'}
+C) {choices[2] if len(choices) > 2 else 'N/A'}
+D) {choices[3] if len(choices) > 3 else 'N/A'}
 """
 
     return prompt, choices, correct_answer_letter
@@ -102,6 +115,10 @@ def extract_answer_gpqa(content: Optional[str]) -> Optional[str]:
 
 def calculate_score_gpqa(extracted_answer: Optional[str], correct_answer_letter: str) -> int:
     """Calculates the score (1 for correct, 0 for incorrect/missing)."""
+    # Ensure correct_answer_letter is a valid letter before comparison
+    if not isinstance(correct_answer_letter, str) or correct_answer_letter.upper() not in ['A', 'B', 'C', 'D']:
+         logger.warning(f"Invalid correct answer letter '{correct_answer_letter}'. Score is 0.")
+         return 0
     if extracted_answer is None:
         return 0
     return 1 if extracted_answer.upper() == correct_answer_letter.upper() else 0
@@ -139,16 +156,22 @@ def count_tokens(text: str, tokenizer_path: Optional[str] = None) -> Optional[in
             _tokenizer_path_loaded = None
             return None # Indicate failure
 
+    # If tokenizer_path was not provided at all, _tokenizer remains None.
+    # If loading failed, _tokenizer is None.
     if _tokenizer:
         try:
-            return len(_tokenizer.encode(text))
+            # Encode the text. Handle potential errors during encoding.
+            # add_special_tokens=False is typical for counting content tokens
+            tokens = _tokenizer.encode(text, add_special_tokens=False)
+            return len(tokens)
         except Exception as e:
-            logger.exception(f"[red]ERROR: Failed to encode text with tokenizer[/red]")
+            logger.exception(f"[red]ERROR: Failed to encode text with tokenizer for counting[/red]")
             return None # Indicate failure
     else:
-         # Only print warning if path was ever provided but failed, or never provided
-         if tokenizer_path or _tokenizer_path_loaded is None:
-              # This warning might be noisy if path is intentionally omitted
-              # logger.warning("Tokenizer not available. Cannot count tokens.")
-              pass
+         # Only print a warning about tokenizer not being available if the path was expected (provided)
+         # If tokenizer_path is None, the caller likely knew counting wasn't possible.
+         # If loading failed previously (_tokenizer_path_loaded is not None but _tokenizer is None),
+         # a warning was already printed on the first attempt.
+         # Avoid repeated warnings here during every count call.
+         # logger.debug("Tokenizer not available. Cannot count tokens.")
          return None # Indicate unavailability/failure
