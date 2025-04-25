@@ -5,6 +5,7 @@ import argparse
 from tqdm import tqdm
 import time
 import asyncio
+import json
 from typing import List, Dict, Optional
 
 # Ensure correct relative imports if running as part of the package
@@ -38,6 +39,7 @@ def setup_output_directories_prune(base_output_dir: str, model_name: str, datase
     summary_output_dir = os.path.join(model_dataset_dir, "summaries")
     results_csv_path = os.path.join(model_dataset_dir, "evaluation_summary.csv")
     kvcache_usages_dir = os.path.join(model_dataset_dir, "kvcache_usages")
+    aggregated_metrics_path = os.path.join(model_dataset_dir, "aggregated_metrics.json") 
 
     os.makedirs(chains_output_dir, exist_ok=True)
     os.makedirs(summary_output_dir, exist_ok=True)
@@ -52,7 +54,8 @@ def setup_output_directories_prune(base_output_dir: str, model_name: str, datase
         "summaries": summary_output_dir,
         "csv": results_csv_path,
         "kvcache_usages_dir": kvcache_usages_dir,
-        "source_usage_file": source_kv_file
+        "source_usage_file": source_kv_file,
+        "aggregated_metrics_json": aggregated_metrics_path
     }
 
 
@@ -84,21 +87,44 @@ async def run_similarity_pruning_evaluation_async(
 
     results_list = []
     processed_iterations = set()
-    csv_cols = ["iteration", "question_id", "n_chains_start", "n_chains_final", "n_chains_pruned",
-                "similarity_threshold", "correct_answer", "voted_answer", "final_score",
-                "prompt_tokens", "total_completion_tokens", "total_tokens",
-                "individual_answers_str", "total_steps",
-                "avg_kv_cache_usage", "max_kv_cache_usage"
-                ]
+    # Define CSV columns - must match keys returned by process_question_similarity_prune
+    csv_cols = [
+        "iteration", "question_id", "n_chains_start", 
+        "n_chains_completed_stream_for_voting", "n_chains_error",
+        "similarity_threshold", "correct_answer", "voted_answer", "final_score",
+        "prompt_tokens", "total_completion_tokens", "total_tokens", # total_completion_tokens is sum across ALL finished streams
+        "individual_answers_str", "total_analysis_intervals",
+        "avg_kv_cache_usage", "max_kv_cache_usage", # Per-question KV stats
+        "processing_duration_sec", # Per-question duration
+    ]
 
+    # Load existing results if resuming
     if os.path.exists(paths["csv"]):
         try:
             existing_df = pd.read_csv(paths["csv"])
+            # Ensure all expected columns exist in loaded data, add if missing
             for col in csv_cols:
                  if col not in existing_df.columns:
-                     existing_df[col] = None
-            results_list = existing_df[csv_cols].to_dict('records')
-            processed_iterations = set(existing_df['iteration'].dropna().astype(int).unique())
+                    # Add missing column with a default (e.g., None or 0 for numeric)
+                    # Use None/NaN for float/object types, 0 for counts if appropriate
+                    if col in ["n_chains_start", "n_chains_completed_stream_for_voting", 
+                               "n_chains_pruned", "n_chains_error",
+                               "prompt_tokens", "total_completion_tokens", "total_tokens",
+                               "total_analysis_intervals"]:
+                         existing_df[col] = 0
+                    elif col in ["final_score", "similarity_threshold",
+                                 "avg_kv_cache_usage", "max_kv_cache_usage", "processing_duration_sec"]:
+                         existing_df[col] = pd.NA # Use pandas NA for missing numeric data
+                    else:
+                         existing_df[col] = None # Use None for object/string types
+
+            # Ensure correct dtypes for merging/comparison, especially iteration
+            existing_df['iteration'] = pd.to_numeric(existing_df['iteration'], errors='coerce').astype('Int64') # Use nullable Int64
+            # Drop rows where iteration failed to convert
+            existing_df = existing_df.dropna(subset=['iteration']).drop_duplicates(subset=["iteration"], keep="last")
+
+            results_list = existing_df.to_dict('records') # Use defined columns
+            processed_iterations = set(existing_df['iteration'].unique())
             logger.info(f"Resuming. Found {len(processed_iterations)} previously processed iterations.")
         except Exception as e:
             logger.exception(f"[red]Could not read existing results file {paths['csv']}. Starting fresh.[/red]")
@@ -125,14 +151,15 @@ async def run_similarity_pruning_evaluation_async(
         logger.info("No new iterations to process.")
     else:
         logger.info(f"Need to process {len(iterations_to_process)} iterations.")
-        pbar = tqdm(total=len(iterations_to_process), desc=f"GPQA SimPrune N={n_chains_start} T={similarity_threshold}")
+        pbar = tqdm(total=len(iterations_to_process), 
+                    desc=f"GPQA SimPrune N={n_chains_start} T={similarity_threshold}")
         for i in iterations_to_process:
             example = examples[i-1]
             result = await process_question_similarity_prune(
                 example=example,
                 iteration=i,
                 n_chains_start=n_chains_start,
-                paths=paths, # Pass paths dict containing KV paths
+                paths=paths,
                 vllm_url=vllm_url,
                 model_name=model_identifier,
                 tokenizer_path=tokenizer_path,
@@ -142,9 +169,24 @@ async def run_similarity_pruning_evaluation_async(
                 results_list.append(result)
                 try:
                     df = pd.DataFrame(results_list)
+                    # Ensure correct dtypes for merging/comparison before drop_duplicates
+                    df['iteration'] = pd.to_numeric(df['iteration'], errors='coerce').astype('Int64')
+                    # Reorder columns and add any missing ones from csv_cols before saving
                     for col in csv_cols:
-                         if col not in df.columns: df[col] = None
-                    df = df[csv_cols].sort_values(by="iteration").drop_duplicates(subset=["iteration"], keep="last")
+                        if col not in df.columns:
+                             if col in ["n_chains_start", "n_chains_completed_stream_for_voting", 
+                                        "n_chains_pruned", "n_chains_error",
+                                        "prompt_tokens", "total_completion_tokens", "total_tokens",
+                                        "total_analysis_intervals"]:
+                                  df[col] = 0
+                             elif col in ["final_score", "similarity_threshold",
+                                          "avg_kv_cache_usage", "max_kv_cache_usage",
+                                          "processing_duration_sec"]:
+                                  df[col] = pd.NA
+                             else:
+                                  df[col] = None
+                    # Filter out rows where iteration is NA after conversion
+                    df = df.dropna(subset=['iteration'])[csv_cols].sort_values(by="iteration").drop_duplicates(subset=["iteration"], keep="last")
                     df.to_csv(paths["csv"], index=False)
                 except Exception as e:
                     logger.exception(f"[red]\nError saving intermediate CSV[/red]")
@@ -155,60 +197,140 @@ async def run_similarity_pruning_evaluation_async(
             # await asyncio.sleep(0.5)
         pbar.close()
 
-    # Final processing and summary
+    # --- Final processing and summary ---
+    aggregated_metrics = {}
     if results_list:
         final_df = pd.DataFrame(results_list)
-        for col in csv_cols:
-            if col not in final_df.columns: final_df[col] = None
-        final_df = final_df[csv_cols].sort_values(by="iteration").drop_duplicates(subset=["iteration"], keep="last")
+        # Ensure correct dtypes for aggregation, handling potential NA values
+        # Define columns intended to be numeric
+        numeric_cols = [
+            "iteration", # Already handled during load/merge, but good to include
+            "n_chains_start", "n_chains_completed_stream_for_voting", "n_chains_error",
+            "similarity_threshold", "final_score",
+            "prompt_tokens", "total_completion_tokens", "total_tokens",
+            "total_analysis_intervals", "avg_kv_cache_usage", "max_kv_cache_usage",
+            "processing_duration_sec",
+        ]
+        # Apply numeric conversion only to specified columns
+        for col in numeric_cols:
+             if col in final_df.columns:
+                  # Attempt numeric conversion, coercing errors to NaN
+                  final_df[col] = pd.to_numeric(final_df[col], errors='coerce')
 
+        # Drop rows where iteration is NA if any slipped through
+        final_df = final_df.dropna(subset=['iteration'])
+
+        # Save the final CSV one last time
         try:
-             final_df.to_csv(paths["csv"], index=False)
+             # Ensure all expected columns exist before saving
+             for col in csv_cols:
+                 if col not in final_df.columns:
+                     if col in ["n_chains_start", "n_chains_completed_stream_for_voting",
+                                "n_chains_error", "prompt_tokens", 
+                                "total_completion_tokens", "total_tokens",
+                                "total_analysis_intervals"]:
+                          final_df[col] = 0
+                     elif col in ["final_score", "similarity_threshold",
+                                  "avg_kv_cache_usage", "max_kv_cache_usage",
+                                  "processing_duration_sec"]:
+                          final_df[col] = pd.NA
+                     else:
+                          final_df[col] = None
+
+             final_df[csv_cols].sort_values(by="iteration").to_csv(paths["csv"], index=False)
              logger.info(f"[bold green]Evaluation complete. Final results saved to {paths['csv']}[/bold green]")
         except Exception as e:
              logger.exception(f"[red]\nError performing final save to CSV[/red]")
 
-        # Print summary stats
-        if 'final_score' in final_df.columns and not final_df['final_score'].isnull().all():
-            accuracy = final_df['final_score'].astype(float).mean()
-            logger.info(f"[green]Overall Accuracy: {accuracy:.2f}[/green]")
+
+        # --- Calculate and Save Aggregated Metrics ---
+        logger.info("Calculating overall aggregated metrics...")
+        num_processed_questions = len(final_df)
+        # Calculate score-based metrics only for questions where a score was successfully recorded
+        num_questions_with_score = final_df['final_score'].dropna().shape[0]
+
+        # Calculate required aggregates, handling potential NaNs (dropna) and ensuring non-zero division (num_processed_questions > 0)
+        overall_accuracy = final_df['final_score'].dropna().mean() if num_questions_with_score > 0 else None
+
+        mean_total_completion_tokens = final_df['total_completion_tokens'].dropna().mean() if num_processed_questions > 0 else None
+        max_total_completion_tokens = final_df['total_completion_tokens'].dropna().max() if num_processed_questions > 0 else None
+
+        mean_max_kv_usage = final_df['max_kv_cache_usage'].dropna().mean() if num_processed_questions > 0 else None
+        max_max_kv_usage = final_df['max_kv_cache_usage'].dropna().max() if num_processed_questions > 0 else None
+
+        mean_processing_duration = final_df['processing_duration_sec'].dropna().mean() if num_processed_questions > 0 else None
+        max_processing_duration = final_df['processing_duration_sec'].dropna().max() if num_processed_questions > 0 else None
+
+        mean_chains_error = final_df['n_chains_error'].dropna().mean() if num_processed_questions > 0 else None
+        max_chains_error = final_df['n_chains_error'].dropna().max() if num_processed_questions > 0 else None
+
+        mean_chains_start = final_df['n_chains_start'].dropna().mean() if num_processed_questions > 0 else None
+        mean_chains_completed_for_voting = final_df['n_chains_completed_stream_for_voting'].dropna().mean() if num_processed_questions > 0 else None
+
+
+        aggregated_metrics = {
+            "dataset": dataset_name,
+            "model_name": model_name,
+            "run_type": "Similarity Pruning (Continuous Stream)",
+            "config": {
+                "n_chains_start": n_chains_start,
+                "similarity_threshold": similarity_threshold,
+            },
+            "metrics": {
+                "num_questions_processed": num_processed_questions,
+                "num_questions_with_score": num_questions_with_score, # Number of questions where a score could be calculated
+                "overall_accuracy": float(overall_accuracy) if overall_accuracy is not None else None,
+
+                "mean_total_completion_tokens_per_question": float(mean_total_completion_tokens) if mean_total_completion_tokens is not None else None,
+                "max_total_completion_tokens_per_question": float(max_total_completion_tokens) if max_total_completion_tokens is not None else None,
+
+                "mean_max_kv_cache_usage_per_question_perc": float(mean_max_kv_usage) if mean_max_kv_usage is not None else None,
+                "max_max_kv_cache_usage_across_all_questions_perc": float(max_max_kv_usage) if max_max_kv_usage is not None else None,
+
+                "mean_processing_duration_sec_per_question": float(mean_processing_duration) if mean_processing_duration is not None else None,
+                "max_processing_duration_sec_per_question": float(max_processing_duration) if max_processing_duration is not None else None,
+
+                "mean_chains_started_per_question": float(mean_chains_start) if mean_chains_start is not None else None,
+                "mean_chains_completed_stream_for_voting_per_question": float(mean_chains_completed_for_voting) if mean_chains_completed_for_voting is not None else None,
+                "mean_chains_error_per_question": float(mean_chains_error) if mean_chains_error is not None else None,
+                "max_chains_error_per_question": float(max_chains_error) if max_chains_error is not None else None,
+            }
+        }
+
+        try:
+            with open(paths["aggregated_metrics_json"], "w", encoding='utf-8') as f:
+                 json.dump(aggregated_metrics, f, indent=2)
+            logger.info(f"[bold green]Aggregated metrics saved to {paths['aggregated_metrics_json']}[/bold green]")
+        except IOError as e:
+            logger.exception(f"[red]Error writing aggregated metrics file {paths['aggregated_metrics_json']}[/red]")
+        except TypeError as e:
+             logger.exception(f"[red]Error serializing aggregated metrics data to JSON: {e}[/red]")
+
+
+        # Print summary stats (optional, as they are in the JSON file now)
+        logger.info("\n--- Overall Aggregated Results ---")
+        if overall_accuracy is not None:
+            logger.info(f"[green]Overall Accuracy: {overall_accuracy:.4f}[/green]")
         else:
-            logger.error("[red]Accuracy could not be calculated (no valid scores).[/red]")
+            logger.error("[red]Overall Accuracy could not be calculated (no valid scores).[/red]")
 
-        # Add stats about pruning
-        if 'n_chains_start' in final_df.columns:
-            avg_start = final_df['n_chains_start'].astype(float).mean()
-            logger.info(f"[green]Avg Chains Started: {avg_start:.1f}[/green]")
-        if 'n_chains_final' in final_df.columns:
-             avg_final = final_df['n_chains_final'].astype(float).mean()
-             logger.info(f"[green]Avg Chains Final (used for vote): {avg_final:.1f}[/green]")
-        if 'n_chains_pruned' in final_df.columns:
-             avg_pruned = final_df['n_chains_pruned'].astype(float).mean()
-             logger.info(f"[green]Avg Chains Pruned: {avg_pruned:.1f}[/green]")
+        if mean_total_completion_tokens is not None:
+             logger.info(f"[green]Avg Total Completion Tokens per Question (all chains): {mean_total_completion_tokens:.1f}[/green]")
+             logger.info(f"[green]Max Total Completion Tokens per Question (all chains): {max_total_completion_tokens:.1f}[/green]")
 
-        if 'prompt_tokens' in final_df.columns and not final_df['prompt_tokens'].isnull().all():
-             avg_prompt_tokens = final_df['prompt_tokens'].astype(float).mean()
-             logger.info(f"[green]Avg Prompt Tokens: {avg_prompt_tokens:.1f}[/green]")
-        if 'total_completion_tokens' in final_df.columns and not final_df['total_completion_tokens'].isnull().all():
-             avg_completion_tokens = final_df['total_completion_tokens'].astype(float).mean()
-             logger.info(f"[green]Avg Completion Tokens (Total across final chains): {avg_completion_tokens:.1f}[/green]")
-        if 'total_tokens' in final_df.columns and not final_df['total_tokens'].isnull().all():
-             avg_total_tokens = final_df['total_tokens'].astype(float).mean()
-             logger.info(f"[green]Avg Total Tokens (Aggregated): {avg_total_tokens:.1f}[/green]")
-        if 'total_steps' in final_df.columns and not final_df['total_steps'].isnull().all():
-             avg_steps = final_df['total_steps'].astype(float).mean()
-             logger.info(f"[green]Avg Processing Steps per Question: {avg_steps:.1f}[/green]")
+        if mean_chains_completed_for_voting is not None:
+             logger.info(f"[green]Avg Chains Completed (for voting): {mean_chains_completed_for_voting:.1f}[/green]")
 
-        if 'avg_kv_cache_usage' in final_df.columns and final_df['avg_kv_cache_usage'].notna().any():
-             avg_kv = final_df['avg_kv_cache_usage'].dropna().astype(float).mean()
-             logger.info(f"[green]Avg KV Cache Usage (Question Avg): {avg_kv:.4f}[/green]")
-        if 'max_kv_cache_usage' in final_df.columns and final_df['max_kv_cache_usage'].notna().any():
-             avg_max_kv = final_df['max_kv_cache_usage'].dropna().astype(float).mean()
-             overall_max_kv = final_df['max_kv_cache_usage'].dropna().astype(float).max()
-             logger.info(f"[green]Avg Max KV Cache Usage (Question Max): {avg_max_kv:.4f}[/green]")
-             logger.info(f"[green]Overall Max KV Cache Usage Recorded: {overall_max_kv:.4f}[/green]")
+        if mean_processing_duration is not None:
+             logger.info(f"[green]Avg Processing Duration per Question (sec): {mean_processing_duration:.2f}[/green]")
+             logger.info(f"[green]Max Processing Duration per Question (sec): {max_processing_duration:.2f}[/green]")
+
+        if mean_max_kv_usage is not None:
+             logger.info(f"[green]Avg Max KV Cache Usage per Question (%): {mean_max_kv_usage:.4f}[/green]")
+             logger.info(f"[green]Overall Max KV Cache Usage Recorded (%): {max_max_kv_usage:.4f}[/green]")
+
     else:
-        logger.warning("[yellow]No results were processed or loaded.[/yellow]")
+        logger.warning("[yellow]No results were processed or loaded for aggregation.[/yellow]")
 
     await close_aiohttp_session() # Ensure session is closed
 
@@ -219,21 +341,23 @@ def configure_logging():
         datefmt="[%X]",
         handlers=[RichHandler(markup=True, rich_tracebacks=True)] # Enable tracebacks
     )
-    # Optionally configure specific loggers
-    logging.getLogger("httpx").setLevel(logging.WARNING) # Quieter http logs
+    # Configure specific loggers
+    # Set default level for potentially chatty libraries to WARNING
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+    logging.getLogger("faiss").setLevel(logging.WARNING) # FAISS can be chatty
 
 
 def main():
     configure_logging()
     parser = argparse.ArgumentParser(description='Run Similarity Pruning Evaluation using vLLM Streaming.')
-    parser.add_argument('--n_start', type=int, required=True, choices=[3, 5, 8, 10], help='Initial number of chains (N_start).') # Adjusted choices maybe
+    parser.add_argument('--n_start', type=int, required=True, help='Initial number of chains (N_start).')
     parser.add_argument('--threshold', type=float, required=True, help='Cosine similarity threshold for pruning (e.g., 0.85).')
     parser.add_argument('--vllm_url', type=str, default="http://localhost:8000", help='URL of the vLLM server OpenAI-compatible endpoint.')
     parser.add_argument('--model_name', type=str, required=True, help='Short name for the model used for directory structures.')
     parser.add_argument('--model_identifier', type=str, required=True, help='Full model identifier used by vLLM API.')
-    parser.add_argument('--tokenizer_path', type=str, required=True, help='Path to HuggingFace tokenizer directory (REQUIRED for segment extraction).')
+    parser.add_argument('--tokenizer_path', type=str, required=True, help='Path to HuggingFace tokenizer directory (REQUIRED for segment extraction AND tie-breaking fallback).')
     parser.add_argument('--dataset_name', type=str, default="gpqa_diamond", help='Name of the GPQA subset/dataset.')
     parser.add_argument('--output_dir', type=str, default="./prune/results", help='Base directory to save evaluation results.')
     parser.add_argument('--start', type=int, default=1, help='Starting iteration (1-indexed).')
@@ -242,8 +366,8 @@ def main():
     args = parser.parse_args()
 
     # Validate threshold
-    if not (0.0 < args.threshold < 1.0):
-        logger.error("[red]Similarity threshold must be between 0.0 and 1.0 (exclusive).[/red]")
+    if not (0.0 < args.threshold <= 1.0):
+        logger.error("[red]Similarity threshold must be between 0.0 (exclusive) and 1.0 (inclusive).[/red]")
         return
 
     specific_iterations_list = None
