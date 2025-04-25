@@ -120,6 +120,45 @@ async def stream_processing_worker(
         all_tasks_done_event.set() # Set event to potentially wake up main loop
 
 
+def calculate_mean_pairwise_similarity(embeddings_list: List[np.ndarray]) -> float:
+    """
+    Calculates the mean cosine similarity between all distinct pairs of embeddings in a list.
+    Assumes embeddings are already normalized.
+    Returns 0.0 if fewer than 2 embeddings are present.
+    """
+    num_embeddings = len(embeddings_list)
+    if num_embeddings < 2:
+        return 0.0 # No pairs to compare
+
+    try:
+        # Stack embeddings into a single NumPy array (ensure float32 for consistency)
+        embeddings_array = np.array(embeddings_list, dtype=np.float32)
+
+        # Calculate the dot product matrix (cosine similarity for normalized vectors)
+        similarity_matrix = np.dot(embeddings_array, embeddings_array.T)
+
+        # Extract the upper triangle, excluding the diagonal (k=1)
+        # This gives a 1D array of all pairwise similarities
+        upper_triangle_indices = np.triu_indices_from(similarity_matrix, k=1)
+        pairwise_similarities = similarity_matrix[upper_triangle_indices]
+
+        # Calculate the mean
+        # Handle case where pairwise_similarities might be empty (shouldn't happen if num_embeddings >= 2)
+        if pairwise_similarities.size == 0:
+             return 0.0
+
+        mean_sim = np.mean(pairwise_similarities)
+
+        # Clamp the result between -1.0 and 1.0 in case of floating point inaccuracies
+        mean_sim = np.clip(mean_sim, -1.0, 1.0)
+
+        return float(mean_sim)
+
+    except Exception as e:
+        logger.exception(f"Error calculating mean pairwise similarity: {e}")
+        return 0.0 # Return default value on error
+
+
 async def process_question_similarity_prune(
     example: Dict,
     iteration: int,
@@ -190,6 +229,7 @@ async def process_question_similarity_prune(
         active_chains[chain_id] = {
             "id": chain_id, "full_text": "", "processed_boundaries": [],
             "completed_thought_count": 0, # Continuous thought_idx
+            "embeddings": [],
             "reasoning_complete": False, # Track if non-reasoning 'content' has started
             "is_active": True, "finished": False,
             "finish_reason": None, "error": None, 
@@ -250,7 +290,7 @@ async def process_question_similarity_prune(
             break
 
         # --- Continue with analysis/pruning if conditions met ---
-        all_new_thoughts_texts: List[Tuple[str, int, str]] = [] # (chain_id, thought_idx, text)
+        all_new_thoughts_data: List[Tuple[str, int, str]] = [] # (chain_id, thought_idx, text)
 
         # Only analyze chains that are still active and in the reasoning phase
         for chain_id, chain_state in chains_eligible_for_pruning_check.items():
@@ -265,24 +305,33 @@ async def process_question_similarity_prune(
                 logger.debug(f"Chain {chain_id}: Found {len(new_segments)} new completed thoughts in interval {analysis_step}.")
                 for start_idx, end_idx, text in new_segments:
                     thought_idx = chain_state["completed_thought_count"]
-                    all_new_thoughts_texts.append((chain_id, thought_idx, text))
+                    all_new_thoughts_data.append((chain_id, thought_idx, text)) # Store data before embedding
                     chain_state["completed_thought_count"] += 1
                 chain_state["processed_boundaries"] = updated_boundaries
 
-        # --- Embed new thoughts ---
-        newly_completed_thoughts_for_embedding: List[Tuple[str, int, str, np.ndarray]] = []
-        if all_new_thoughts_texts:
-            texts_only = [t[2] for t in all_new_thoughts_texts]
-            embeddings = embed_segments(texts_only)
-            if embeddings is None or len(embeddings) != len(all_new_thoughts_texts):
-                logger.error("[red]Embedding failed or returned incorrect number. Skipping similarity check this interval.[/red]")
+        # --- Embed new thoughts AND Store Them ---
+        newly_completed_thoughts_for_faiss: List[Tuple[str, int, str, np.ndarray]] = []
+        if all_new_thoughts_data:
+            texts_only = [t[2] for t in all_new_thoughts_data]
+            embeddings = embed_segments(texts_only) # Embed in batch
+
+            if embeddings is None or len(embeddings) != len(all_new_thoughts_data):
+                logger.error("[red]Embedding failed or returned incorrect number. Skipping analysis this interval.[/red]")
             else:
-                for i, (chain_id, thought_idx, text) in enumerate(all_new_thoughts_texts):
-                    newly_completed_thoughts_for_embedding.append((chain_id, thought_idx, text, embeddings[i]))
+                embedding_idx = 0
+                for chain_id, thought_idx, text in all_new_thoughts_data:
+                    # Ensure chain still exists and is active before appending
+                    if chain_id in active_chains and active_chains[chain_id]["is_active"]:
+                         current_embedding = embeddings[embedding_idx]
+                         # STORE the embedding in the chain's state
+                         active_chains[chain_id]["embeddings"].append(current_embedding)
+                         # Prepare data needed for FAISS check/add
+                         newly_completed_thoughts_for_faiss.append((chain_id, thought_idx, text, current_embedding))
+                    embedding_idx += 1
 
         # --- Check Similarity and Prune ---
         chains_to_prune_this_interval: Set[str] = set()
-        embeddings_to_add_to_index: List[Tuple[np.ndarray, str, int, str]] = []
+        embeddings_to_add_to_faiss: List[Tuple[np.ndarray, str, int, str]] = []
         # Store pruning step info temporarily
         pruning_info_this_interval: Dict[str, int] = {} # {chain_id: analysis_step}
 
@@ -294,18 +343,19 @@ async def process_question_similarity_prune(
         # So, we just need to ensure we only search against embeddings that are still logically in the index (represented in metadata_map).
         # The search method already checks `if faiss_id in self.metadata_map`.
         
-        # The number of chains considered for pruning is the number of chains currently in the index.
-        num_chains_in_index = index_manager.get_num_active_chains()
+        num_chains_in_index = index_manager.get_num_active_chains() # Active chains in FAISS metadata
 
-        if newly_completed_thoughts_for_embedding:
-            logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_embedding)} new thoughts.")
-            for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_embedding:
-                # Ensure the chain is still active and in reasoning phase before checking/adding
-                if chain_id not in chains_eligible_for_pruning_check:
-                    logger.debug(f"Chain {chain_id}: Not in active reasoning phase (T{thought_idx}), skipping pruning check/add.")
-                    continue # Skip if chain is already pruned or finished reasoning (should be caught by eligible_chains filter)
+        # Use the newly_completed_thoughts_for_faiss list which contains the actual embeddings
+        if newly_completed_thoughts_for_faiss:
+            logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_faiss)} new thoughts.")
 
-                chain_state = active_chains[chain_id] # Get the latest state
+            # Iterate through thoughts that were successfully embedded
+            for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
+                # Double-check eligibility (might have been pruned already in this loop by another thought)
+                if chain_id not in chains_eligible_for_pruning_check or chain_id in chains_to_prune_this_interval:
+                    continue # Skip if chain no longer eligible or already marked for pruning
+
+                chain_state = active_chains[chain_id] # Get current state
 
                 # Pruning check conditions:
                 # 1. Thought index is >= 2 (allow first two thoughts)
@@ -321,55 +371,80 @@ async def process_question_similarity_prune(
                     # Search for nearest neighbor EXCLUDING embeddings from the current chain_id
                     neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                     if neighbor_result:
-                        sim_score, neighbor_chain_id, _, _ = neighbor_result
-                        if sim_score > similarity_threshold:
-                            logger.warning(f"[bold yellow]PRUNING condition![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, score={sim_score:.4f} (Reasoning Phase)")
+                        sim_score_faiss, neighbor_chain_id, _, _ = neighbor_result
+                        # --- Step 2: If FAISS similarity high, calculate NEW Diversity Efficiency ---
+                        if sim_score_faiss > similarity_threshold:
+                            logger.warning(f"[bold yellow]PRUNING CONDITION (FAISS)![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, FAISS_score={sim_score_faiss:.4f}")
+
                             neighbor_state = active_chains.get(neighbor_chain_id)
-                            if neighbor_state is None:
-                                 logger.error(f"[red]Neighbor chain {neighbor_chain_id} found in index but not in active_chains dict. Skipping pruning decision.[/red]")
-                                 # Add the current embedding but don't prune anything based on this invalid neighbor
-                                 embeddings_to_add_to_index.append((embedding, chain_id, thought_idx, text))
-                                 continue # Go to next new thought
+                            if neighbor_state is None or not neighbor_state['is_active']:
+                                logger.warning(f"Neighbor chain {neighbor_chain_id} not found or inactive. Skipping diversity check.")
+                                embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
+                                continue
 
-                            current_thought_count = chain_state.get('completed_thought_count', 0)
-                            neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
+                            # Retrieve embedding lists
+                            embeddings_A = chain_state.get("embeddings", [])
+                            embeddings_B = neighbor_state.get("embeddings", [])
+                            num_thoughts_A = len(embeddings_A)
+                            num_thoughts_B = len(embeddings_B)
 
-                            # Prune the chain with FEWER completed thoughts. If counts are equal, prune the current chain.
+                            # Calculate mean pairwise similarity for both chains
+                            mean_sim_A = calculate_mean_pairwise_similarity(embeddings_A)
+                            mean_sim_B = calculate_mean_pairwise_similarity(embeddings_B)
+
+                            # Calculate Diversity Efficiency Metric (handle division by zero/few thoughts)
+                            # Metric = MeanPairwiseSim / NumThoughts. Higher is worse (less diverse).
+                            # Handle num_thoughts < 2 implicitly via calculate_mean_pairwise_similarity returning 0.0
+                            metric_A = (mean_sim_A / num_thoughts_A) if num_thoughts_A > 0 else 0.0 # Avoid division by zero if num_thoughts somehow becomes 0
+                            metric_B = (mean_sim_B / num_thoughts_B) if num_thoughts_B > 0 else 0.0
+
+                            logger.info(f"Diversity Check: Chain {chain_id} (Thoughts={num_thoughts_A}, MeanSim={mean_sim_A:.4f}, Metric={metric_A:.4f}) vs "
+                                        f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, Metric={metric_B:.4f})")
+
+                            # --- Step 3: Decide which chain to prune based on the metric (Higher metric = prune) ---
                             prune_target_id = None
-                            if current_thought_count <= neighbor_thought_count:
+                            if metric_A > metric_B:
                                 prune_target_id = chain_id
-                                logger.warning(f"--> Pruning Chain {chain_id} (Current chain has <= thoughts: {current_thought_count} vs {neighbor_thought_count}).")
-                            else: # current_thought_count > neighbor_thought_count
-                                # Only prune the neighbor if it's still eligible for pruning
+                                logger.warning(f"--> Pruning Chain {chain_id} (Higher diversity metric).")
+                            elif metric_B > metric_A:
                                 if neighbor_chain_id in chains_eligible_for_pruning_check:
-                                    prune_target_id = neighbor_chain_id
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Neighbor chain has fewer thoughts: {neighbor_thought_count} vs {current_thought_count}).")
+                                     prune_target_id = neighbor_chain_id
+                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Higher diversity metric).")
                                 else:
-                                    logger.warning(f"--> Cannot prune neighbor {neighbor_chain_id}: Not currently eligible for pruning. Current chain {chain_id} (thoughts={current_thought_count}) survives.")
-                                    # In this case, we don't prune anything based on this match. The current thought's embedding still gets added.
+                                     logger.warning(f"--> Cannot prune neighbor {neighbor_chain_id} (Ineligible). Chain {chain_id} survives.")
+                            else: # Metrics are equal - Apply tie-breaker (e.g., fewer thoughts)
+                                logger.warning("Diversity metrics are equal. Applying tie-breaker (fewer thoughts)...")
+                                if num_thoughts_A <= num_thoughts_B:
+                                    prune_target_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
+                                else:
+                                    if neighbor_chain_id in chains_eligible_for_pruning_check:
+                                         prune_target_id = neighbor_chain_id
+                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
+                                    else:
+                                         logger.warning(f"--> Cannot prune neighbor {neighbor_chain_id} (Ineligible on tie-break). Chain {chain_id} survives.")
 
                             if prune_target_id:
                                 chains_to_prune_this_interval.add(prune_target_id)
-                                # Record the step at which this chain is decided to be pruned
                                 pruning_info_this_interval[prune_target_id] = analysis_step
+                            else:
+                                # If no prune target, add current thought to FAISS list if not already pruned
+                                if chain_id not in chains_to_prune_this_interval:
+                                    embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
 
-                elif thought_idx < 2:
-                    logger.debug(f"Chain {chain_id} (T{thought_idx}): Skipping pruning check (thought < 2).")
-                elif num_chains_in_index < 2:
-                     logger.debug(f"Chain {chain_id}: Skipping pruning check (< 2 chains in index).")
-                elif chain_state["reasoning_complete"]: # Redundant check due to eligible_chains filter, but safe
-                     logger.debug(f"Chain {chain_id} (T{thought_idx}): Skipping pruning check (reasoning already complete).")
+                        else: # sim_score_faiss <= similarity_threshold
+                             # Add current embedding to FAISS add list if chain not pruned
+                             if chain_id not in chains_to_prune_this_interval:
+                                  embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
+                    else: # No neighbor found by FAISS
+                         # Add current embedding to FAISS add list if chain not pruned
+                         if chain_id not in chains_to_prune_this_interval:
+                            embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
 
-
-                # Add embedding to index ONLY if the chain is not marked for pruning in this interval
-                # AND it is still logically active (its state is_active=True)
-                # The check `if chain_id not in chains_to_prune_this_interval` implies is_active is True before pruning is applied below.
-                if chain_id not in chains_to_prune_this_interval:
-                    # Ensure we don't add embeddings for chains that somehow became inactive or finished between eligibility check and now
-                    # (unlikely within one analysis loop, but safe).
-                    if active_chains.get(chain_id, {}).get("is_active", False) and not active_chains.get(chain_id, {}).get("finished", True):
-                        embeddings_to_add_to_index.append((embedding, chain_id, thought_idx, text))
-
+                else: # Not eligible for pruning check
+                    # Add current embedding to FAISS add list if chain not pruned
+                    if chain_id not in chains_to_prune_this_interval:
+                        embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
 
         # --- Apply Pruning and Update FAISS ---
         if chains_to_prune_this_interval:
@@ -403,7 +478,7 @@ async def process_question_similarity_prune(
         # Add embeddings for chains that were not pruned in this interval
         # And ensure these chains are still active and not finished
         valid_embeddings_to_add = [
-             (emb, cid, tidx, txt) for emb, cid, tidx, txt in embeddings_to_add_to_index
+             (emb, cid, tidx, txt) for emb, cid, tidx, txt in embeddings_to_add_to_faiss
              if active_chains.get(cid, {}).get("is_active", False) and not active_chains.get(cid, {}).get("finished", True)
         ]
         for emb, cid, tidx, txt in valid_embeddings_to_add:
