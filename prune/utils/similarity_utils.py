@@ -2,10 +2,11 @@
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Callable
 import logging
 import torch
-from transformers import AutoTokenizer # Added import
+from transformers import AutoTokenizer
+from .gpqa_utils import count_tokens # Use the standardized counter
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,11 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # --- Global Caches ---
 _embedding_model = None
+# Tokenizer caching for utils is handled by utils.gpqa_utils.count_tokens
 _tokenizer_for_utils = None
 _tokenizer_path_loaded_for_utils = None
+
+TARGET_PHRASES = ["alternative", "Alternative", "Another", "But another", "perhaps another", "Wait", "Oh wait", "But wait"]
 
 def get_embedding_model() -> SentenceTransformer:
     """Loads or returns the cached SentenceTransformer model."""
@@ -31,24 +35,6 @@ def get_embedding_model() -> SentenceTransformer:
             logger.exception("[red]Failed to load Sentence Transformer model[/red]")
             raise e
     return _embedding_model
-
-def _load_tokenizer_for_utils(tokenizer_path: str) -> AutoTokenizer:
-    """Loads tokenizer or returns cached one for utility functions."""
-    global _tokenizer_for_utils, _tokenizer_path_loaded_for_utils
-    if not tokenizer_path:
-        raise ValueError("Tokenizer path must be provided for thought segmentation.")
-    if _tokenizer_for_utils is None or tokenizer_path != _tokenizer_path_loaded_for_utils:
-        logger.info(f"[Utils] Loading tokenizer from: {tokenizer_path}")
-        try:
-            _tokenizer_for_utils = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
-            _tokenizer_path_loaded_for_utils = tokenizer_path
-            logger.info("[Utils] Tokenizer loaded.")
-        except Exception as e:
-            logger.exception(f"[red]Failed to load tokenizer in utils from {tokenizer_path}[/red]")
-            _tokenizer_for_utils = None
-            _tokenizer_path_loaded_for_utils = None
-            raise e # Critical failure
-    return _tokenizer_for_utils
 
 
 def embed_segments(segments: List[str]) -> Optional[np.ndarray]:
@@ -66,7 +52,10 @@ def embed_segments(segments: List[str]) -> Optional[np.ndarray]:
     try:
         model = get_embedding_model()
         embeddings = model.encode(segments, convert_to_numpy=True, normalize_embeddings=True)
-        return embeddings.astype(np.float32)
+        # Ensure embeddings are float32 as required by FAISS
+        if embeddings.dtype != np.float32:
+            embeddings = embeddings.astype(np.float32)
+        return embeddings
     except Exception as e:
         logger.exception(f"[red]Error during segment embedding: {e}[/red]")
         return None
@@ -84,37 +73,51 @@ def find_thought_boundaries(text: str, target_phrases: List[str]) -> List[int]:
         return boundaries
 
     found_positions = []
-    # Search for target phrases starting from the second character
     for phrase in target_phrases:
-        start_index = 1
+        start_index = 0
+        phrase_len = len(phrase)
         while True:
             pos = text.find(phrase, start_index)
             if pos == -1:
                 break # Phrase not found (anymore) in the remaining text
 
-            # Check context: preceded by whitespace, specific punctuation, or newline.
+            # Check context: must be preceded by start of string (pos == 0) or a non-word character/whitespace.
             # This helps avoid matching phrases mid-word or in unrelated contexts.
             is_likely_start = False
-            if pos > 0:
+            if pos == 0:
+                is_likely_start = True
+            elif pos > 0:
                 preceding_char = text[pos - 1]
-                if preceding_char.isspace() or preceding_char in '."\')':
+                if preceding_char.isspace() or not preceding_char.isalnum():
                     is_likely_start = True
-                # Check for preceding newline specifically
-                elif preceding_char == '\n':
-                     is_likely_start = True
-                     # Optional: Check for double newline for stronger signal?
-                     # if pos > 1 and text[pos - 2] == '\n': is_likely_start = True
+                # More specific check for common separators just before
+                elif preceding_char in '.,;!?\'"': # Add common punctuation before phrase
+                    # Check if the char before punctuation is also non-word/space or start of line
+                    if pos > 1:
+                         char_before_punct = text[pos - 2]
+                         if char_before_punct.isspace() or not char_before_punct.isalnum():
+                              is_likely_start = True
+                    elif pos == 1: # If punctuation is the very first char
+                         is_likely_start = True # Unlikely scenario for a thought boundary marker but safe
+
 
             if is_likely_start:
                 found_positions.append(pos)
 
-            # Move search start past the current find to avoid overlapping matches of same phrase
-            start_index = pos + len(phrase)
+            # Move search start past the found position to find the next occurrence
+            start_index = pos + 1 # Move search start just past the found position
 
     # Combine, sort, and remove duplicates
+    # Also, ensure no boundary is equal to the index of the first thought start (0)
     if found_positions:
+        # Remove duplicates and sort
         unique_sorted_positions = sorted(list(set(found_positions)))
-        boundaries.extend(unique_sorted_positions)
+        # Add boundaries from found_positions, excluding 0 if it was found
+        # This might happen if a target phrase is at the very start, but thought 0 already covers that.
+        boundaries.extend([pos for pos in unique_sorted_positions if pos > 0])
+
+    # Ensure boundaries are unique and sorted at the end
+    boundaries = sorted(list(set(boundaries)))
 
     # logger.debug(f"Found boundaries in text (len {len(text)}): {boundaries}")
     return boundaries
@@ -129,6 +132,9 @@ def find_newly_completed_thoughts(
 ) -> Tuple[List[Tuple[int, int, str]], List[int]]:
     """
     Identifies newly completed thought segments based on detected boundaries.
+    
+    A segment is considered 'completed' when its start boundary is detected,
+    and the next boundary in the text has also appeared.
 
     Returns:
         Tuple: (new_segments, updated_processed_boundaries)
@@ -138,57 +144,61 @@ def find_newly_completed_thoughts(
     if not full_text:
         return [], processed_boundaries
 
-    try:
-        tokenizer = _load_tokenizer_for_utils(tokenizer_path)
-    except Exception:
-        logger.error("[red]Tokenizer unavailable in find_newly_completed_thoughts.[/red]")
-        return [], processed_boundaries # Cannot proceed without tokenizer
-
-    # 1. Find all potential boundaries in the current full text
+    # Find all potential boundaries in the current full text
     all_current_boundaries = find_thought_boundaries(full_text, target_phrases)
 
-    # 2. Identify which boundaries define the *end* of a newly completed segment
     newly_completed_segments = []
-    newly_processed_starts = [] # Track starts processed in this call
+    # Track starts found and processed as a start of a newly completed segment in *this* function call
+    new_segment_starts_processed_this_call = []
 
     # Ensure processed_boundaries is sorted and unique for efficient checking
     current_processed_boundaries = sorted(list(set(processed_boundaries)))
+    # The index of the boundary that starts the LAST segment we finished processing previously.
+    # We only look for new segment boundaries starting >= after this.
     last_processed_start = current_processed_boundaries[-1] if current_processed_boundaries else -1
 
-    for i, boundary_start in enumerate(all_current_boundaries):
-        # A segment is defined between boundary_start (all_current_boundaries[i])
-        # and the *next* boundary (all_current_boundaries[i+1])
-        if i + 1 < len(all_current_boundaries):
-            boundary_end = all_current_boundaries[i+1]
+    # Iterate through pairs of boundaries (start, end)
+    # A segment is defined by `all_current_boundaries[i]` (start) and `all_current_boundaries[i+1]` (end)
+    for i in range(len(all_current_boundaries) - 1):
+        boundary_start = all_current_boundaries[i]
+        boundary_end = all_current_boundaries[i+1]
 
-            # Check if this segment's START boundary is new relative to what we've processed
-            # We process a segment once its start boundary appears and its *end* boundary is also found.
-            # This means we look for segments where `boundary_start` is >= the last processed start,
-            # AND `boundary_start` itself has not been added to `newly_processed_starts` in *this* function call yet.
-            if boundary_start >= last_processed_start and boundary_start not in newly_processed_starts:
-                 # Check if this segment start was already processed in previous calls
-                 if boundary_start not in current_processed_boundaries:
-                    segment_text = full_text[boundary_start:boundary_end].strip()
+        # Check if this segment's START boundary is NEW relative to what we've processed in PREVIOUS calls
+        # AND has not been marked as a new segment start in *this* call yet.
+        if boundary_start >= last_processed_start and boundary_start not in new_segment_starts_processed_this_call:
 
-                    if not segment_text: # Skip empty segments
-                         continue
+             # This boundary_start defines the start of a potential new segment.
+             # Check if this specific boundary_start was already processed in any previous call.
+             # We only process boundary_start if it's strictly greater than the last start boundary
+             # we added to `processed_boundaries` in a previous call, or if it's a boundary
+             # that appeared for the first time now.
+             # The logic `boundary_start >= last_processed_start` covers most cases,
+             # but `boundary_start not in current_processed_boundaries` is the most robust check
+             # to see if this *specific* start index has ever defined a processed segment boundary before.
 
-                    # 3. Check token length
-                    try:
-                        tokens = tokenizer.encode(segment_text, add_special_tokens=False)
-                        num_tokens = len(tokens)
-                    except Exception as e:
-                        logger.warning(f"Could not tokenize segment [{boundary_start}:{boundary_end}] for length check: {e}. Skipping.")
-                        continue # Skip segment if tokenization fails
+             if boundary_start not in current_processed_boundaries:
+                  segment_text = full_text[boundary_start:boundary_end].strip()
 
-                    if num_tokens >= min_segment_tokens:
-                        logger.debug(f"Found NEW completed thought segment [{boundary_start}:{boundary_end}], tokens={num_tokens}.") # Text: '{segment_text[:80]}...'")
-                        newly_completed_segments.append((boundary_start, boundary_end, segment_text))
-                        newly_processed_starts.append(boundary_start) # Mark this start as processed now
-                    # else: logger.debug(f"New segment [{boundary_start}:{boundary_end}] too short (tokens={num_tokens}).")
+                  if not segment_text: # Skip empty segments
+                       continue
 
-    # Combine old and newly processed start boundaries
-    updated_processed_boundaries = sorted(list(set(current_processed_boundaries + newly_processed_starts)))
+                  # Check token length using the shared utility function
+                  num_tokens = count_tokens(segment_text, tokenizer_path)
+
+                  if num_tokens is None:
+                       logger.warning(f"Could not tokenize segment [{boundary_start}:{boundary_end}] for length check. Skipping segment.")
+                       continue # Skip segment if tokenization fails
+
+                  if num_tokens >= min_segment_tokens:
+                      # logger.debug(f"Found NEW completed thought segment [{boundary_start}:{boundary_end}], tokens={num_tokens}.") # Text: '{segment_text[:80]}...'")
+                      newly_completed_segments.append((boundary_start, boundary_end, segment_text))
+                      new_segment_starts_processed_this_call.append(boundary_start) # Mark this start as processed NOW
+                  # else: logger.debug(f"New segment [{boundary_start}:{boundary_end}] too short (tokens={num_tokens}).")
+
+    # Combine old and newly processed start boundaries found in this call
+    # Add the starts found *in this call* to the existing processed boundaries.
+    # Sort and make unique to maintain a clean list.
+    updated_processed_boundaries = sorted(list(set(current_processed_boundaries + new_segment_starts_processed_this_call)))
 
     return newly_completed_segments, updated_processed_boundaries
 
@@ -203,23 +213,33 @@ def extract_final_thought(
     if not full_text:
         return None
 
-    start_pos = 0 # Default if no boundaries were ever processed
-    if processed_boundaries:
-        start_pos = processed_boundaries[-1] # Start from the beginning of the last processed thought
+    # The final segment starts after the last boundary that was processed as a segment start
+    # If processed_boundaries is empty (no boundaries found or processed ever), the first segment starts at 0.
+    # The final segment starts after the *last* boundary in the list of all boundaries found in the text,
+    # unless there are no boundaries other than 0, in which case the whole text is the first/only segment.
+
+    all_current_boundaries = find_thought_boundaries(full_text, TARGET_PHRASES) # Find all boundaries one last time
+
+    start_pos = 0 # Default if no boundaries were ever found other than 0
+    if len(all_current_boundaries) > 1:
+         # The last segment starts at the second-to-last boundary index found
+         # E.g., boundaries [0, 100, 250]. Segments are [0, 100), [100, 250), [250, end).
+         # The final segment starts at the last boundary index found (250).
+         start_pos = all_current_boundaries[-1]
+    # If only [0] or empty, start_pos remains 0.
 
     end_pos = len(full_text)
-    segment_text = full_text[start_pos:].strip()
+    segment_text = full_text[start_pos:end_pos].strip() # Use end_pos for clarity
 
     if not segment_text:
         return None
 
-    try:
-        tokenizer = _load_tokenizer_for_utils(tokenizer_path)
-        tokens = tokenizer.encode(segment_text, add_special_tokens=False)
-        num_tokens = len(tokens)
-    except Exception as e:
-        logger.warning(f"Could not tokenize final segment [{start_pos}:{end_pos}] for length check: {e}. Skipping.")
-        return None
+    # Check token length using the shared utility function
+    num_tokens = count_tokens(segment_text, tokenizer_path)
+
+    if num_tokens is None:
+         logger.warning(f"Could not tokenize final segment [{start_pos}:{end_pos}] for length check. Skipping final segment extraction.")
+         return None
 
     if num_tokens >= min_segment_tokens:
         logger.debug(f"Found FINAL thought segment [{start_pos}:{end_pos}], tokens={num_tokens}.") # Text: '{segment_text[:80]}...'")
@@ -228,7 +248,7 @@ def extract_final_thought(
         logger.debug(f"Final segment [{start_pos}:{end_pos}] too short (tokens={num_tokens}).")
         return None
 
-# --- FaissIndexManager Class (Keep as is, using 'thought_index') ---
+# --- FaissIndexManager Class ---
 class FaissIndexManager:
     """Manages a FAISS index for similarity checking during pruning."""
     def __init__(self, dimension: int):
@@ -246,91 +266,123 @@ class FaissIndexManager:
              return
 
         faiss_id = self.next_id
-        self.index.add(embedding.astype(np.float32))
-        self.metadata_map[faiss_id] = (chain_id, thought_index, text_segment)
-        self.next_id += 1
-        # logger.debug(f"Added faiss_id={faiss_id} for chain={chain_id}, thought={thought_index}")
+        try:
+             # Ensure embedding is contiguous and correct dtype for FAISS
+             embedding = np.ascontiguousarray(embedding, dtype=np.float32)
+             self.index.add(embedding)
+             self.metadata_map[faiss_id] = (chain_id, thought_index, text_segment)
+             self.next_id += 1
+             # logger.debug(f"Added faiss_id={faiss_id} for chain={chain_id}, thought={thought_index}")
+        except Exception as e:
+             logger.exception(f"[red]FAISS add failed for chain={chain_id}, thought={thought_index}: {e}[/red]")
 
     def search_nearest_neighbor(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
-        """Searches for nearest neighbor EXCLUDING the query_chain_id."""
-        if self.index.ntotal == 0: return None
+        """
+        Searches for the nearest neighbor (highest cosine similarity)
+        EXCLUDING embeddings from the query_chain_id.
+        Returns (similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text).
+        """
+        if self.index.ntotal == 0:
+            logger.debug("FAISS index is empty, cannot search.")
+            return None
         if query_embedding.ndim == 1: query_embedding = query_embedding.reshape(1, -1)
         if query_embedding.shape[1] != self.dimension:
              logger.error(f"Query dim mismatch: expected {self.dimension}, got {query_embedding.shape[1]}. Skip search.")
              return None
 
-        # Ensure k is at least 1 if index is not empty
-        k = min(max(1, self.index.ntotal), 10) # Search more neighbors to increase chance of finding one from another chain
-        if k == 0: # Double check after calculation, should be redundant now but safe
-            logger.debug("FAISS index is empty, cannot search.")
+        # Ensure query embedding is contiguous and correct dtype for FAISS
+        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
+
+        # Search more neighbors (e.g., top 10) to increase the chance of finding one from a different chain,
+        # as the top neighbor might be from the query chain.
+        k = min(max(1, self.index.ntotal), 10) # Search up to 10 neighbors or total if less than 10
+        if k == 0: # Should be caught by index.ntotal check, but defensive
+            logger.debug("FAISS index size is 0, cannot search.")
             return None
 
         try:
-            D, I = self.index.search(query_embedding.astype(np.float32), k)
+            D, I = self.index.search(query_embedding, k)
         except Exception as e:
-            logger.exception(f"[red]FAISS search failed: {e}[/red]")
+            logger.exception(f"[red]FAISS search failed for query_chain_id={query_chain_id}: {e}[/red]")
             return None
 
-        stale_ids_found = [] # Keep track of stale IDs encountered in this search
-        for i in range(I.shape[1]): # Iterate through returned neighbors
+        # Iterate through the results to find the first valid neighbor from a different chain
+        for i in range(I.shape[1]):
             faiss_id = I[0, i]
-            # FAISS can return -1 if fewer than k neighbors are found
+            # FAISS can return -1 if fewer than k neighbors were found
             if faiss_id == -1: continue
 
             # Check if the ID exists in our authoritative metadata map
+            # (It might be stale if remove_ids was called but the underlying index hasn't fully updated,
+            # or if we filter metadata without rebuilding/compacting the index).
             if faiss_id in self.metadata_map:
                 neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
                 # Check if the neighbor belongs to a different chain
                 if neighbor_chain_id != query_chain_id:
                     similarity_score = float(D[0, i])
+                    # Clamp score between -1 and 1 in case of float inaccuracies
                     similarity_score = np.clip(similarity_score, -1.0, 1.0)
-                    # Log if we encountered stale IDs before finding this valid one (optional debug)
-                    # if stale_ids_found:
-                    #    logger.debug(f"Search for {query_chain_id} skipped stale FAISS IDs {stale_ids_found} before finding valid neighbor.")
+                    # Found a valid neighbor from another chain
                     return similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text
-                # else: The neighbor is from the same chain, continue searching
-            else:
-                 # Log as DEBUG instead of WARNING, as we handle it.
-                 # This indicates a FAISS internal lag, not a bug in our map.
-                 logger.debug(f"FAISS ID {faiss_id} returned by search but not in metadata_map (likely stale due to recent prune). Skipping.")
-                 stale_ids_found.append(faiss_id) # Keep track for comprehensive debug log below
+                # else: This neighbor is from the same chain, continue searching
 
-        # If we exit the loop, no valid neighbor from another chain was found
-        if stale_ids_found:
-             logger.debug(f"Search for {query_chain_id} found neighbors, but all were either from the same chain or had stale FAISS IDs ({stale_ids_found}) not in metadata map.")
-        # else: logger.debug(f"No valid neighbor found for {query_chain_id} from other chains among the top {k} results.")
+            # If faiss_id is not in metadata_map, it's a stale reference. Log and skip.
+            # logger.debug(f"FAISS ID {faiss_id} returned by search not in metadata_map (stale?). Skipping.")
+
+
+        # If we exit the loop, no valid neighbor from a different chain was found among the top k results
+        # logger.debug(f"No valid neighbor found for {query_chain_id} from other chains among the top {k} results.")
         return None # No neighbor found from a different chain
+
 
     def remove_chain_embeddings(self, chain_id_to_remove: str):
         """Removes all embeddings associated with a given chain ID."""
-        ids_to_remove = [faiss_id for faiss_id, meta in self.metadata_map.items() if meta[0] == chain_id_to_remove]
-        if not ids_to_remove: return
+        # Find all FAISS IDs associated with the chain_id_to_remove in our metadata map
+        ids_to_remove = [faiss_id for faiss_id, meta in list(self.metadata_map.items()) if meta[0] == chain_id_to_remove] # Use list() to avoid modifying during iteration
+
+        if not ids_to_remove:
+            # logger.debug(f"No embeddings found in metadata for chain {chain_id_to_remove} to remove.") # Too noisy
+            return
 
         try:
-            # Using list of IDs directly for removal selector
-            # logger.info(f"[red]IDs to remove: {ids_to_remove}[/red]")
+            # Create an ID selector from the list of IDs to remove
             remove_selector = faiss.IDSelectorBatch(np.array(ids_to_remove, dtype='int64'))
-            num_removed = self.index.remove_ids(remove_selector)
-            # If num_removed != len(ids_to_remove): logger.warning("FAISS remove_ids count mismatch") # Optional check
 
-            logger.info(f"Removed {num_removed} embeddings from FAISS for pruned chain {chain_id_to_remove}.")
-            # Update metadata map safely
-            current_keys = list(self.metadata_map.keys())
-            # logger.info(f"[red]Before remove keys: {current_keys}[/red]")
-            for faiss_id in current_keys:
-                # logger.info(f"[red]Faiss ID: {faiss_id}[/red]")
-                if self.metadata_map[faiss_id][0] == chain_id_to_remove:
-                    del self.metadata_map[faiss_id]
-            # logger.info(f"[red]After remove keys: {list(self.metadata_map.keys())}[/red]")
+            # Use remove_ids method. This operation might be slow or impact search performance
+            # depending on the FAISS index type and library version.
+            # It marks IDs for removal; actual removal might be deferred (e.g., until index is rebuilt).
+            # We don't need the return value (num_removed) unless for specific debugging.
+            self.index.remove_ids(remove_selector)
+
+
+            # Update our metadata map immediately to reflect the logical state
+            # This must happen *after* creating the selector, but before subsequent searches.
+            for faiss_id in ids_to_remove:
+                 if faiss_id in self.metadata_map:
+                      del self.metadata_map[faiss_id]
+                 else:
+                      # This shouldn't happen if ids_to_remove was built from metadata_map
+                      logger.warning(f"Attempted to delete FAISS ID {faiss_id} from metadata_map but it wasn't found.")
+
+
+            logger.info(f"Removed embeddings from FAISS for pruned chain {chain_id_to_remove}. "
+                        f"({len(ids_to_remove)} embeddings requested for removal)") # num_removed might differ slightly
+
 
         except Exception as e:
              logger.exception(f"[red]Failed to remove embeddings for chain {chain_id_to_remove}: {e}[/red]")
-             # Consider implications: metadata might be out of sync with index
+             # If FAISS removal failed, our metadata map might be out of sync with the index.
+             # The search method has logic to skip IDs not in the metadata map, which mitigates this.
 
 
     def get_num_embeddings(self) -> int:
+        """Returns the number of vectors currently in the FAISS index."""
         return self.index.ntotal
 
     def get_num_active_chains(self) -> int:
-        # Returns number of unique chains currently represented in the index metadata
+        """
+        Returns the number of unique chain IDs present in the metadata map.
+        This reflects the number of chains whose embeddings we are actively considering
+        for similarity comparisons.
+        """
         return len(set(meta[0] for meta in self.metadata_map.values()))
