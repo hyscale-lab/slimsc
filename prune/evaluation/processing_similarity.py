@@ -173,14 +173,14 @@ async def process_question_similarity_prune(
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
-    Prunes based on the specified strategy ('fewest_thoughts' or 'diversity').
+    Prunes based on the specified strategy ('fewest_thoughts', 'most_thoughts' or 'diversity').
     Pruning only occurs during the reasoning phase (before server sends non-empty 'content').
     The first two thoughts (idx 0, 1) are never pruned but their embeddings are added.
     Stops analysis loop if only one chain remains active.
     """
     # Validate strategy
-    if pruning_strategy not in ["fewest_thoughts", "diversity"]:
-        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts' or 'diversity'.[/red]")
+    if pruning_strategy not in ["fewest_thoughts", "most_thoughts", "diversity"]:
+        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts', 'most_thoughts' or 'diversity'.[/red]")
         # You might want to raise an error or return None here depending on desired behavior
         raise ValueError(f"Invalid pruning strategy: {pruning_strategy}")
 
@@ -390,19 +390,27 @@ async def process_question_similarity_prune(
                                 continue
 
                             prune_target_id = None
+                            # Get thought counts (needed for multiple strategies now)
+                            current_thought_count = chain_state.get('completed_thought_count', 0)
+                            neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
+
                             if pruning_strategy == "fewest_thoughts":
-                                current_thought_count = chain_state.get('completed_thought_count', 0)
-                                neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
-
-                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (Thoughts={current_thought_count}) vs "
-                                            f"Chain {neighbor_chain_id} (Thoughts={neighbor_thought_count})")
-
+                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
                                 if current_thought_count <= neighbor_thought_count:
                                     prune_target_id = chain_id
                                     logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
-                                else: # current_thought_count > neighbor_thought_count
-                                    prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                else:
+                                    prune_target_id = neighbor_chain_id
                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
+
+                            elif pruning_strategy == "most_thoughts":
+                                logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
+                                if current_thought_count >= neighbor_thought_count:
+                                    prune_target_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
+                                else:
+                                    prune_target_id = neighbor_chain_id
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
 
                             elif pruning_strategy == "diversity":
                                 embeddings_A = chain_state.get("embeddings", [])
