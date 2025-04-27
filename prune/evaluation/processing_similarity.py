@@ -168,15 +168,23 @@ async def process_question_similarity_prune(
     model_name: str,
     tokenizer_path: str,
     similarity_threshold: float,
+    pruning_strategy: str,
     max_analysis_steps: int = 100 # Limit analysis intervals
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
+    Prunes based on the specified strategy ('fewest_thoughts' or 'diversity').
     Pruning only occurs during the reasoning phase (before server sends non-empty 'content').
     The first two thoughts (idx 0, 1) are never pruned but their embeddings are added.
     Stops analysis loop if only one chain remains active.
     """
-    logger.info(f"--- Processing Question {iteration} (N={n_chains_start}, SimPrune-Continuous Thresh={similarity_threshold}) ---")
+    # Validate strategy
+    if pruning_strategy not in ["fewest_thoughts", "diversity"]:
+        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts' or 'diversity'.[/red]")
+        # You might want to raise an error or return None here depending on desired behavior
+        raise ValueError(f"Invalid pruning strategy: {pruning_strategy}")
+
+    logger.info(f"--- Processing Question {iteration} (N={n_chains_start}, SimPrune-{pruning_strategy} Thresh={similarity_threshold}) ---")
     question_id = example.get("id", f"index_{iteration-1}")
     start_process_time = time.time()
 
@@ -305,7 +313,7 @@ async def process_question_similarity_prune(
                 logger.debug(f"Chain {chain_id}: Found {len(new_segments)} new completed thoughts in interval {analysis_step}.")
                 for start_idx, end_idx, text in new_segments:
                     thought_idx = chain_state["completed_thought_count"]
-                    all_new_thoughts_data.append((chain_id, thought_idx, text)) # Store data before embedding
+                    all_new_thoughts_data.append((chain_id, thought_idx, text))
                     chain_state["completed_thought_count"] += 1
                 chain_state["processed_boundaries"] = updated_boundaries
 
@@ -313,8 +321,7 @@ async def process_question_similarity_prune(
         newly_completed_thoughts_for_faiss: List[Tuple[str, int, str, np.ndarray]] = []
         if all_new_thoughts_data:
             texts_only = [t[2] for t in all_new_thoughts_data]
-            embeddings = embed_segments(texts_only) # Embed in batch
-
+            embeddings = embed_segments(texts_only)
             if embeddings is None or len(embeddings) != len(all_new_thoughts_data):
                 logger.error("[red]Embedding failed or returned incorrect number. Skipping analysis this interval.[/red]")
             else:
@@ -347,7 +354,7 @@ async def process_question_similarity_prune(
 
         # Use the newly_completed_thoughts_for_faiss list which contains the actual embeddings
         if newly_completed_thoughts_for_faiss:
-            logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_faiss)} new thoughts.")
+            logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_faiss)} new thoughts using '{pruning_strategy}' strategy.")
 
             # Iterate through thoughts that were successfully embedded
             for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
@@ -382,67 +389,66 @@ async def process_question_similarity_prune(
                                 embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
                                 continue
 
-                            # Retrieve embedding lists
-                            embeddings_A = chain_state.get("embeddings", [])
-                            embeddings_B = neighbor_state.get("embeddings", [])
-                            num_thoughts_A = len(embeddings_A)
-                            num_thoughts_B = len(embeddings_B)
-
-                            # Calculate mean pairwise similarity for both chains
-                            mean_sim_A = calculate_mean_pairwise_similarity(embeddings_A)
-                            mean_sim_B = calculate_mean_pairwise_similarity(embeddings_B)
-
-                            # Calculate Diversity Efficiency Metric (handle division by zero/few thoughts)
-                            # Metric = MeanPairwiseSim / NumThoughts. Higher is worse (less diverse).
-                            # Handle num_thoughts < 2 implicitly via calculate_mean_pairwise_similarity returning 0.0
-                            metric_A = (mean_sim_A / num_thoughts_A) if num_thoughts_A > 0 else 0.0 # Avoid division by zero if num_thoughts somehow becomes 0
-                            metric_B = (mean_sim_B / num_thoughts_B) if num_thoughts_B > 0 else 0.0
-
-                            logger.info(f"Diversity Check: Chain {chain_id} (Thoughts={num_thoughts_A}, MeanSim={mean_sim_A:.4f}, Metric={metric_A:.4f}) vs "
-                                        f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, Metric={metric_B:.4f})")
-
-                            # --- Step 3: Decide which chain to prune based on the metric (Higher metric = prune) ---
                             prune_target_id = None
-                            if metric_A > metric_B:
-                                prune_target_id = chain_id
-                                logger.warning(f"--> Pruning Chain {chain_id} (Higher diversity metric).")
-                            elif metric_B > metric_A:
-                                if neighbor_chain_id in chains_eligible_for_pruning_check:
-                                     prune_target_id = neighbor_chain_id
-                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Higher diversity metric).")
-                                else:
-                                     logger.warning(f"--> Cannot prune neighbor {neighbor_chain_id} (Ineligible). Chain {chain_id} survives.")
-                            else: # Metrics are equal - Apply tie-breaker (e.g., fewer thoughts)
-                                logger.warning("Diversity metrics are equal. Applying tie-breaker (fewer thoughts)...")
-                                if num_thoughts_A <= num_thoughts_B:
+                            if pruning_strategy == "fewest_thoughts":
+                                current_thought_count = chain_state.get('completed_thought_count', 0)
+                                neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
+
+                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (Thoughts={current_thought_count}) vs "
+                                            f"Chain {neighbor_chain_id} (Thoughts={neighbor_thought_count})")
+
+                                if current_thought_count <= neighbor_thought_count:
                                     prune_target_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
-                                else:
-                                    if neighbor_chain_id in chains_eligible_for_pruning_check:
-                                         prune_target_id = neighbor_chain_id
-                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
+                                else: # current_thought_count > neighbor_thought_count
+                                    prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
+
+                            elif pruning_strategy == "diversity":
+                                embeddings_A = chain_state.get("embeddings", [])
+                                embeddings_B = neighbor_state.get("embeddings", [])
+                                num_thoughts_A = len(embeddings_A)
+                                num_thoughts_B = len(embeddings_B)
+
+                                mean_sim_A = calculate_mean_pairwise_similarity(embeddings_A)
+                                mean_sim_B = calculate_mean_pairwise_similarity(embeddings_B)
+
+                                # Metric = MeanPairwiseSim / NumThoughts (Higher is worse)
+                                metric_A = (mean_sim_A / num_thoughts_A) if num_thoughts_A > 0 else 0.0
+                                metric_B = (mean_sim_B / num_thoughts_B) if num_thoughts_B > 0 else 0.0
+
+                                logger.info(f"Diversity Check: Chain {chain_id} (Thoughts={num_thoughts_A}, MeanSim={mean_sim_A:.4f}, Metric={metric_A:.4f}) vs "
+                                            f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, Metric={metric_B:.4f})")
+
+                                if metric_A > metric_B:
+                                    prune_target_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Diversity: Higher metric).")
+                                elif metric_B > metric_A:
+                                    prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Diversity: Higher metric).")
+                                else: # Metrics are equal - Tie-break with fewer thoughts
+                                    logger.warning("Diversity metrics equal. Tie-break: fewer thoughts.")
+                                    if num_thoughts_A <= num_thoughts_B:
+                                        prune_target_id = chain_id
+                                        logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
                                     else:
-                                         logger.warning(f"--> Cannot prune neighbor {neighbor_chain_id} (Ineligible on tie-break). Chain {chain_id} survives.")
+                                        prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                        logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
 
                             if prune_target_id:
                                 chains_to_prune_this_interval.add(prune_target_id)
                                 pruning_info_this_interval[prune_target_id] = analysis_step
-                            else:
-                                # If no prune target, add current thought to FAISS list if not already pruned
+                            else: # Should not happen if logic is correct, but as fallback:
                                 if chain_id not in chains_to_prune_this_interval:
                                     embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
 
                         else: # sim_score_faiss <= similarity_threshold
-                             # Add current embedding to FAISS add list if chain not pruned
-                             if chain_id not in chains_to_prune_this_interval:
-                                  embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
-                    else: # No neighbor found by FAISS
-                         # Add current embedding to FAISS add list if chain not pruned
-                         if chain_id not in chains_to_prune_this_interval:
+                            if chain_id not in chains_to_prune_this_interval:
+                                embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
+                    else: # No neighbor found
+                        if chain_id not in chains_to_prune_this_interval:
                             embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
-
                 else: # Not eligible for pruning check
-                    # Add current embedding to FAISS add list if chain not pruned
                     if chain_id not in chains_to_prune_this_interval:
                         embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
 
