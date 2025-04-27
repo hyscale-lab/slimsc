@@ -31,9 +31,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def setup_output_directories_prune(base_output_dir: str, model_name: str, dataset_name: str, n_start: int, threshold: float) -> Dict[str, str]:
+def setup_output_directories_prune(
+        base_output_dir: str,
+        model_name: str,
+        dataset_name: str,
+        n_start: int,
+        threshold: float,
+        pruning_strategy: str) -> Dict[str, str]:
     """Creates directories for storing similarity pruning evaluation results."""
-    run_name = f"sim_prune_n{n_start}_thresh{threshold:.2f}"
+    run_name = f"sim_prune_{pruning_strategy}_n{n_start}_thresh{threshold:.2f}"
     model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
     chains_output_dir = os.path.join(model_dataset_dir, "individual_chains")
     summary_output_dir = os.path.join(model_dataset_dir, "summaries")
@@ -66,6 +72,7 @@ async def run_similarity_pruning_evaluation_async(
     tokenizer_path: str,
     n_chains_start: int,
     similarity_threshold: float,
+    pruning_strategy: str,
     vllm_url: str,
     base_output_dir: str,
     start_iteration: int = 1,
@@ -73,8 +80,10 @@ async def run_similarity_pruning_evaluation_async(
     specific_iterations: Optional[List[int]] = None
 ):
     """Runs the Similarity Pruning evaluation loop (Continuous Stream Version)."""
-    logger.info(f"Starting Similarity Pruning Eval (Continuous Stream): N_start={n_chains_start}, Threshold={similarity_threshold}, Model={model_name}")
-    paths = setup_output_directories_prune(base_output_dir, model_name, dataset_name, n_chains_start, similarity_threshold)
+    logger.info(f"Starting Similarity Pruning Eval ({pruning_strategy}): N_start={n_chains_start}, Threshold={similarity_threshold}, Model={model_name}")
+    paths = setup_output_directories_prune(
+        base_output_dir, model_name, dataset_name, n_chains_start, similarity_threshold, pruning_strategy
+    )
 
     # Pre-load embedding model
     try:
@@ -152,7 +161,7 @@ async def run_similarity_pruning_evaluation_async(
     else:
         logger.info(f"Need to process {len(iterations_to_process)} iterations.")
         pbar = tqdm(total=len(iterations_to_process), 
-                    desc=f"GPQA SimPrune N={n_chains_start} T={similarity_threshold}")
+                    desc=f"GPQA SimPrune-{pruning_strategy} N={n_chains_start} T={similarity_threshold}")
         for i in iterations_to_process:
             example = examples[i-1]
             result = await process_question_similarity_prune(
@@ -163,7 +172,8 @@ async def run_similarity_pruning_evaluation_async(
                 vllm_url=vllm_url,
                 model_name=model_identifier,
                 tokenizer_path=tokenizer_path,
-                similarity_threshold=similarity_threshold
+                similarity_threshold=similarity_threshold,
+                pruning_strategy=pruning_strategy
             )
             if result:
                 results_list.append(result)
@@ -271,10 +281,11 @@ async def run_similarity_pruning_evaluation_async(
         aggregated_metrics = {
             "dataset": dataset_name,
             "model_name": model_name,
-            "run_type": "Similarity Pruning (Continuous Stream)",
+            "run_type": f"Similarity Pruning ({pruning_strategy.replace('_', ' ').title()})",
             "config": {
                 "n_chains_start": n_chains_start,
                 "similarity_threshold": similarity_threshold,
+                "pruning_strategy": pruning_strategy,
             },
             "metrics": {
                 "num_questions_processed": num_processed_questions,
@@ -353,13 +364,20 @@ def main():
     configure_logging()
     parser = argparse.ArgumentParser(description='Run Similarity Pruning Evaluation using vLLM Streaming.')
     parser.add_argument('--n_start', type=int, required=True, help='Initial number of chains (N_start).')
-    parser.add_argument('--threshold', type=float, required=True, help='Cosine similarity threshold for pruning (e.g., 0.85).')
-    parser.add_argument('--vllm_url', type=str, default="http://localhost:8000", help='URL of the vLLM server OpenAI-compatible endpoint.')
-    parser.add_argument('--model_name', type=str, required=True, help='Short name for the model used for directory structures.')
+    parser.add_argument('--threshold', type=float, required=True,
+                        help='Cosine similarity threshold for pruning (e.g., 0.85).')
+    parser.add_argument('--pruning_strategy', type=str, required=True, choices=['fewest_thoughts', 'diversity'],
+                        help='Strategy to use for pruning decision: "fewest_thoughts" or "diversity".')
+    parser.add_argument('--vllm_url', type=str, default="http://localhost:8000",
+                        help='URL of the vLLM server OpenAI-compatible endpoint.')
+    parser.add_argument('--model_name', type=str, required=True,
+                        help='Short name for the model used for directory structures.')
     parser.add_argument('--model_identifier', type=str, required=True, help='Full model identifier used by vLLM API.')
-    parser.add_argument('--tokenizer_path', type=str, required=True, help='Path to HuggingFace tokenizer directory (REQUIRED for segment extraction AND tie-breaking fallback).')
+    parser.add_argument('--tokenizer_path', type=str, required=True,
+                        help='Path to HuggingFace tokenizer directory (REQUIRED for segment extraction AND tie-breaking fallback).')
     parser.add_argument('--dataset_name', type=str, default="gpqa_diamond", help='Name of the GPQA subset/dataset.')
-    parser.add_argument('--output_dir', type=str, default="./prune/results", help='Base directory to save evaluation results.')
+    parser.add_argument('--output_dir', type=str, default="./prune/results",
+                        help='Base directory to save evaluation results.')
     parser.add_argument('--start', type=int, default=1, help='Starting iteration (1-indexed).')
     parser.add_argument('--end', type=int, default=None, help='Ending iteration (inclusive).')
     parser.add_argument('--iterations', type=str, default=None, help='Comma-separated list of specific iterations.')
@@ -387,6 +405,7 @@ def main():
             tokenizer_path=args.tokenizer_path,
             n_chains_start=args.n_start,
             similarity_threshold=args.threshold,
+            pruning_strategy=args.pruning_strategy,
             vllm_url=args.vllm_url,
             base_output_dir=args.output_dir,
             start_iteration=args.start,
