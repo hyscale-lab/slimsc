@@ -309,8 +309,6 @@ async def process_question_sc_stream(
                   f.write(chain_data_to_save.get('reasoning_text', 'N/A'))
                   f.write("\n\n--- Final Answer Content ---\n")
                   f.write(chain_data_to_save.get('final_answer_text', 'N/A'))
-                  f.write("\n\n--- Full Content ---\n")
-                  f.write(chain_data_to_save.get('full_content', 'N/A'))
 
          except IOError as e:
              logger.exception(f"[red]Error writing chain output file {chain_filename.replace('_status', f'_{status}')}[/red]")
