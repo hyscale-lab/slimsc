@@ -1,138 +1,287 @@
 # slimsc/prune/evaluation/voting.py
 from collections import Counter
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Literal
+
 from ..utils import calculate_score_gpqa, count_tokens
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-def majority_vote(
-    chain_results: List[Dict], # List of processed chain result dicts that finished streams successfully and produced content
-    correct_answer_letter: str,
-    tokenizer_path: Optional[str] = None # Pass tokenizer path if needed for tie-break
-) -> Tuple[Optional[str], int, List[str]]:
-    """
-    Performs majority voting on the extracted answers from SC chains.
-    Uses completion_tokens from chain_results for N=2 tie-breaking if available.
-    Falls back to total token count via tokenizer if completion_tokens (usage) is missing.
-    Assumes input `chain_results` already filtered to chains that finished their streams
-    and produced content, but we filter again for chains that had extractable answers.
-    """
-    # Filter out chains that did not produce an extracted answer
-    valid_chain_results = [cr for cr in chain_results if cr.get("extracted_answer") is not None]
+# --- Internal Helper Functions ---
 
-    # Get extracted answers from valid chains for counting and final list
+def _process_initial_vote(
+    chain_results: List[Dict],
+) -> Tuple[Literal["winner", "tie", "empty"], Optional[str], List[str], List[Dict], Optional[List[str]]]:
+    """
+    Handles the common initial steps of majority voting:
+    1. Filters for valid chains (with extracted_answer).
+    2. Counts answers.
+    3. Checks for a clear winner.
+    4. Identifies tied answers if no clear winner.
+
+    Returns:
+        A tuple containing:
+        - status: "winner", "tie", or "empty".
+        - voted_answer: The winning answer if status is "winner", otherwise None.
+        - all_extracted_answers: List of answers from all valid chains.
+        - valid_chain_results: The filtered list of chain dictionaries.
+        - tied_answers: List of answers involved in the tie if status is "tie", otherwise None.
+    """
+    valid_chain_results = [cr for cr in chain_results if cr.get("extracted_answer") is not None]
     valid_answers = [chain["extracted_answer"] for chain in valid_chain_results]
-    all_extracted_answers = valid_answers # This will be the list used in summary JSON/CSV
 
     if not valid_answers:
         logger.warning("[yellow]No valid chains with extracted answers found for majority vote.[/yellow]")
-        # Return an empty list for all_extracted_answers as none were valid for voting
-        return None, 0, []
+        return "empty", None, [], [], None
 
     answer_counts = Counter(valid_answers)
     most_common = answer_counts.most_common()
 
-    # Check if there is a clear winner (count > next highest count)
+    # Check for clear winner
     if len(most_common) == 1 or (len(most_common) > 1 and most_common[0][1] > most_common[1][1]):
         voted_answer = most_common[0][0]
-        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
         logger.info(f"Clear majority winner: {voted_answer} (count: {most_common[0][1]})")
+        return "winner", voted_answer, valid_answers, valid_chain_results, None
+    else:
+        # Handle Tie
+        max_count = most_common[0][1]
+        tied_answers = [ans for ans, count in most_common if count == max_count]
+        logger.info(f"Tie detected among answers {tied_answers}. Tie-breaking required.")
+        return "tie", None, valid_answers, valid_chain_results, tied_answers
+
+
+def _get_best_chain_by_key(
+    chains: List[Dict],
+    key: str,
+    minimize: bool, # True to find minimum value, False for maximum
+    lower_index_better: bool = True, # Secondary tie-breaker
+) -> Optional[Dict]:
+    """Finds the best chain based on a numeric key, with index as tie-breaker."""
+    best_chain: Optional[Dict] = None
+    best_value = float('inf') if minimize else float('-inf')
+
+    candidate_chains = [] # Chains with the current best_value
+
+    for chain in chains:
+        value = chain.get(key)
+        if value is None:
+            continue # Skip chains missing the key
+
+        comparison = (value < best_value) if minimize else (value > best_value)
+
+        if best_chain is None or comparison:
+            best_value = value
+            candidate_chains = [chain] # Reset candidates
+        elif value == best_value:
+            candidate_chains.append(chain) # Add to candidates
+
+    if not candidate_chains:
+        return None # No chains had the key
+
+    if len(candidate_chains) == 1:
+        best_chain = candidate_chains[0]
+    else:
+        # Tie in primary key, use chain index
+        index_key = 'chain_index'
+        index_default = float('inf') if lower_index_better else float('-inf')
+        candidate_chains.sort(key=lambda c: c.get(index_key, index_default), reverse=not lower_index_better)
+        best_chain = candidate_chains[0] # Pick the one with the 'best' index
+
+    return best_chain
+
+
+def _tie_break_by_tokens(
+    valid_chain_results: List[Dict],
+    tied_answers: List[str],
+    tokenizer_path: Optional[str]
+) -> Optional[str]:
+    """
+    Tie-breaking logic based on token counts (fewest is best).
+    Priority: completion_tokens (usage) -> tokenizer count -> chain_index.
+    """
+    logger.debug("Attempting tie-breaker (fewest tokens).")
+    chains_in_tie = [
+        chain for chain in valid_chain_results
+        if chain.get("extracted_answer") in tied_answers
+    ]
+
+    if not chains_in_tie: return None # Should not happen
+
+    # 1. Try 'completion_tokens' (usage)
+    logger.debug("Trying 'completion_tokens' (usage) for tie-break.")
+    best_chain_usage = _get_best_chain_by_key(chains_in_tie, 'completion_tokens', minimize=True)
+
+    if best_chain_usage:
+        winner_answer = best_chain_usage.get("extracted_answer")
+        logger.info(f"Tie broken via usage stats: Chose chain {best_chain_usage.get('chain_index', 'N/A')} "
+                    f"with {best_chain_usage.get('completion_tokens')} completion tokens (Answer: {winner_answer})")
+        return winner_answer
+
+    logger.debug("'completion_tokens' unavailable for all tied chains or tie remained. Trying tokenizer fallback.")
+
+    # 2. Try tokenizer count fallback
+    if not tokenizer_path:
+        logger.warning("Tokenizer path not provided. Cannot use tokenizer count fallback for tie-breaking.")
+    else:
+        token_counting_successful = True
+        temp_token_counts = {} # {chain_index: count}
+        chains_with_counts = []
+
+        for chain in chains_in_tie:
+            content_to_count = chain.get("full_content", "") # Use full_content if available
+            if not content_to_count:
+                 # Fallback further to reasoning or final answer if full_content missing
+                 content_to_count = chain.get("reasoning_text", "") or chain.get("final_answer_text", "")
+
+            if not content_to_count:
+                logger.warning(f"Chain {chain.get('chain_index', 'N/A')} has no content ('full_content', 'reasoning_text', 'final_answer_text') for token counting.")
+                # Treat as if counting failed for this chain if it matters for tie-break
+                continue
+
+            tokens_fallback = count_tokens(content_to_count, tokenizer_path)
+            chain_idx = chain.get('chain_index')
+
+            if tokens_fallback is None:
+                token_counting_successful = False
+                logger.warning(f"Tokenizer counting failed for chain {chain_idx}. Cannot reliably use tokenizer tie-break.")
+                break # Stop trying if any fails
+            if chain_idx is not None:
+                temp_token_counts[chain_idx] = tokens_fallback
+                chain['tokenizer_tokens_fallback'] = tokens_fallback # Add count to chain dict for _get_best_chain_by_key
+                chains_with_counts.append(chain)
+            else:
+                 logger.warning(f"Chain missing 'chain_index', cannot use reliably in tokenizer tie-break.")
+
+
+        if token_counting_successful and chains_with_counts:
+            best_chain_tokenizer = _get_best_chain_by_key(chains_with_counts, 'tokenizer_tokens_fallback', minimize=True)
+            if best_chain_tokenizer:
+                winner_answer = best_chain_tokenizer.get("extracted_answer")
+                logger.info(f"Tie broken via tokenizer count fallback: Chose chain {best_chain_tokenizer.get('chain_index', 'N/A')} "
+                            f"with {best_chain_tokenizer.get('tokenizer_tokens_fallback')} total tokens (Answer: {winner_answer})")
+                return winner_answer
+        elif not chains_with_counts:
+             logger.warning("No tied chains could be processed for tokenizer fallback counting.")
+
+
+    # 3. Final fallback: Lowest chain index
+    logger.warning("[yellow]Tie-breaking failed using token counts. Arbitrarily choosing lowest chain index among tied chains.[/yellow]")
+    best_chain_index = _get_best_chain_by_key(chains_in_tie, 'chain_index', minimize=True)
+
+    if best_chain_index:
+        winner_answer = best_chain_index.get("extracted_answer")
+        logger.info(f"Tie broken via lowest index: Chose chain {best_chain_index.get('chain_index', 'N/A')} (Answer: {winner_answer})")
+        return winner_answer
+    else:
+        # Should be extremely rare - means no tied chains even had an index?
+        logger.error("[red]Cannot break tie even by index. Falling back to first tied answer.[/red]")
+        return tied_answers[0]
+
+
+def _tie_break_by_internal_similarity( # Renamed for clarity
+    valid_chain_results: List[Dict],
+    tied_answers: List[str],
+) -> Optional[str]:
+    """
+    Tie-breaking logic based on lowest internal similarity (mean_sim / num_thoughts).
+    Priority: final_internal_similarity (lowest) -> chain_index (lowest).
+    Requires chain_results dicts to contain 'final_internal_similarity'.
+    """
+    logger.debug("Attempting tie-breaker (lowest internal similarity).")
+    chains_in_tie = [
+        chain for chain in valid_chain_results
+        if chain.get("extracted_answer") in tied_answers
+    ]
+
+    if not chains_in_tie: return None
+
+    # 1. Try 'final_internal_similarity' (lower is better)
+    logger.debug("Trying 'final_internal_similarity' (lowest) for tie-break.")
+    best_chain_sim = _get_best_chain_by_key(chains_in_tie, 'final_internal_similarity', minimize=True)
+
+    if best_chain_sim:
+        winner_answer = best_chain_sim.get("extracted_answer")
+        logger.info(f"Tie broken via lowest internal similarity: Chose chain {best_chain_sim.get('chain_index', 'N/A')} "
+                    f"with internal_similarity {best_chain_sim.get('final_internal_similarity'):.4f} (Answer: {winner_answer})")
+        return winner_answer
+
+    # 2. Fallback: Lowest chain index
+    logger.warning("[yellow]Internal Similarity tie-breaking failed (score unavailable or tie remained). Using lowest chain index.[/yellow]")
+    best_chain_index = _get_best_chain_by_key(chains_in_tie, 'chain_index', minimize=True)
+
+    if best_chain_index:
+        winner_answer = best_chain_index.get("extracted_answer")
+        logger.info(f"Tie broken via lowest index: Chose chain {best_chain_index.get('chain_index', 'N/A')} (Answer: {winner_answer})")
+        return winner_answer
+    else:
+        logger.error("[red]Cannot break similarity tie even by index. Falling back to first tied answer.[/red]")
+        return tied_answers[0]
+
+
+# --- Public Voting Functions ---
+
+def majority_vote(
+    chain_results: List[Dict],
+    correct_answer_letter: str,
+    tokenizer_path: Optional[str] = None
+) -> Tuple[Optional[str], int, List[str]]:
+    """
+    Performs majority voting using token-based tie-breaking (fewest tokens).
+    Requires 'extracted_answer'. Optional keys for tie-breaking:
+    'completion_tokens', 'full_content'/'reasoning_text', 'chain_index'.
+
+    Args:
+        chain_results: List of dicts for completed chains.
+        correct_answer_letter: The correct answer.
+        tokenizer_path: Path to tokenizer for fallback token counting.
+
+    Returns:
+        Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
+    """
+    status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
+
+    if status == "empty":
+        return None, 0, []
+    if status == "winner":
+        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
 
-    # Handle Ties - occurs when most_common[0][1] == most_common[1][1]
-    max_count = most_common[0][1]
-    tied_answers = [ans for ans, count in most_common if count == max_count]
-    final_voted_answer = None
+    # Status is "tie"
+    final_voted_answer = _tie_break_by_tokens(valid_chains, tied_answers, tokenizer_path)
 
-    # --- N=2 Tie-breaking Logic ---
-    # Check if the tie involves exactly 2 valid chains with extracted answers
-    # and there are no other chains with the same count.
-    is_n2_tie = (len(valid_chain_results) == 2 and len(tied_answers) == 2)
-    is_general_tie = (len(tied_answers) > 1) # Any tie situation
-
-    if is_n2_tie:
-        logger.info(f"N=2 tie detected among answers {tied_answers}. Attempting tie-breaker (fewest tokens).")
-        min_tokens = float('inf')
-        best_chain_data: Optional[Dict] = None # Use Optional type hint
-        tie_break_successful = False
-
-        # Attempt tie-breaking using 'completion_tokens' (usage) first
-        chains_in_tie_with_usage = [
-            chain for chain in valid_chain_results
-            if chain.get("extracted_answer") in tied_answers and chain.get("completion_tokens") is not None
-        ]
-
-        if len(chains_in_tie_with_usage) > 0: # Need at least one chain with usage info
-             logger.debug("Using 'completion_tokens' (usage) for N=2 tie-breaker.")
-             for chain in chains_in_tie_with_usage:
-                  tokens = chain["completion_tokens"]
-                  # In case of equal token counts, prefer the chain with the lower index
-                  # Need to handle initial best_chain_data being None
-                  if best_chain_data is None or tokens < min_tokens or (tokens == min_tokens and chain.get('chain_index', float('inf')) < best_chain_data.get('chain_index', float('inf'))):
-                       min_tokens = tokens
-                       best_chain_data = chain
-             if best_chain_data:
-                  final_voted_answer = best_chain_data.get("extracted_answer")
-                  logger.info(f"N=2 tie broken via usage stats: Chose chain {best_chain_data.get('chain_index', 'N/A')} with {min_tokens} completion tokens (Answer: {final_voted_answer})")
-                  tie_break_successful = True
-        else:
-             logger.debug("No chains in tie had 'completion_tokens' usage stats available.")
+    # Calculate score based on the tie-broken answer
+    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
+    return final_voted_answer, score, all_extracted_answers
 
 
-        # If usage-based tie-breaking failed, attempt tie-breaking using tokenizer count as a fallback
-        if not tie_break_successful and tokenizer_path:
-             logger.debug("Usage stats tie-break failed. Attempting tokenizer counting fallback for N=2 tie.")
-             min_tokens_fallback = float('inf')
-             best_chain_data_fallback: Optional[Dict] = None # Use Optional type hint
-             token_counting_available_for_all_tied = True
+def majority_vote_for_sim_prune(
+    chain_results: List[Dict],
+    correct_answer_letter: str,
+) -> Tuple[Optional[str], int, List[str]]:
+    """
+    Performs majority voting using internal similarity tie-breaking (lowest is best).
+    Requires 'extracted_answer'. Optional keys for tie-breaking:
+    'final_internal_similarity', 'chain_index'.
 
-             chains_in_tie_with_tokenizer_count = []
-             for chain in valid_chain_results:
-                  if chain.get("extracted_answer") in tied_answers:
-                      # Use full content for counting
-                      content_to_count = chain.get("full_content", "")
-                      tokens_fallback = count_tokens(content_to_count, tokenizer_path)
-                      if tokens_fallback is not None: # Check if counting was successful
-                          chain['total_tokens_counted_fallback'] = tokens_fallback # Store fallback count
-                          chains_in_tie_with_tokenizer_count.append(chain)
-                      else:
-                          token_counting_available_for_all_tied = False
-                          logger.warning(f"Tokenizer counting failed for chain {chain.get('chain_index', 'N/A')}. Cannot use tokenizer tie-break.")
-                          break # Cannot use tokenizer tie-break if it fails for any tied chain
+    Args:
+        chain_results: List of dicts for completed chains. Must contain
+                       'final_internal_similarity' if tie-breaking is needed.
+        correct_answer_letter: The correct answer.
 
-             if token_counting_available_for_all_tied and len(chains_in_tie_with_tokenizer_count) > 0:
-                 for chain in chains_in_tie_with_tokenizer_count:
-                     tokens = chain['total_tokens_counted_fallback']
-                     # In case of equal token counts, prefer the chain with the lower index
-                     if best_chain_data_fallback is None or tokens < min_tokens_fallback or (tokens == min_tokens_fallback and chain.get('chain_index', float('inf')) < best_chain_data_fallback.get('chain_index', float('inf'))):
-                           min_tokens_fallback = tokens
-                           best_chain_data_fallback = chain
+    Returns:
+        Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
+    """
+    status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
 
-                 if best_chain_data_fallback:
-                      final_voted_answer = best_chain_data_fallback.get("extracted_answer")
-                      logger.info(f"N=2 tie broken via tokenizer count fallback: Chose chain {best_chain_data_fallback.get('chain_index', 'N/A')} with {min_tokens_fallback} total tokens (Answer: {final_voted_answer})")
-                      tie_break_successful = True
-                 # else: # This case covered by len(chains_in_tie_with_tokenizer_count) check
-             else:
-                 logger.warning("[yellow]Tokenizer counting tie-break fallback failed or unavailable for all tied chains.[/yellow]")
+    if status == "empty":
+        return None, 0, []
+    if status == "winner":
+        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
+        return voted_answer, score, all_extracted_answers
 
-
-        # If both usage and tokenizer tie-breaking failed for N=2
-        if not tie_break_successful:
-            logger.warning("[yellow]N=2 tie-breaking failed (token counts unavailable/equal or tokenizer issue). Arbitrarily choosing first tied answer.[/yellow]")
-            final_voted_answer = tied_answers[0] # Arbitrarily choose the first tied answer
-
-    elif is_general_tie:
-         # Any other tie scenario (N > 2, or N=2 tie not between two answers)
-         logger.warning(f"[yellow]Tie detected among: {tied_answers} (not a standard N=2 tie). Arbitrarily choosing first tied answer.[/yellow]")
-         final_voted_answer = tied_answers[0]
-    else:
-        # This case should not be reached if most_common has > 1 elements and counts are equal
-        # It's here as a safeguard.
-        logger.error("[red]Unexpected voting scenario: Tie detected but fell through tie handling logic.[/red]")
-        final_voted_answer = most_common[0][0] # Default to first most common
+    # Status is "tie"
+    final_voted_answer = _tie_break_by_internal_similarity(valid_chains, tied_answers)
 
     score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers

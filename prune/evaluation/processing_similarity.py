@@ -13,7 +13,7 @@ from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
 )
-from .voting import majority_vote
+from .voting import majority_vote_for_sim_prune
 from .kv_cache_extraction import extract_kv_cache_usage_for_question
 
 import logging
@@ -370,7 +370,7 @@ async def process_question_similarity_prune(
                 # 3. There is at least one other chain currently represented in the FAISS index (meaning at least 2 chains in index)
                 can_check_pruning = (
                     thought_idx >= 2 and
-                    num_chains_in_index >= 2 # Prune only if there's at least one *other* chain in the index
+                    num_chains_in_index >= 2 # Prune only if there's at least one other chain in the index
                 )
 
                 if can_check_pruning:
@@ -421,21 +421,21 @@ async def process_question_similarity_prune(
                                 mean_sim_A = calculate_mean_pairwise_similarity(embeddings_A)
                                 mean_sim_B = calculate_mean_pairwise_similarity(embeddings_B)
 
-                                # Metric = MeanPairwiseSim / NumThoughts (Higher is worse)
-                                metric_A = (mean_sim_A / num_thoughts_A) if num_thoughts_A > 0 else 0.0
-                                metric_B = (mean_sim_B / num_thoughts_B) if num_thoughts_B > 0 else 0.0
+                                # InternalSim = MeanPairwiseSim / NumThoughts (Higher is worse)
+                                internal_sim_A = (mean_sim_A / num_thoughts_A) if num_thoughts_A > 0 else 0.0
+                                internal_sim_B = (mean_sim_B / num_thoughts_B) if num_thoughts_B > 0 else 0.0
 
-                                logger.info(f"Diversity Check: Chain {chain_id} (Thoughts={num_thoughts_A}, MeanSim={mean_sim_A:.4f}, Metric={metric_A:.4f}) vs "
-                                            f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, Metric={metric_B:.4f})")
+                                logger.info(f"Diversity Check: Chain {chain_id} (Thoughts={num_thoughts_A}, MeanSim={mean_sim_A:.4f}, InternalSim={internal_sim_A:.4f}) vs "
+                                            f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, InternalSim={internal_sim_B:.4f})")
 
-                                if metric_A > metric_B:
+                                if internal_sim_A > internal_sim_B:
                                     prune_target_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Diversity: Higher metric).")
-                                elif metric_B > metric_A:
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Diversity: Higher internal_sim).")
+                                elif internal_sim_B > internal_sim_A:
                                     prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Diversity: Higher metric).")
-                                else: # Metrics are equal - Tie-break with fewer thoughts
-                                    logger.warning("Diversity metrics equal. Tie-break: fewer thoughts.")
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Diversity: Higher internal_sim).")
+                                else: # InternalSim are equal - Tie-break with fewer thoughts
+                                    logger.warning("Diversity internal_sims equal. Tie-break: fewer thoughts.")
                                     if num_thoughts_A <= num_thoughts_B:
                                         prune_target_id = chain_id
                                         logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
@@ -504,7 +504,7 @@ async def process_question_similarity_prune(
         logger.debug(f"FAISS index now contains embeddings from {num_chains_in_index} chains.")
 
          # --- Wait for next interval or task completion ---
-        # Wait until *at least one* task finishes OR the timeout occurs.
+        # Wait until at least one task finishes OR the timeout occurs.
         # This prevents busy-waiting if no new text comes in for a while.
         # It also ensures we don't miss tasks finishing naturally.
         all_tasks_done_event.clear() # Clear the event before waiting
@@ -613,36 +613,40 @@ async def process_question_similarity_prune(
     )
 
     for chain_state in final_completed_chains_for_voting:
-        # Prepare the data structure expected by the majority_vote function
-        # Extract answer now for voting
         extracted_answer = extract_answer_gpqa(chain_state["full_text"])
         if extracted_answer is None:
             logger.debug(f"Chain {chain_state['id']} completed but no answer could be extracted. Excluded from voting.")
-            # It won't be added to successful_chain_results_for_voting.
-            continue # Skip chains that didn't extract an answer
+            continue
 
-        # Use full_text for reasoning/final_answer for voting function's potential tie-breaking needs
+        # Calculate the final mean pairwise similarity for this chain
+        final_embeddings = chain_state.get("embeddings", [])
+        num_thoughts = len(final_embeddings)
+        final_mean_similarity = calculate_mean_pairwise_similarity(final_embeddings)
+
+        # Calculate Internal Similarity (lower is better for diversity per thought)
+        final_internal_similarity = (final_mean_similarity / num_thoughts) if num_thoughts > 0 else 0.0 # Handle division by zero
+
+        logger.debug(f"Chain {chain_state['id']}: Final mean sim={final_mean_similarity:.4f}, num_thoughts={num_thoughts}, internal sim={final_internal_similarity:.4f}")
+
         successful_chain_results_for_voting.append({
             "chain_index": int(chain_state['id'].split('_c')[-1]),
             "full_content": chain_state["full_text"],
-            "reasoning_text": chain_state["full_text"], # Use full text for potential length counting in tie-breaker
-            "final_answer_text": chain_state["full_text"], # Use full text for potential length counting in tie-breaker
-            "extracted_answer": extracted_answer, # Already extracted
+            "extracted_answer": extracted_answer,
             "finish_reason": chain_state["finish_reason"],
             "prompt_tokens": chain_state.get("prompt_tokens", 0),
-            "completion_tokens": chain_state.get("completion_tokens", 0), # Usage tokens
-            "completed_thought_count": chain_state.get("completed_thought_count", 0)
+            "completion_tokens": chain_state.get("completion_tokens", 0),
+            "completed_thought_count": chain_state.get("completed_thought_count", 0),
+            "final_mean_pairwise_similarity": final_mean_similarity, # Keep for logging/analysis if needed
+            "final_internal_similarity": final_internal_similarity
         })
 
-
     # Majority Vote - uses the extracted_answer field we just added.
-    # Pass tokenizer_path for tie-breaking fallback if usage tokens are not available.
     if not successful_chain_results_for_voting:
         logger.warning(f"[Q{iteration}] No chains with extracted answers completed streams for majority vote.")
         voted_answer, final_score, all_extracted_answers = None, 0, []
     else:
-        voted_answer, final_score, all_extracted_answers = majority_vote(
-            successful_chain_results_for_voting, correct_answer_letter, tokenizer_path # Pass tokenizer_path
+        voted_answer, final_score, all_extracted_answers = majority_vote_for_sim_prune(
+            successful_chain_results_for_voting, correct_answer_letter
         )
 
     # --- Save Individual Chain Outputs ---
@@ -670,6 +674,16 @@ async def process_question_similarity_prune(
                 # Add pruned_at_step if the chain was pruned
                 if final_status == "pruned":
                      f.write(f"Pruned at Analysis Step: {chain_state.get('pruned_at_step', 'N/A')}\n")
+
+                # Add final similarity scores if available
+                # Find the corresponding entry in successful_chain_results_for_voting
+                voting_data = next((vd for vd in successful_chain_results_for_voting if vd.get('chain_index') == chain_idx), None)
+                if voting_data:
+                    mean_sim = voting_data.get('final_mean_pairwise_similarity', 'N/A')
+                    internal_sim = voting_data.get('final_internal_similarity', 'N/A')
+                    f.write(f"Final Mean Pairwise Similarity: {mean_sim if isinstance(mean_sim, str) else f'{mean_sim:.4f}'}\n")
+                    f.write(f"Final Internal Similarity: {internal_sim if isinstance(internal_sim, str) else f'{internal_sim:.4f}'}\n")
+
                 f.write(f"Final Processed Boundaries: {chain_state.get('processed_boundaries', [])}\n")
                 f.write("\n--- Full Content ---\n")
                 f.write(chain_state.get('full_text', 'N/A'))
@@ -692,7 +706,7 @@ async def process_question_similarity_prune(
         "voted_answer": voted_answer,
         "final_score": final_score,
         "processing_duration_sec": total_duration, # Use float for JSON
-        "total_analysis_intervals": analysis_step, # Number of intervals *completed*
+        "total_analysis_intervals": analysis_step, # Number of intervals completed
         "avg_kv_cache_usage": avg_kv_usage,
         "max_kv_cache_usage": max_kv_usage,
         "usage_aggregated": {
@@ -706,7 +720,9 @@ async def process_question_similarity_prune(
                 "extracted_answer": cr.get("extracted_answer"),
                 "prompt_tokens": cr.get("prompt_tokens"),
                 "completion_tokens": cr.get("completion_tokens"),
-                "completed_thought_count": cr.get("completed_thought_count")
+                "completed_thought_count": cr.get("completed_thought_count"),
+                "final_mean_pairwise_similarity": cr.get("final_mean_pairwise_similarity"),
+                "final_internal_similarity": cr.get("final_internal_similarity")
              } for cr in successful_chain_results_for_voting
          ],
          "pruned_chain_details": [ # Details for chains explicitly pruned by similarity
