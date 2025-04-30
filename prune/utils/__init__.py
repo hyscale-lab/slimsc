@@ -1,8 +1,3 @@
-from .gpqa_utils import (
-    load_data_gpqa, create_prompt_gpqa,
-    extract_answer_gpqa, calculate_score_gpqa,
-    count_tokens
-)
 from .similarity_utils import (
     get_embedding_model,
     embed_segments,
@@ -13,3 +8,7 @@ from .similarity_utils import (
     MIN_SEGMENT_TOKENS,
     TARGET_PHRASES
 )
+
+from .dataset_handler import DatasetHandler
+
+from .count_tokens import count_tokens

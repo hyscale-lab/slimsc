@@ -10,7 +10,7 @@ import asyncio
 from typing import List, Dict, Optional, Set
 
 from ..clients import close_aiohttp_session
-from ..utils import load_data_gpqa
+from ..utils import DatasetHandler
 from .kv_cache_extraction import clear_source_kv_cache
 from .processing import process_question_sc_stream
 
@@ -116,7 +116,8 @@ async def run_sc_evaluation_async(
             results_list = []
             processed_iterations = set()
 
-    examples = load_data_gpqa(dataset_name=dataset_name)
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+    examples = dataset_handler.load_dataset()
     total_examples = len(examples)
 
     target_iterations_set: Set[int] = set() # Set of 1-indexed iterations the user *wants* to process
@@ -152,11 +153,11 @@ async def run_sc_evaluation_async(
         logger.info("No new iterations to process.")
     else:
         logger.info(f"Need to process {len(iterations_to_process)} iterations.")
-        pbar = tqdm(total=len(iterations_to_process), desc=f"GPQA N={n_chains} Stream")
+        pbar = tqdm(total=len(iterations_to_process), desc=f"{dataset_name} N={n_chains} Stream")
         for i in iterations_to_process:
             example = examples[i-1]
             result = await process_question_sc_stream(
-                example, i, n_chains, paths, vllm_url, model_identifier, tokenizer_path
+                example, i, n_chains, paths, vllm_url, model_identifier, tokenizer_path, dataset_name
             )
             if result:
                 results_list.append(result)
@@ -377,7 +378,9 @@ def main():
             return
         # Load the dataset just to get the total number of questions
         try:
-            examples = load_data_gpqa(dataset_name=args.dataset_name)
+            # Initialize dataset handler first
+            dataset_handler = DatasetHandler(dataset_name=args.dataset_name)
+            examples = dataset_handler.load_dataset()
             total_examples = len(examples)
         except Exception as e:
             logger.exception(f"[red]Failed to load dataset '{args.dataset_name}' to determine total examples.[/red]")

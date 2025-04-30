@@ -2,7 +2,8 @@
 from collections import Counter
 from typing import List, Dict, Tuple, Optional, Literal
 
-from ..utils import calculate_score_gpqa, count_tokens
+from ..utils import count_tokens
+from ..utils import DatasetHandler
 
 import logging
 
@@ -224,6 +225,7 @@ def _tie_break_by_internal_similarity( # Renamed for clarity
 def majority_vote(
     chain_results: List[Dict],
     correct_answer_letter: str,
+    dataset_name: str,
     tokenizer_path: Optional[str] = None
 ) -> Tuple[Optional[str], int, List[str]]:
     """
@@ -234,54 +236,69 @@ def majority_vote(
     Args:
         chain_results: List of dicts for completed chains.
         correct_answer_letter: The correct answer.
+        dataset_name: Name of the dataset to use for scoring.
         tokenizer_path: Path to tokenizer for fallback token counting.
 
     Returns:
         Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
     """
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+
     status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
 
     if status == "empty":
         return None, 0, []
     if status == "winner":
-        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
+        score = dataset_handler.calculate_score(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
 
     # Status is "tie"
     final_voted_answer = _tie_break_by_tokens(valid_chains, tied_answers, tokenizer_path)
 
     # Calculate score based on the tie-broken answer
-    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
+    score = dataset_handler.calculate_score(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers
 
 
 def majority_vote_for_sim_prune(
     chain_results: List[Dict],
     correct_answer_letter: str,
+    dataset_name: str = "gpqa_diamond"  # Default to GPQA for backward compatibility
 ) -> Tuple[Optional[str], int, List[str]]:
     """
-    Performs majority voting using internal similarity tie-breaking (lowest is best).
-    Requires 'extracted_answer'. Optional keys for tie-breaking:
-    'final_internal_similarity', 'chain_index'.
+    Specialized majority voting for similarity pruning evaluation.
+    Uses internal similarity for tie-breaking (mean_sim / num_thoughts).
+    Requires chain_results dicts to contain 'final_internal_similarity'.
 
     Args:
-        chain_results: List of dicts for completed chains. Must contain
-                       'final_internal_similarity' if tie-breaking is needed.
-        correct_answer_letter: The correct answer.
+        chain_results: List of chain result dictionaries.
+        correct_answer_letter: The correct answer for scoring.
+        dataset_name: The dataset type ("gpqa_diamond" or "aime").
 
     Returns:
-        Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
+        Tuple of (voted_answer, score, all_extracted_answers).
     """
-    status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
+    # Initialize dataset handler for scoring
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+
+    # Initial vote processing
+    status, voted_answer, all_extracted_answers, valid_chain_results, tied_answers = _process_initial_vote(chain_results)
 
     if status == "empty":
         return None, 0, []
-    if status == "winner":
-        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
+    elif status == "winner":
+        if voted_answer is None:  # Should not happen given status
+            return None, 0, all_extracted_answers
+        score = dataset_handler.calculate_score(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
 
-    # Status is "tie"
-    final_voted_answer = _tie_break_by_internal_similarity(valid_chains, tied_answers)
+    # Handle tie with internal similarity
+    assert tied_answers is not None  # For type checking
+    tie_break_answer = _tie_break_by_internal_similarity(valid_chain_results, tied_answers)
 
-    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
-    return final_voted_answer, score, all_extracted_answers
+    if tie_break_answer is None:
+        logger.error("[red]Tie-breaking failed. Using first tied answer.[/red]")
+        tie_break_answer = tied_answers[0]
+
+    score = dataset_handler.calculate_score(tie_break_answer, correct_answer_letter)
+    return tie_break_answer, score, all_extracted_answers
