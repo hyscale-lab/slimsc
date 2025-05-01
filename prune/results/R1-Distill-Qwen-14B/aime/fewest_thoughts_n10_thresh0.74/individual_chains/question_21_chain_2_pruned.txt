@@ -1,0 +1,108 @@
+--- Chain 2 for Question 21 ---
+Status: PRUNED
+Is Active Flag: False
+Finish Reason: worker_terminated_unexpectedly
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 1154
+Completed Thoughts: 2
+Pruned at Analysis Step: 9
+Final Processed Boundaries: [0, 2792]
+
+--- Full Content ---
+Okay, so I have this problem about b-eautiful numbers. Let me try to understand it step by step.
+
+So, the problem says: For an integer b ≥ 2, a positive integer n is b-eautiful if two conditions are met. First, when n is expressed in base b, it has exactly two digits. Second, the sum of these two digits equals the square root of n.
+
+An example is given: 81 is 13-eautiful because 81 in base 13 is written as 63 (since 6*13 + 3 = 81), and 6 + 3 = 9, which is the square root of 81.
+
+My task is to find the least integer b ≥ 2 for which there are more than ten b-eautiful integers.
+
+Okay, so I need to figure out for each base b, how many n satisfy the given conditions, and find the smallest b where this count exceeds ten.
+
+Let me break down the problem.
+
+First, when n is written in base b with two digits, it can be expressed as n = a * b + c, where a and c are digits in base b. Since it's a two-digit number, a must be at least 1 (since leading zeros aren't allowed), and both a and c must be less than b.
+
+So, a is in {1, 2, ..., b-1}, and c is in {0, 1, ..., b-1}.
+
+The second condition is that a + c = sqrt(n). But n is a * b + c, so sqrt(a*b + c) = a + c.
+
+Let me write that equation:
+
+sqrt(a*b + c) = a + c
+
+If I square both sides, I get:
+
+a*b + c = (a + c)^2
+
+Expanding the right side:
+
+a*b + c = a^2 + 2ac + c^2
+
+Let me rearrange the equation:
+
+a^2 + 2ac + c^2 - a*b - c = 0
+
+Hmm, maybe I can write this as:
+
+a^2 + (2c - b) a + (c^2 - c) = 0
+
+This is a quadratic equation in terms of a. Let me denote it as:
+
+a^2 + (2c - b) a + (c^2 - c) = 0
+
+For given b and c, this quadratic can be solved for a. However, since a must be an integer between 1 and b-1, and c must be between 0 and b-1, I need to find all possible pairs (a, c) that satisfy this equation for each b.
+
+But this approach might be a bit complicated. Maybe I can find another way to relate a, b, and c.
+
+Let me think again about the equation:
+
+sqrt(a*b + c) = a + c
+
+Let me denote s = a + c. Then, s must be equal to sqrt(n), so s must be an integer because n is a perfect square (since sqrt(n) is integer). Therefore, s is an integer, and n = s^2.
+
+Thus, n = s^2 = a*b + c.
+
+But also, s = a + c.
+
+So, substituting, s^2 = a*b + (s - a)
+
+Because c = s - a.
+
+So, s^2 = a*b + s - a
+
+Let me rearrange:
+
+s^2 - s = a*b - a
+
+Factor the right side:
+
+s^2 - s = a (b - 1)
+
+Then, a = (s^2 - s) / (b - 1)
+
+Since a must be an integer between 1 and b-1, (s^2 - s) must be divisible by (b - 1), and the result a must satisfy 1 ≤ a ≤ b-1.
+
+So, for each base b, I can consider possible s values such that (s^2 - s) is divisible by (b - 1), and the resulting a is in the correct range.
+
+But how do I approach this? Maybe for a fixed b, I can find all s such that s^2 - s is divisible by (b-1), and then check if a is within 1 to b-1.
+
+Alternatively, perhaps I can find for each possible s, the possible b's that satisfy the condition, and then count how many b's have more than ten s's (i.e., more than ten b-eautiful numbers).
+
+Wait, but the problem is to find the smallest b where the number of b-eautiful numbers is more than ten. So, perhaps for each b starting from 2 upwards, I can compute the number of valid (a, c) pairs that satisfy the conditions, and stop when I find the first b where this number exceeds ten.
+
+This seems more manageable.
+
+Let me outline the steps:
+
+1. For each base b starting from 2:
+   a. For each possible a from 1 to b-1:
+      i. For each possible c from 0 to b-1:
+         - Check if a + c is integer, and if sqrt(a*b + c) = a + c.
+         - If yes, count this n = a*b + c as b-eautiful.
+   b. Count the total number of such n's for this b.
+   c. If the count exceeds 10, return this b as the answer.
+
+But doing this for each b individually seems time

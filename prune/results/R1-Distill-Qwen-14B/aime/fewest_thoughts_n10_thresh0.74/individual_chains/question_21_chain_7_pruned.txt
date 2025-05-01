@@ -1,0 +1,138 @@
+--- Chain 7 for Question 21 ---
+Status: PRUNED
+Is Active Flag: False
+Finish Reason: worker_terminated_unexpectedly
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 1646
+Completed Thoughts: 4
+Pruned at Analysis Step: 13
+Final Processed Boundaries: [0, 2346, 3807, 4379]
+
+--- Full Content ---
+Okay, so I need to solve this problem where I have to find the smallest base b (b is an integer greater than or equal to 2) such that there are more than ten b-eautiful integers. 
+
+First, let me make sure I understand the problem correctly. A number n is called b-eautiful if two conditions are satisfied:
+1. When n is written in base b, it has exactly two digits.
+2. The sum of these two digits equals the square root of n.
+
+An example is given: 81 is 13-eautiful because in base 13, 81 is written as 63 (since 6*13 + 3 = 81), and 6 + 3 = 9, which is sqrt(81). 
+
+So, I need to find the smallest base b such that there are more than ten numbers n that satisfy these conditions.
+
+Let me break down the problem. 
+
+First, any two-digit number in base b can be written as n = a*b + c, where a and c are digits in base b. Since it's a two-digit number, a can range from 1 to b-1, and c can range from 0 to b-1.
+
+The second condition is that a + c = sqrt(n). Since n = a*b + c, substituting gives a + c = sqrt(a*b + c).
+
+Let me square both sides to eliminate the square root:
+
+(a + c)^2 = a*b + c
+
+Expanding the left side:
+
+a^2 + 2ac + c^2 = a*b + c
+
+Let me rearrange terms:
+
+a^2 + 2ac + c^2 - a*b - c = 0
+
+Hmm, this is a quadratic equation in terms of a and c. Maybe I can express it differently. Let's group terms:
+
+a^2 + (2c - b)a + (c^2 - c) = 0
+
+This is a quadratic in a. For each base b and each possible c, we can see if this equation has integer solutions for a.
+
+But since a and c are digits in base b, a must be between 1 and b-1, and c must be between 0 and b-1.
+
+Let me consider that a and c are integers. So for each base b, I can iterate through possible c values (from 0 to b-1) and solve for a. For each c, the equation is:
+
+a^2 + (2c - b)a + (c^2 - c) = 0
+
+We can use the quadratic formula to solve for a:
+
+a = [ -(2c - b) ± sqrt( (2c - b)^2 - 4*1*(c^2 - c) ) ] / 2
+
+Simplify the discriminant:
+
+Discriminant D = (2c - b)^2 - 4(c^2 - c)
+= 4c^2 -4bc + b^2 -4c^2 +4c
+= (-4bc + b^2) + (4c)
+= b^2 -4bc +4c
+
+Factor:
+
+= b^2 -4c(b -1)
+
+Hmm, that's the discriminant. For a to be an integer, D must be a perfect square, say k^2, and the entire expression must yield an integer.
+
+So, for each b, I can iterate c from 0 to b-1, compute D, check if D is a perfect square, and if so, compute a. Then check if a is an integer in the range [1, b-1].
+
+Alternatively, maybe I can find another way to express the equation. Let's go back:
+
+(a + c)^2 = a*b + c
+
+Let me denote s = a + c, so s^2 = a*b + c.
+
+Since s = a + c, I can write c = s - a. Substitute back into the equation:
+
+s^2 = a*b + (s - a)
+s^2 = a*b + s -a
+s^2 - s = a*(b -1)
+Thus, a = (s^2 - s)/(b -1)
+
+Since a must be an integer between 1 and b-1, (s^2 - s) must be divisible by (b -1), and the result must be within 1 to b-1.
+
+Moreover, since c = s - a, and c must be between 0 and b-1, we have:
+
+0 ≤ s - a ≤ b -1
+
+But a = (s^2 - s)/(b -1)
+
+So substituting:
+
+0 ≤ s - (s^2 - s)/(b -1) ≤ b -1
+
+Hmm, this seems a bit complex. Maybe I can approach it differently.
+
+Let me think about possible values of s. Since s = a + c, and a is at least 1, c is at least 0, so s is at least 1. The maximum value s can take is a + c, where a is up to b-1 and c is up to b-1, so s can be as large as (b-1) + (b-1) = 2b -2.
+
+So s ranges from 1 to 2b -2.
+
+But n = a*b + c = s^2. So n must be a perfect square.
+
+Therefore, each b-eautiful number n is a perfect square, and when expressed in base b, it's a two-digit number whose digits sum to sqrt(n).
+
+So n is s^2, and n = a*b + c, where a and c are digits in base b, with a >=1 and c >=0.
+
+Moreover, s = a + c.
+
+So, for each base b, I can iterate through possible s, compute a as (s^2 - s)/(b-1), check if a is integer, and then check if c = s - a is a valid digit (0 <= c < b), and a is also a valid digit (1 <= a < b).
+
+Wait, but s can be from 1 to 2b-2, but n = s^2 must be at least b (since it's a two-digit number in base b), so s^2 >= b. So s >= sqrt(b). So s starts from ceil(sqrt(b)).
+
+But perhaps it's better to think in terms of s.
+
+Given that, for each s, if (s^2 - s) is divisible by (b-1), then a = (s^2 - s)/(b-1) must be an integer, and c = s - a must be between 0 and b-1.
+
+Moreover, a must be between 1 and b-1.
+
+So, for each s, the base b must satisfy:
+
+b -1 divides s(s -1)
+
+and b must be such that a = s(s -1)/(b-1) is an integer in [1, b-1], and c = s - a is in [0, b-1].
+
+Alternatively, for a given base b, the number of b-eautiful numbers is equal to the number of s where s(s-1) is divisible by (b-1), a = s(s-1)/(b-1) is an integer between 1 and b-1, and c = s - a is between 0 and b-1.
+
+So, for each base b, I can compute the number of s that satisfy these constraints.
+
+But how do I find the minimal b such that the number of such s is more than 10?
+
+This seems a bit tricky. Maybe instead of trying to compute for each b, I can find a way to find for each b, the number of possible s.
+
+Wait, let's think about the equation:
+
+s^

@@ -1,0 +1,4402 @@
+--- Chain 9 for Question 21 ---
+Status: USED_FOR_VOTING
+Finish Reason (Model): stop
+Extracted Answer: 211
+Prompt Tokens (Usage): 165
+Completion Tokens (Usage): 22442
+Reasoning Tokens (Counted): 43895
+Non-Reasoning Tokens (Counted): 618
+Total Tokens (Usage): N/A
+
+--- Reasoning Content ---
+Alright, so I've got this math problem here. Let me try to unpack it and figure out how to approach it. 
+
+The problem is about something called "b-eautiful" numbers. Here's what I understand: for a given base b (where b is at least 2), a positive integer n is called b-eautiful if two conditions are met. First, when you write n in base b, it has exactly two digits. Second, the sum of those two digits equals the square root of n. 
+
+They gave an example: 81 is 13-eautiful because in base 13, 81 is written as 63 (since 6*13 + 3 = 81), and 6 + 3 = 9, which is the square root of 81. That makes sense. 
+
+Our task is to find the least integer b (where b is at least 2) for which there are more than ten b-eautiful integers. So, we need to find the smallest base b where there are over ten numbers n that satisfy these two conditions.
+
+Let me think about how to model this mathematically. 
+
+First, a two-digit number in base b can be written as n = a*b + c, where a and c are digits in base b. Since it's a two-digit number, a can't be zero, and both a and c must be less than b. So, a is in the range 1 to b-1, and c is in the range 0 to b-1.
+
+The second condition is that the sum of the digits, a + c, equals the square root of n. So, sqrt(n) = a + c. But n is equal to a*b + c, so we have:
+
+sqrt(a*b + c) = a + c
+
+Let me square both sides to eliminate the square root:
+
+a*b + c = (a + c)^2
+
+Expanding the right-hand side:
+
+a*b + c = a^2 + 2*a*c + c^2
+
+Let me rearrange this equation to bring all terms to one side:
+
+a^2 + 2*a*c + c^2 - a*b - c = 0
+
+Hmm, that's a quadratic in terms of a and c. Maybe I can rearrange it to make it easier to handle. Let me collect like terms:
+
+a^2 + (2c - b)*a + c^2 - c = 0
+
+This is a quadratic equation in a. For each value of c, we can consider this equation and see if a is an integer within the valid range (1 ≤ a ≤ b-1 and 0 ≤ c ≤ b-1).
+
+Alternatively, maybe I can treat this as a quadratic in terms of c. Let's see:
+
+But perhaps another approach is better. Let me think about the equation again:
+
+a*b + c = (a + c)^2
+
+Let me denote s = a + c. Then, the equation becomes:
+
+a*b + c = s^2
+
+But since s = a + c, we can write c = s - a. Substituting back in:
+
+a*b + (s - a) = s^2
+
+Simplify:
+
+a*b + s - a = s^2
+
+Factor out a:
+
+a*(b - 1) + s = s^2
+
+Then,
+
+a*(b - 1) = s^2 - s
+
+So,
+
+a = (s^2 - s)/(b - 1)
+
+Hmm, interesting. So, a must be an integer because it's a digit in base b. Therefore, (s^2 - s) must be divisible by (b - 1). 
+
+Also, since a must be at least 1 and at most b - 1, we have:
+
+1 ≤ (s^2 - s)/(b - 1) ≤ b - 1
+
+Which gives:
+
+b - 1 ≤ s^2 - s ≤ (b - 1)^2
+
+Wait, wait. Let me see. Wait, a must satisfy 1 ≤ a ≤ b - 1. So,
+
+1 ≤ (s^2 - s)/(b - 1) ≤ b - 1
+
+So, multiplying all terms by (b - 1) (which is positive since b ≥ 2):
+
+b - 1 ≤ s^2 - s ≤ (b - 1)^2
+
+So, s^2 - s must be at least b - 1 and at most (b - 1)^2.
+
+But s is the sum of a and c, and since a is at least 1 and c is at least 0, s is at least 1. Also, since a and c are each less than b, s = a + c < 2b. So s can range from 1 to 2b - 1.
+
+But perhaps more importantly, we should find for each base b, the possible values of s where (s^2 - s) is divisible by (b - 1), and then a is an integer in the range 1 to b - 1.
+
+Additionally, since c = s - a, and c must be a digit in base b (so 0 ≤ c ≤ b -1), we have that s - a must be ≤ b - 1.
+
+So, s - a ≤ b - 1 → a ≥ s - (b - 1). But since a is at least 1, this gives that a ≥ max(1, s - (b - 1)).
+
+But perhaps we can approach this step by step.
+
+Let me outline the steps I need to take:
+
+1. For a given base b, compute b - 1. Let's denote k = b - 1.
+
+2. For each possible s (from 1 to 2b -1), check if s^2 - s is divisible by k. If it is, then compute a = (s^2 - s)/k.
+
+3. Check if a is an integer within 1 to b -1.
+
+4. For each such a, compute c = s - a. Check if c is between 0 and b -1.
+
+5. If all conditions are met, then n = a*b + c is a b-eautiful number.
+
+So, for each base b, I can iterate through possible s values, check the divisibility, and see if a and c are valid.
+
+But since we're looking for the smallest b where there are more than ten such numbers, I need to find the minimal b where this count exceeds ten.
+
+Given that, perhaps I can model this as a function f(b) which counts the number of b-eautiful numbers for a given base b. Then, find the minimal b where f(b) > 10.
+
+But to compute f(b), I need to find all possible s such that:
+
+- s^2 - s is divisible by (b -1)
+- a = (s^2 - s)/(b -1) is an integer in [1, b-1]
+- c = s - a is in [0, b-1]
+
+Alternatively, perhaps we can find a relationship between s and b to find possible s values.
+
+But this might get a bit complicated. Let me see if there's another approach.
+
+Let me consider the equation n = a*b + c = s^2, where s = a + c.
+
+So, a*b + c = s^2, and s = a + c.
+
+I can substitute c = s - a into the first equation:
+
+a*b + (s - a) = s^2
+
+Simplify:
+
+a*b + s - a = s^2
+
+a*(b -1) + s = s^2
+
+So, a*(b -1) = s^2 - s
+
+Therefore, a = (s^2 - s)/(b -1)
+
+So, as before, a must be an integer, so (s^2 - s) must be divisible by (b -1). So, (b -1) must be a divisor of s(s - 1).
+
+Moreover, since a is between 1 and b-1, we have:
+
+1 ≤ (s^2 - s)/(b -1) ≤ b -1
+
+Which can be rewritten as:
+
+b -1 ≤ s^2 - s ≤ (b -1)^2
+
+But wait, that's only if the inequality is as above.
+
+Wait, let's think again. The inequality is:
+
+1 ≤ [s^2 - s]/(b -1) ≤ b -1
+
+So, multiplying all terms by (b -1):
+
+(b -1) ≤ s^2 - s ≤ (b -1)^2
+
+So, s^2 - s must be at least (b -1) and at most (b -1)^2.
+
+So, s^2 - s ≥ b -1
+
+and
+
+s^2 - s ≤ (b -1)^2
+
+So, for a given b, s must satisfy both inequalities.
+
+Let me think about the possible range of s. Since s = a + c, and a is at least 1, c is at least 0, so s is at least 1. The maximum s is when a = b -1 and c = b -1, so s = 2b - 2.
+
+But from the first inequality, s^2 - s ≥ b -1
+
+Which is equivalent to s^2 - s - (b -1) ≥ 0
+
+This is a quadratic in s: s^2 - s - (b -1) ≥ 0
+
+The roots of the equation s^2 - s - (b -1) = 0 can be found using the quadratic formula:
+
+s = [1 ± sqrt(1 + 4*(b-1))]/2
+
+The positive root is s = [1 + sqrt(4b -3)]/2
+
+So, s must be ≥ [1 + sqrt(4b -3)]/2 for the inequality to hold.
+
+Similarly, for the upper inequality, s^2 - s ≤ (b -1)^2
+
+Which can be written as s^2 - s - (b -1)^2 ≤ 0
+
+Again, solving s^2 - s - (b -1)^2 = 0:
+
+s = [1 ± sqrt(1 + 4*(b -1)^2)]/2
+
+The positive root is s = [1 + sqrt(4*(b -1)^2 + 1)]/2
+
+So, s must be ≤ [1 + sqrt(4*(b -1)^2 + 1)]/2
+
+But I'm not sure if this is directly helpful. Maybe it's better to consider that for each b, s can only be in a certain range, and for each s in that range, check if (s^2 - s) is divisible by (b -1).
+
+Alternatively, perhaps another approach is to model this as a quadratic in a.
+
+Wait, from earlier:
+
+a^2 + (2c - b)*a + c^2 - c = 0
+
+This is a quadratic in a. For each c, we can solve for a.
+
+The discriminant D must be a perfect square for a to be integer.
+
+The discriminant D is:
+
+D = (2c - b)^2 - 4*(c^2 - c)
+
+= 4c^2 -4b c + b^2 -4c^2 +4c
+
+= (-4b c) + b^2 +4c
+
+= b^2 -4b c +4c
+
+Hmm, so D = b^2 -4b c +4c
+
+Which can be rewritten as D = b^2 + c*( -4b +4 )
+
+= b^2 +4c*(1 - b)
+
+Hmm, for a to be integer, D must be a perfect square.
+
+This might not be the easiest path. Maybe the initial approach is better.
+
+So, let's get back to the equation:
+
+a = (s^2 - s)/(b -1)
+
+Which tells us that (b -1) must divide (s^2 - s). So, (b -1) | s(s -1)
+
+Since b -1 and s are positive integers, and s(s -1) is the product of two consecutive integers, which is always even. So, b -1 can be any divisor of s(s -1). 
+
+But for each b, we're looking for s such that (s^2 - s) is a multiple of (b -1), and a is in the range [1, b-1].
+
+So, perhaps for each b, we can compute k = b -1 and find all s such that k divides s(s -1), and then check if a is within range.
+
+But this might be computationally intensive if done for each b. Since we're looking for the minimal b with more than ten such numbers, perhaps we can find a pattern or formula.
+
+Alternatively, perhaps we can find expressions for s in terms of k, where k = b -1.
+
+Let me let k = b -1. Then, b = k + 1.
+
+So, the equation becomes:
+
+a = (s^2 - s)/k
+
+And since a must be an integer, k must divide s(s -1).
+
+Also, since a must be between 1 and k, because a ≤ b -1 = k.
+
+So, 1 ≤ (s^2 - s)/k ≤ k
+
+Which implies:
+
+k ≤ s^2 - s ≤ k^2
+
+Hmm, so s must satisfy both:
+
+s^2 - s ≥ k
+
+and
+
+s^2 - s ≤ k^2
+
+So, for each k, find s such that:
+
+sqrt(k + s) ≤ s ≤ sqrt(k^2 + s)
+
+Wait, not sure.
+
+Wait, s^2 - s is between k and k^2.
+
+So, s^2 - s ≥ k → s^2 - s - k ≥ 0
+
+Which we can solve as s ≥ [1 + sqrt(1 + 4k)]/2
+
+Similarly, s^2 - s ≤ k^2 → s^2 - s - k^2 ≤ 0
+
+Which gives s ≤ [1 + sqrt(1 +4k^2)]/2
+
+So, for each k, s must be in the range:
+
+ceil([1 + sqrt(1 + 4k)]/2) ≤ s ≤ floor([1 + sqrt(1 +4k^2)]/2)
+
+But s must also be an integer.
+
+But perhaps this is a bit too abstract. Let me try for small k values and see if I can find a pattern or figure out how the number of solutions scales.
+
+Wait, but maybe it's more efficient to think about how many s values satisfy k | s(s -1), and lead to a in the correct range.
+
+But for each k, s must be such that s ≡ 0 mod d or s ≡1 mod d, where d divides k.
+
+Because s(s-1) is divisible by k, which is d, so either d divides s or d divides s-1.
+
+Since k can be factored into its divisors, each divisor d would allow s ≡0 mod d or s≡1 mod d.
+
+But this might get complicated.
+
+Alternatively, perhaps for each k, the number of s is equal to the number of divisors d of k, but I'm not sure.
+
+Wait, but perhaps for each k, the number of s is equal to the number of pairs (d1, d2) such that d1*d2 = k, and d1 divides s, d2 divides s-1.
+
+But I'm not sure if that helps.
+
+Wait, perhaps another approach is to note that s and s-1 are coprime, since they are consecutive integers. So, s and s-1 share no common divisors other than 1.
+
+Therefore, since s(s -1) is divisible by k, and s and s -1 are coprime, k must be factored into two coprime factors, say, d and e, such that d divides s and e divides s -1.
+
+So, for each k, the number of possible s is equal to the number of ways to write k as d*e, where d and e are coprime, and then for each such pair, solve the congruence:
+
+s ≡0 mod d
+
+s ≡1 mod e
+
+By the Chinese Remainder Theorem, since d and e are coprime, there's a unique solution modulo d*e.
+
+But since s has to be in a certain range, maybe each factorization gives one solution.
+
+But this is getting a bit too abstract for my current level of understanding.
+
+Perhaps it's better to think about specific examples and see if I can find a pattern.
+
+Let me try for small k and see how many s values satisfy the conditions.
+
+Wait, let's take k=1. Then b=2.
+
+We have a = (s^2 - s)/1 = s^2 -s
+
+But a must be ≤1 (since k=1, a ≤1)
+
+So, s^2 -s ≤1
+
+s^2 -s -1 ≤0
+
+Solutions are s ≤ [1 + sqrt(5)]/2 ≈1.618. So s can be 1.
+
+So, s=1:
+
+a =1^2 -1=0, which is invalid because a must be ≥1.
+
+So, no solutions for b=2.
+
+Wait, but n must be a two-digit number in base b=2, which is only 10_2=2 in decimal. But 2 cannot be written as 10 in base 2, which is 2 in decimal. The digits are 1 and 0. Their sum is 1, sqrt(2) is ~1.414, which isn't 1. So no, no b=2 beautiful numbers.
+
+Wait, perhaps I made a mistake in the calculation for k=1.
+
+Wait, k=1, so a = s^2 -s.
+
+Since a must be ≤1 (because a ≤k=1), so s^2 -s ≤1.
+
+So, s can be 1: a=0 invalid.
+
+s=2: a=4-2=2, but a needs to be ≤1. So no solutions.
+
+So, no b=2 beautiful numbers.
+
+Similarly, for b=3, k=2.
+
+We have a = (s^2 - s)/2.
+
+a must be ≤2.
+
+So s^2 -s ≤ 2*(2) =4.
+
+So s^2 - s ≤4.
+
+Solutions:
+
+s^2 -s -4 ≤0
+
+solutions are s ≤ [1 + sqrt(17)]/2 ≈ 2.56. So s can be 1, 2.
+
+Let's check s=1:
+
+a=(1-1)/2=0 invalid.
+
+s=2:
+
+a=(4-2)/2=1, which is valid.
+
+c = s -a = 2 -1=1.
+
+Check c ≤2 (since b=3, digits can be 0,1,2). So c=1 is valid.
+
+Thus, n= a*b +c =1*3 +1=4.
+
+Check: 4 in base3 is 11, which sums to 2, but sqrt(4)=2. So yes, 4 is 3-eautiful.
+
+So, for b=3, there is 1 beautiful number.
+
+Similarly, check s=3:
+
+a=(9-3)/2=3, but a must be ≤2. So invalid.
+
+So, only one solution.
+
+Now, b=4, k=3.
+
+a=(s^2 -s)/3.
+
+a must be ≤3.
+
+So s^2 -s ≤9.
+
+s^2 -s -9 ≤0.
+
+Solutions: s ≤ [1 + sqrt(37)]/2≈3.54. So s=1,2,3.
+
+Check each:
+
+s=1: a=0 invalid.
+
+s=2: a=(4-2)/3=2/3 not integer.
+
+s=3: a=(9-3)/3=2, which is valid.
+
+c=3 -2=1.
+
+Check c=1 ≤3, valid.
+
+n=2*4 +1=9.
+
+9 in base4 is 21, digits sum to 3, sqrt(9)=3. So yes, 9 is 4-eautiful.
+
+So, one solution.
+
+Wait, but is there another s?
+
+Wait, let me check s=4:
+
+a=(16-4)/3=12/3=4, which is greater than 3 (k=3), so invalid.
+
+Thus, only one solution for b=4.
+
+Hmm, let's proceed to b=5, k=4.
+
+a=(s^2 -s)/4.
+
+a must be ≤4.
+
+s^2 -s ≤16.
+
+s^2 -s -16 ≤0.
+
+Solutions: s ≤ [1 + sqrt(65)]/2≈4.03. So s=1,2,3,4.
+
+Check s=1: a=0 invalid.
+
+s=2: a=(4-2)/4=0.5 not integer.
+
+s=3: a=(9-3)/4=6/4=1.5 not integer.
+
+s=4: a=(16-4)/4=12/4=3, valid.
+
+c=4-3=1.
+
+n=3*5 +1=16.
+
+16 in base5 is 31, sum digits 3+1=4, sqrt(16)=4. Correct.
+
+So, only one solution.
+
+Hmm, seems like only one solution for b=3,4,5.
+
+Wait, maybe I need to look at higher bases.
+
+Let me try b=6, k=5.
+
+a=(s^2 -s)/5.
+
+a must be ≤5.
+
+So s^2 -s ≤25.
+
+s^2 -s -25 ≤0.
+
+solutions: s ≤ [1 + sqrt(101)]/2≈5.5. So s=1,2,3,4,5.
+
+Check each:
+
+s=1: a=0 invalid.
+
+s=2: (4-2)/5=0.4 invalid.
+
+s=3: (9-3)/5=6/5=1.2 invalid.
+
+s=4: (16-4)/5=12/5=2.4 invalid.
+
+s=5: (25-5)/5=20/5=4, valid.
+
+c=5 -4=1.
+
+n=4*6 +1=25.
+
+25 in base6 is 41, sum 4+1=5, sqrt(25)=5. Correct.
+
+Only one solution.
+
+Hmm, still only one solution per base so far.
+
+Wait, perhaps I'm missing something. Let me try b=9, k=8.
+
+a=(s^2 -s)/8.
+
+a must be ≤8.
+
+So s^2 -s ≤64.
+
+s^2 -s -64 ≤0.
+
+solutions: s ≤ [1 + sqrt(257)]/2≈8.6. So s=1 to 8.
+
+Check each s:
+
+s=1: a=0 invalid.
+
+s=2: (4-2)/8=0.25 invalid.
+
+s=3: (9-3)/8=6/8=0.75 invalid.
+
+s=4: (16-4)/8=12/8=1.5 invalid.
+
+s=5: (25-5)/8=20/8=2.5 invalid.
+
+s=6: (36-6)/8=30/8=3.75 invalid.
+
+s=7: (49-7)/8=42/8=5.25 invalid.
+
+s=8: (64-8)/8=56/8=7, valid.
+
+c=8-7=1.
+
+n=7*9 +1=64.
+
+64 in base9 is 71, sum digits 7+1=8, sqrt(64)=8. Correct.
+
+Only one solution again.
+
+Hmm, perhaps I'm approaching this incorrectly. Let's think differently.
+
+Wait, maybe for a given s, how many bases b can have s as a solution.
+
+Alternatively, perhaps I can model this as s(s -1) must be divisible by (b-1), and a = s(s-1)/(b-1) must be ≤ b-1.
+
+So, for each s, the possible values of (b-1) must divide s(s-1), and a = s(s-1)/(b-1) must be ≤ (b-1).
+
+So, let's fix s and find possible b.
+
+Let me take s=3.
+
+Then s(s-1)=3*2=6.
+
+So, possible (b-1) must be a divisor of 6, i.e., 1,2,3,6.
+
+Then, for each:
+
+Case 1: (b-1)=1 → b=2.
+
+a=6/1=6. But b=2, so a must be ≤1. 6>1 invalid.
+
+Case 2: (b-1)=2 → b=3.
+
+a=6/2=3. But b=3, a must be ≤2. 3>2 invalid.
+
+Case3: (b-1)=3 →b=4.
+
+a=6/3=2 ≤3, valid.
+
+c=3-2=1.
+
+n=2*4 +1=9. Which is correct, as 9 is 3-eautiful in base4.
+
+Case4: (b-1)=6 →b=7.
+
+a=6/6=1 ≤6, valid.
+
+c=3-1=2.
+
+n=1*7 +2=9.
+
+Check: 9 in base7 is 12, sum=1+2=3, sqrt(9)=3. Correct.
+
+So, for s=3, we have two bases: b=4 and b=7.
+
+Similarly, for each s, the number of valid bases is equal to the number of divisors d of s(s-1) where d < s(s-1)/d ≤ d+1.
+
+Wait, not sure.
+
+Wait, for a given s, the number of possible b is equal to the number of divisors d of s(s-1) such that a = s(s-1)/d ≤ d.
+
+Because b-1=d, so d must be a divisor of s(s-1), and a must be ≤d.
+
+So, for each s, the number of d's such that d divides s(s-1) and s(s-1)/d ≤d.
+
+Which implies that s(s-1)/d ≤d → s(s-1) ≤d^2 → d ≥sqrt(s(s-1)).
+
+So, for each s, count the number of divisors d of s(s-1) where d ≥ sqrt(s(s-1)).
+
+Because d must be ≥ sqrt(s(s-1)).
+
+So, the number of such d's is equal to the number of divisors of s(s-1) that are ≥sqrt(s(s-1)).
+
+Which is equal to the number of divisors of s(s-1) that are ≤sqrt(s(s-1)) since for every d ≥sqrt(N), there's a corresponding divisor N/d ≤sqrt(N).
+
+But for each s, s(s-1) has a certain number of divisors, and the number of such d's is equal to the number of divisors greater than or equal to sqrt(s(s-1)).
+
+But perhaps the number of such d's is equal to the number of divisors of s(s-1) that are ≥sqrt(s(s-1)).
+
+So, for each s, the number of bases b is equal to the number of such d's.
+
+Therefore, for each s, the number of b's is equal to the number of divisors d of s(s-1) where d ≥ sqrt(s(s-1)).
+
+Thus, for each s, the number of b's is equal to the number of such d's.
+
+Therefore, the total number of beautiful numbers across all bases is the sum over s of the number of d's for each s.
+
+But our problem is, for each b, count the number of s's such that d = b-1 is a divisor of s(s-1), and a = s(s-1)/d is ≤d.
+
+Wait, perhaps I'm getting tangled here.
+
+Alternatively, perhaps I can model this as, for each s, the number of b's is equal to the number of d's (divisors of s(s-1)) that are ≥sqrt(s(s-1)).
+
+Therefore, for each s, the number of beautiful numbers is equal to the number of such d's, which correspond to different b's.
+
+But our goal is, for each b, count the number of s's such that d = b -1 divides s(s-1), and a = s(s-1)/d is ≤d.
+
+So, for each b, the number of beautiful numbers is equal to the number of s's such that d = b-1 divides s(s-1), and a = s(s-1)/d is ≤d.
+
+Thus, for each b, the number of beautiful numbers is equal to the number of s's where:
+
+1. d = b-1 divides s(s-1)
+2. a = s(s-1)/d ≤d → s(s-1) ≤d^2
+
+So, for each b, the number of s's is equal to the number of s's such that:
+
+- s(s-1) is divisible by d = b-1
+- s(s-1) ≤ d^2
+
+Additionally, since s = a + c, and a and c are digits in base b, s can be as low as 1 (if a=1, c=0) and up to 2b-2 (if a = b-1 and c = b-1).
+
+But from the condition s(s-1) ≤d^2 = (b-1)^2, we have s ≤ (b-1) +1 = b.
+
+Wait, because s(s-1) ≤ (b-1)^2 → s^2 -s - (b-1)^2 ≤0. Solving the quadratic equation s = [1 + sqrt(1 +4*(b-1)^2)]/2.
+
+But for large b, this is approximately [sqrt(4*(b-1)^2)]/2 = [2*(b-1)]/2 = b-1.
+
+So, s is approximately up to b.
+
+But perhaps for each b, s can range up to about 2b.
+
+Wait, but from the condition s(s-1) ≤ (b-1)^2, the maximum s is when s(s-1) ≈ (b-1)^2.
+
+So, s^2 ≈ (b-1)^2 → s ≈ b-1.
+
+So, s ranges up to approximately b.
+
+But perhaps for each b, s can range up to 2b-1, but due to the condition s(s-1) ≤ (b-1)^2, s is limited.
+
+But perhaps another way: for each b, the number of s's is equal to the number of s's where s(s-1) is divisible by d = b-1, and s ≤ (d^2 +d)/d = d +1.
+
+Wait, no, that's not correct.
+
+Wait, let's think differently. For each b, d = b-1.
+
+We need to find s such that:
+
+- d divides s(s-1)
+- s(s-1) ≤d^2
+- s ≥ ... ?
+
+But s must be at least 1, but given that s(s-1) ≥d (since a = s(s-1)/d ≥1), we have s(s-1) ≥d.
+
+So, s(s-1) must be between d and d^2, inclusive.
+
+So, for each b, the number of s's is equal to the number of s where d divides s(s-1), and d ≤ s(s-1) ≤d^2.
+
+So, for each b, the number of s's is equal to the number of s's where s(s-1) is a multiple of d, and s(s-1) is between d and d^2.
+
+So, perhaps for each b, we can compute d = b-1, and find all s such that:
+
+d | s(s-1)
+
+and
+
+d ≤ s(s-1) ≤d^2
+
+Additionally, s must be an integer, and a must be ≤d.
+
+But a = s(s-1)/d, so a ≤d → s(s-1) ≤d^2, which is already part of the condition.
+
+So, let's try to find, for each b, how many s's satisfy these conditions.
+
+Let me try to find for some specific b's how many s's they have.
+
+Starting with b=13, since the example given is 81 which is 13-eautiful.
+
+Here, d=12.
+
+We need s such that 12 divides s(s-1), and 12 ≤ s(s-1) ≤144.
+
+Compute s where 12 | s(s-1):
+
+Since s and s-1 are consecutive integers, one of them is even, and among any three consecutive integers, one is divisible by 3.
+
+So, 12=3*4.
+
+So, s(s-1) must be divisible by 3 and 4.
+
+But since s and s-1 are consecutive, one is even, and one of every three consecutive numbers is divisible by 3.
+
+So, to have s(s-1) divisible by 12, either:
+
+- s ≡0 mod 3 and s ≡0 mod 4, or
+- s ≡1 mod 3 and s ≡1 mod 4, or
+- other combinations.
+
+Wait, perhaps it's better to find all s such that s ≡0 or 1 mod 4, and s ≡0 or 1 mod 3, since s(s-1) must be divisible by 4 and 3.
+
+But perhaps it's easier to note that s and s-1 are consecutive, so one must be divisible by 4, and one must be divisible by 3.
+
+So, s ≡0 mod4 or s≡1 mod4.
+
+And s ≡0 mod3 or s≡1 mod3.
+
+So, s can be:
+
+- 0 mod4 and 0 mod3 → s≡0 mod12
+- 0 mod4 and 1 mod3 → solve 4a ≡1 mod3 → a ≡1 mod3 → s=4*(3k+1)=12k+4
+- 1 mod4 and 0 mod3 → solve 1 ≡0 mod3 → no solution
+- 1 mod4 and 1 mod3 → s≡1 mod12
+
+So, the solutions are s≡0,4,1 mod12.
+
+So, s can be 0,1,4,5,8,9,12,13,... modulo12.
+
+But since s must be ≥ sqrt(d) = sqrt(12)≈3.464, so s≥4.
+
+And s(s-1) ≤144.
+
+So, s can be from 4 up to floor[(d^2)/d +1] = floor[d +1] =13.
+
+Wait, because s(s-1) ≤d^2=144.
+
+So, s can be up to 13, since 13*12=156>144. So, 12*11=132 ≤144, so s=12 is the maximum.
+
+So, s can be 4,5,8,9,12.
+
+Check each:
+
+s=4:
+
+s(s-1)=4*3=12. 12 is divisible by 12.
+
+a=12/12=1 ≤12.
+
+c=4-1=3.
+
+n=1*13 +3=16.
+
+Check: 16 in base13 is 13, which is 1*13 +3. Digits sum to 1+3=4, sqrt(16)=4. Correct.
+
+s=5:
+
+s(s-1)=5*4=20.
+
+20 not divisible by12. So invalid.
+
+s=8:
+
+8*7=56.
+
+56 divided by12 is 4.666, not integer. So invalid.
+
+s=9:
+
+9*8=72.
+
+72/12=6 ≤12.
+
+c=9-6=3.
+
+n=6*13 +3=81.
+
+Which is the example given.
+
+s=12:
+
+12*11=132.
+
+132/12=11 ≤12.
+
+c=12-11=1.
+
+n=11*13 +1=144.
+
+Check: 144 in base13 is 11*13 +1=144. Sum digits 11+1=12, sqrt(144)=12. Correct.
+
+So, for b=13, s=4,9,12 give valid beautiful numbers. So three beautiful numbers.
+
+So, b=13 has three beautiful numbers.
+
+Hmm, but we need to find the minimal b where the count exceeds ten. So, perhaps we need to find a base where multiple s's satisfy the conditions.
+
+But how can we find a base b where multiple s's satisfy d divides s(s-1) and s(s-1) is between d and d^2.
+
+Perhaps the number of beautiful numbers per base increases as b increases because there are more possible s's.
+
+Wait, but in the case of b=13, we had three beautiful numbers.
+
+Let me try a larger b, say b=25, d=24.
+
+We need s such that 24 divides s(s-1), and 24 ≤s(s-1) ≤576.
+
+s can range from sqrt(24)≈4.899 up to sqrt(576)=24.
+
+So, s from 5 to24.
+
+But more accurately, s(s-1) ≤576 → s ≤24, since 24*23=552 ≤576, 25*24=600>576.
+
+So s can be up to24.
+
+Now, find s where 24 divides s(s-1).
+
+Again, since s and s-1 are consecutive, one is even, and one must be divisible by 3.
+
+So, for 24=8*3, we need s(s-1) divisible by 8 and 3.
+
+So, either:
+
+- s ≡0 mod8 and s ≡0 mod3, or
+- s ≡1 mod8 and s ≡1 mod3, or
+- other combinations.
+
+Wait, perhaps it's better to find s such that s ≡0 or1 mod8 and s≡0 or1 mod3.
+
+But maybe a better approach is to find s where s or s-1 is divisible by 8, and s or s-1 is divisible by3.
+
+So, solving s ≡0 mod8 or s≡1 mod8, and s ≡0 mod3 or s≡1 mod3.
+
+This will give multiple congruence conditions.
+
+But perhaps it's easier to list all s from5 to24 and check if 24 divides s(s-1).
+
+Alternatively, let's compute s(s-1) for s=5 to24 and see if divisible by24.
+
+s=5:5*4=20. 20%24≠0.
+
+s=6:6*5=30. 30%24=6≠0.
+
+s=7:7*6=42. 42%24=18≠0.
+
+s=8:8*7=56. 56%24=8≠0.
+
+s=9:9*8=72. 72%24=0 → valid.
+
+s=10:10*9=90. 90%24=18≠0.
+
+s=11:11*10=110. 110%24=14≠0.
+
+s=12:12*11=132. 132%24=12≠0.
+
+s=13:13*12=156. 156%24=12≠0.
+
+s=14:14*13=182. 182%24=182-7*24=182-168=14≠0.
+
+s=15:15*14=210. 210%24=210-8*24=210-192=18≠0.
+
+s=16:16*15=240. 240%24=0 → valid.
+
+s=17:17*16=272. 272%24=272-11*24=272-264=8≠0.
+
+s=18:18*17=306. 306%24=306-12*24=306-288=18≠0.
+
+s=19:19*18=342. 342%24=342-14*24=342-336=6≠0.
+
+s=20:20*19=380. 380%24=380-15*24=380-360=20≠0.
+
+s=21:21*20=420. 420%24=420-17*24=420-408=12≠0.
+
+s=22:22*21=462. 462%24=462-19*24=462-456=6≠0.
+
+s=23:23*22=506. 506%24=506-21*24=506-504=2≠0.
+
+s=24:24*23=552. 552%24=0 → valid.
+
+So, valid s's are 9,16,24.
+
+Now, check a and c for each:
+
+s=9:
+
+a=72/24=3 ≤24.
+
+c=9-3=6 ≤24. Valid.
+
+n=3*25 +6=81.
+
+81 in base25 is 36, sum 3+6=9, sqrt(81)=9. Correct.
+
+s=16:
+
+a=16*15/24=240/24=10 ≤24.
+
+c=16-10=6 ≤24.
+
+n=10*25 +6=256.
+
+256 in base25 is 10*25 +6=256. Sum digits 10+6=16, sqrt(256)=16. Correct.
+
+s=24:
+
+a=24*23/24=23 ≤24.
+
+c=24-23=1 ≤24.
+
+n=23*25 +1=576 +1=577.
+
+Wait, 23*25=575 +1=576.
+
+576 in base25: 23*25 +1=576. Sum digits 23+1=24, sqrt(576)=24. Correct.
+
+So, for b=25, we have three beautiful numbers: 81,256,576.
+
+Hmm, still only three. That's not enough. We need a base with more than ten.
+
+Wait, perhaps when d is a multiple of many numbers, there are more s's. Let me try a larger d, say d=24, which we just did, but perhaps d=60.
+
+Wait, maybe I'm approaching this incorrectly. Let's think about the number of beautiful numbers per base.
+
+We need to find the minimal b where the number of beautiful numbers is more than ten.
+
+So, perhaps for a base b, the number of beautiful numbers increases as b increases, because there are more possible s's that satisfy the conditions.
+
+But in the examples I tried, like b=13 and b=25, I only found three beautiful numbers each. So, perhaps I need to find a base where d has many divisors, allowing for more s's.
+
+Wait, perhaps if d is a factorial, which has many divisors. Let's try d=12, which is 3*4.
+
+Wait, but earlier for d=12 (b=13), we only had three s's.
+
+Wait, maybe I should look for d's that have many small factors, allowing for more s's.
+
+Alternatively, perhaps the number of beautiful numbers per base increases as d increases, but I'm not sure.
+
+Wait, perhaps I can model the number of beautiful numbers per base as the number of s's where s(s-1) is a multiple of d and lies between d and d^2.
+
+But how can I compute this efficiently?
+
+Alternatively, perhaps for each d, the number of s's is equal to the number of pairs of factors of d where one factor is ≤sqrt(d). Because s and s-1 are consecutive, and their product is a multiple of d.
+
+Wait, but I'm not sure.
+
+Alternatively, perhaps the number of beautiful numbers for a given d is equal to the number of divisors of d in the range [sqrt(d), d].
+
+Because for each divisor m of d where m ≥sqrt(d), we can have s = m +1, since s(s-1) = (m+1)m = m(m+1), which is a multiple of d if m divides d or m+1 divides d.
+
+Wait, perhaps not. Let me think.
+
+Alternatively, perhaps for each divisor m of d, if m ≤ sqrt(d), then m*(something) =d, and s = m +1.
+
+But I'm not sure.
+
+Wait, perhaps it's better to think about the possible values of s.
+
+Since s(s-1) must be a multiple of d, and s(s-1) must be between d and d^2.
+
+So, for each d, the number of s's is equal to the number of integers s in [2, d+1] such that s(s-1) is a multiple of d.
+
+Wait, because s(s-1) ≥d and s(s-1) ≤d(d+1) (but actually s(s-1) ≤d^2).
+
+Wait, but s can go up to d+1, since s(s-1) ≤d^2.
+
+Wait, perhaps not. Let's think of s up to d+1.
+
+But perhaps it's better to think that s can be up to d+1, because s(s-1) ≤d^2 →s ≤d.
+
+Wait, because s^2 ≤d^2 +s →s ≤d^2/s +s, which is not helpful.
+
+Alternatively, s(s-1) ≤d^2 →s^2 -s -d^2 ≤0.
+
+Solving for s, s ≤ [1 + sqrt(1 +4d^2)]/2 ≈d + 0.5.
+
+So, s can be up to d+1.
+
+Wait, for example, d=12:
+
+s can be up to [1 + sqrt(1 +4*144)]/2 = [1 + sqrt(577)]/2 ≈ (1 +24.02)/2≈12.51. So s up to12.
+
+Which matches our earlier example.
+
+So, for each d, s can range from 2 to floor([1 + sqrt(1 +4d^2)]/2).
+
+Now, the number of beautiful numbers for a base b is equal to the number of s in this range where d divides s(s-1).
+
+So, for each d, the number of beautiful numbers is equal to the number of s in [2, floor([1 + sqrt(1 +4d^2)]/2)] such that d divides s(s-1).
+
+But how can we compute this?
+
+Alternatively, perhaps for each d, the number of such s is equal to the number of pairs of consecutive integers s and s-1 where one is divisible by a factor of d.
+
+But I'm not sure.
+
+Alternatively, perhaps for each d, the number of beautiful numbers is equal to the number of divisors m of d where m ≥ sqrt(d), and s = m +1.
+
+Wait, let's test this.
+
+Take d=6.
+
+Divisors of 6:1,2,3,6.
+
+Divisors ≥sqrt(6)≈2.45: 3,6.
+
+So, m=3: s=4.
+
+s=4:4*3=12. 12 is divisible by6? Yes. a=12/6=2 ≤6.
+
+c=4-2=2.
+
+n=2*7 +2=16.
+
+Check:16 in base7 is 22, sum=4, sqrt(16)=4. Correct.
+
+m=6: s=7.
+
+7*6=42. 42 divisible by6? Yes. a=42/6=7 ≤6? No, 7>6. Invalid.
+
+So, only one beautiful number for d=6.
+
+Wait, but according to the formula, m=3 and m=6. But for m=6, s=7, which gives a=7, which is greater than d=6, so invalid.
+
+So, the formula counts m=3 as valid, but m=6 as invalid.
+
+So, maybe the number of valid s's is equal to the number of divisors m of d where m ≥sqrt(d) and m < s, where s = m +1.
+
+Wait, not sure.
+
+Alternatively, perhaps the number of beautiful numbers for a given d is equal to the number of divisors m of d where m ≤d and m ≥sqrt(d), and s = m +1.
+
+But in the case of d=6, m=3: s=4.
+
+Which works.
+
+But m=6: s=7, which doesn't work because a=7>6.
+
+So, perhaps only m where m <d.
+
+Wait, but m can be up to d.
+
+Hmm, perhaps this approach isn't working.
+
+Alternatively, perhaps for each d, the number of beautiful numbers is equal to the number of integers s in [2, d+1] such that d divides s(s-1).
+
+So, perhaps for each d, the number of s's is equal to the number of solutions to s(s-1) ≡0 mod d in the range s=2 to s=d+1.
+
+But how can I compute this without checking each s?
+
+Alternatively, perhaps for each d, the number of s's is equal to the number of pairs of consecutive integers s and s-1 where one is divisible by a factor of d.
+
+But I'm not making progress here.
+
+Perhaps I can consider that for each d, the number of s's is equal to the number of multiples of the factors of d in the range [2, d+1].
+
+But I'm not sure.
+
+Alternatively, since s and s-1 are consecutive integers, for d to divide s(s-1), d must be a product of two consecutive integers, or one of them must be a multiple of d.
+
+But I'm not sure.
+
+Wait, perhaps I can consider that s(s-1) must be a multiple of d.
+
+So, the number of s's is equal to the number of s in [2, d+1] such that s ≡0 mod k or s ≡1 mod k, where k is a divisor of d.
+
+But I'm not sure.
+
+Alternatively, perhaps the number of beautiful numbers for a given d is equal to the number of ways to write d as a product of two consecutive integers.
+
+But that's only possible if d is a pronic number (product of two consecutive integers), which is rare.
+
+So, perhaps not.
+
+Alternatively, perhaps the number of beautiful numbers for each d is equal to the number of divisors of d that are less than or equal to d/2.
+
+Wait, for d=12, divisors ≤6 are 1,2,3,4,6. So five divisors.
+
+But earlier, for d=12, we had three beautiful numbers.
+
+So, that doesn't match.
+
+Alternatively, perhaps it's equal to the number of divisors of d that are greater than or equal to sqrt(d).
+
+For d=12, sqrt(12)=3.464. Divisors ≥3.464 are 4,6,12. So three divisors. Which matches the three beautiful numbers.
+
+Similarly, for d=6, sqrt(6)=2.45. Divisors ≥2.45 are 3,6. Two divisors, but we found only one beautiful number.
+
+Hmm, perhaps that's not matching.
+
+Alternatively, perhaps the number of beautiful numbers is equal to the number of divisors m of d where m ≤d and m ≥sqrt(d), and m divides s-1 or s.
+
+But I'm not sure.
+
+Wait, perhaps the number of beautiful numbers is equal to the number of divisors of d that are ≥sqrt(d).
+
+For d=12, three divisors:4,6,12. So three beautiful numbers.
+
+For d=6, two divisors:3,6. But only one beautiful number.
+
+Hmm, perhaps not.
+
+Wait, perhaps for each divisor m of d where m ≥sqrt(d), the corresponding s is m+1, but only if m+1 <=d+1 and a = s(s-1)/d <=d.
+
+Wait, let's test this.
+
+For d=12:
+
+m=4: s=5.
+
+s(s-1)=5*4=20. 20%12=8≠0. So invalid.
+
+Wait, but earlier for d=12, s=4,9,12 worked.
+
+Wait, maybe another approach is needed.
+
+Perhaps I should instead look for d's where d has many small factors, allowing for more s's.
+
+Alternatively, perhaps d's that are highly composite numbers, which have many divisors, could yield more beautiful numbers.
+
+For example, let's take d=24, which has many divisors.
+
+Check for d=24.
+
+We need s where 24 divides s(s-1), and s(s-1) between24 and576.
+
+s ranges from5 to24.
+
+Earlier, for d=24, we found s=9,16,24.
+
+So three beautiful numbers.
+
+Hmm, same as before.
+
+Wait, perhaps I'm missing something. Let me try d=60.
+
+d=60.
+
+s(s-1) must be divisible by60.
+
+s ranges from ceil(sqrt(60))=8 up to floor([1+sqrt(1+4*60^2)]/2)= floor([1+sqrt(14401)]/2)=floor[(1+120)/2]=60.5 →60.
+
+So s from8 to60.
+
+Now, find s where 60 divides s(s-1).
+
+Since s and s-1 are consecutive, one must be divisible by4, the other by15 (since60=4*15).
+
+So, possible cases:
+
+1. s ≡0 mod4 and s≡0 mod15 →s≡0 mod60
+2. s≡0 mod4 and s≡1 mod15 →solve 4a ≡1 mod15 →a≡4 mod15 →s=4*(15k+4)=60k+16
+3. s≡1 mod4 and s≡0 mod15 →solve 1 ≡0 mod15 →no solution
+4. s≡1 mod4 and s≡1 mod15 →s≡1 mod60
+
+So, possible s≡0,16,1 mod60.
+
+Check s in8 to60:
+
+s=16: 16*15=240, which is divisible by60. a=240/60=4 ≤60.
+
+c=16-4=12.
+
+n=4*61 +12=244+12=256.
+
+Check:256 in base61 is 4*61 +12=256. Sum digits 4+12=16, sqrt(256)=16. Correct.
+
+s=1: too small.
+
+s=60:60*59=3540. 3540%60=0. a=3540/60=59 ≤60.
+
+c=60-59=1.
+
+n=59*61 +1=3599 +1=3600.
+
+3600 in base61 is 59*61 +1=3600. Sum digits59+1=60, sqrt(3600)=60. Correct.
+
+s=16 and s=60 are valid.
+
+But wait, are there more s's?
+
+Let me check s=16+60=76, which is beyond our range, so only s=16 and s=60.
+
+Wait, but that's only two s's. So, only two beautiful numbers for d=60.
+
+Hmm, not enough.
+
+Perhaps I'm missing other s's.
+
+Wait, let's see. Are there other s's between8 and60 where 60 divides s(s-1)?
+
+Let's check s=40:
+
+40*39=1560. 1560/60=26. a=26 ≤60.
+
+c=40-26=14.
+
+n=26*61 +14=1586 +14=1600.
+
+Check:1600 in base61 is 26*61 +14=1600. Sum digits26+14=40, sqrt(1600)=40. Correct.
+
+So, s=40 is another solution.
+
+How?
+
+Because 40 ≡40 mod60.
+
+Wait, earlier, we found s≡0,16,1 mod60.
+
+But s=40:40 mod60=40.
+
+Which doesn't fit into our earlier cases.
+
+Wait, perhaps there are more cases where s(s-1) is divisible by60.
+
+Because 60=4*3*5.
+
+So, perhaps s must be divisible by4 and s-1 divisible by15, or s divisible by15 and s-1 divisible by4, or other combinations.
+
+Wait, let's re-examine the congruence conditions.
+
+We need s(s-1) ≡0 mod4 and mod15.
+
+So, for mod4:
+
+Either s≡0 mod4 or s≡1 mod4.
+
+For mod15:
+
+Either s≡0 mod15 or s≡1 mod15.
+
+So, possible combinations:
+
+1. s≡0 mod4 and s≡0 mod15 →s≡0 mod60
+2. s≡0 mod4 and s≡1 mod15 →s≡16 mod60
+3. s≡1 mod4 and s≡0 mod15 →s≡15 mod60
+4. s≡1 mod4 and s≡1 mod15 →s≡1 mod60
+
+So, four possible congruence classes: 0,16,15,1 mod60.
+
+So, s can be 15,16, etc.
+
+So, in the range8 to60:
+
+s=15:
+
+15*14=210. 210/60=3.5 →not integer. Invalid.
+
+s=16: valid.
+
+s=31:31 mod60=31.
+
+31 mod4=3, which isn't 0 or1. So invalid.
+
+s=45:45 mod4=1, 45 mod15=0. So s=45 is 1 mod4 and 0 mod15.
+
+s=45:
+
+45*44=1980. 1980/60=33 ≤60.
+
+c=45-33=12.
+
+n=33*61 +12=2013 +12=2025.
+
+Check:2025 in base61 is 33*61 +12=2025. Sum digits33+12=45, sqrt(2025)=45. Correct.
+
+s=45 is valid.
+
+s=60: valid.
+
+So, for d=60, s=16,45,60 are valid. So three beautiful numbers.
+
+Wait, but earlier I thought s=40 was valid, but 40 mod60=40, which doesn't fit any of the congruence classes. But 40*39=1560, which is divisible by60. So, perhaps I'm missing some cases.
+
+Wait, maybe there are more congruence classes where s(s-1) is divisible by60.
+
+Wait, perhaps I should consider the Chinese Remainder Theorem more carefully.
+
+Since 60=4*15, and 4 and15 are coprime.
+
+So, the number of solutions is the product of the number of solutions modulo4 and modulo15.
+
+For mod4:
+
+s ≡0 or1 mod4.
+
+For mod15:
+
+s≡0 or1 mod15.
+
+So, the number of solutions modulo60 is 2*2=4, as earlier.
+
+So, s ≡0,1,15,16 mod60.
+
+Wait, but 15 mod4=3, which isn't 0 or1. So, perhaps s=15 doesn't satisfy s≡0 or1 mod4.
+
+Wait, s=15:15 mod4=3.
+
+Which doesn't satisfy s≡0 or1 mod4.
+
+So, s=15 doesn't satisfy the condition for mod4. Thus, s=15 is not a solution.
+
+Similarly, s=30:30 mod4=2→invalid.
+
+s=45:45 mod4=1→ valid.
+
+So, s=45 is 1 mod4 and 0 mod15, which is allowed.
+
+So, for d=60, the s's are 16,45,60.
+
+So, three beautiful numbers.
+
+Hmm, still not enough.
+
+Wait, perhaps I need to find a d where many s's satisfy s(s-1) divisible by d.
+
+Let me try d=120.
+
+d=120.
+
+s ranges from11 up to120.
+
+Check s where 120 divides s(s-1).
+
+s and s-1 are consecutive, so one must be divisible by8, and one by15.
+
+So, similar approach: s ≡0 or1 mod8 and s≡0 or1 mod15.
+
+Which will give four congruence classes modulo120.
+
+So, s≡0,1,15,16 mod120.
+
+But s must be ≥11, so s=16,31,46,61,76,91,106,121 (but 121>120).
+
+So, s=16,31,46,61,76,91,106.
+
+Now, check each:
+
+s=16:
+
+16*15=240. 240/120=2 ≤120.
+
+c=16-2=14.
+
+n=2*121 +14=242+14=256.
+
+Check:256 in base121 is 2*121 +14=256. Sum 2+14=16, sqrt(256)=16. Correct.
+
+s=31:
+
+31*30=930. 930/120=7.75→ not integer. Invalid.
+
+s=46:
+
+46*45=2070. 2070/120=17.25→ not integer. Invalid.
+
+s=61:
+
+61*60=3660. 3660/120=30.5→ not integer. Invalid.
+
+s=76:
+
+76*75=5700. 5700/120=47.5→ not integer. Invalid.
+
+s=91:
+
+91*90=8190. 8190/120=68.25→ not integer. Invalid.
+
+s=106:
+
+106*105=11130. 11130/120=92.75→ not integer. Invalid.
+
+So, only s=16 is valid. So, only one beautiful number for d=120.
+
+Hmm, not helpful.
+
+Wait, perhaps I'm missing some s's where s(s-1) is divisible by120.
+
+Let me try s=24:
+
+24*23=552. 552/120=4.6→no.
+
+s=30:
+
+30*29=870. 870/120=7.25→no.
+
+s=40:
+
+40*39=1560. 1560/120=13→yes.
+
+a=13 ≤120.
+
+c=40-13=27.
+
+n=13*121 +27=1573 +27=1600.
+
+Check:1600 in base121 is 13*121 +27=1600. Sum 13+27=40, sqrt(1600)=40. Correct.
+
+s=40 is valid.
+
+So, s=40 is another solution.
+
+Hmm, but according to our earlier congruence, s=40 mod120 would be s=40, but 40 mod8=0, 40 mod15=10→ doesn't fit any of the congruence conditions.
+
+Wait, perhaps I'm missing some cases.
+
+Alternatively, perhaps there are more solutions where s(s-1) is divisible by120 but doesn't fit into the four congruence classes I considered.
+
+Wait, s=40:40*39=1560. 1560 is divisible by120. So, 1560=120*13. So, a=13.
+
+But 40 mod8=0, 40 mod15=10. So, s=40 is 0 mod8 and 10 mod15.
+
+Which isn't one of the four cases I considered earlier.
+
+So, perhaps there are more solutions than just those four congruence classes.
+
+Thus, my earlier approach might be missing some s's.
+
+Therefore, perhaps a better way is to realize that s(s-1) must be divisible by d, which can happen in more ways than just the four congruence classes I considered.
+
+So, perhaps the number of beautiful numbers for a given d is higher than what I initially thought.
+
+Given that, perhaps the number of beautiful numbers increases with d, especially when d has many small factors.
+
+But how can I find a base b where the number of beautiful numbers exceeds ten?
+
+Alternatively, perhaps the minimal b where f(b) >10 is when d= b-1 is a factorial or a highly composite number.
+
+Wait, let's try d=24 again.
+
+Earlier, for d=24, s=9,16,24 were valid, giving three beautiful numbers.
+
+But perhaps I missed some s's.
+
+Wait, let me check s=8:
+
+8*7=56. 56%24=8→not divisible.
+
+s=12:
+
+12*11=132. 132%24=12→not divisible.
+
+s=15:
+
+15*14=210. 210%24= 210-8*24=210-192=18→not divisible.
+
+s=18:
+
+18*17=306. 306%24=306-12*24=306-288=18→not divisible.
+
+s=20:
+
+20*19=380. 380%24=380-15*24=380-360=20→not divisible.
+
+s=24:
+
+24*23=552. 552%24=0→valid.
+
+So, only three s's.
+
+Hmm.
+
+Wait, perhaps I can try d=30.
+
+d=30.
+
+s ranges from6 up to30.
+
+Check s where30 divides s(s-1).
+
+s can be6,10,15,16,25,30.
+
+Wait, let's see:
+
+s=6:
+
+6*5=30→30%30=0→valid.
+
+a=30/30=1 ≤30.
+
+c=6-1=5.
+
+n=1*31 +5=36.
+
+Check:36 in base31 is 15, sum=1+5=6, sqrt(36)=6. Correct.
+
+s=10:
+
+10*9=90→90%30=0→valid.
+
+a=90/30=3 ≤30.
+
+c=10-3=7.
+
+n=3*31 +7=100.
+
+Check:100 in base31 is 3*31 +7=100. Sum=3+7=10, sqrt(100)=10. Correct.
+
+s=15:
+
+15*14=210→210%30=0→valid.
+
+a=210/30=7 ≤30.
+
+c=15-7=8.
+
+n=7*31 +8=225.
+
+Check:225 in base31 is7*31 +8=225. Sum=7+8=15, sqrt(225)=15. Correct.
+
+s=16:
+
+16*15=240→240%30=0→valid.
+
+a=240/30=8 ≤30.
+
+c=16-8=8.
+
+n=8*31 +8=256.
+
+Check:256 in base31 is8*31 +8=256. Sum=8+8=16, sqrt(256)=16. Correct.
+
+s=25:
+
+25*24=600→600%30=0→valid.
+
+a=600/30=20 ≤30.
+
+c=25-20=5.
+
+n=20*31 +5=625.
+
+Check:625 in base31 is20*31 +5=625. Sum=20+5=25, sqrt(625)=25. Correct.
+
+s=30:
+
+30*29=870→870%30=0→valid.
+
+a=870/30=29 ≤30.
+
+c=30-29=1.
+
+n=29*31 +1=899 +1=900.
+
+Check:900 in base31 is29*31 +1=900. Sum=29+1=30, sqrt(900)=30. Correct.
+
+So, for d=30, s=6,10,15,16,25,30. That's six beautiful numbers.
+
+That's more than the previous examples.
+
+So, for b=31, d=30, there are six beautiful numbers.
+
+That's six, which is more than the previous examples but still not over ten.
+
+Hmm.
+
+Wait, perhaps I can find a d where more s's satisfy the conditions.
+
+Let me try d=60.
+
+Earlier, I found three s's, but perhaps I missed some.
+
+Wait, let's try d=60 again.
+
+s ranges from8 to60.
+
+Check s where60 divides s(s-1).
+
+Possible s's:
+
+s=16,45,60.
+
+Wait, but earlier, I found s=16,45,60.
+
+But let me check s=24:
+
+24*23=552→552%60=552-9*60=552-540=12→invalid.
+
+s=30:
+
+30*29=870→870%60=870-14*60=870-840=30→invalid.
+
+s=40:
+
+40*39=1560→1560%60=0→valid.
+
+a=1560/60=26 ≤60.
+
+c=40-26=14.
+
+n=26*61 +14=1600.
+
+Check:1600 in base61 is26*61 +14=1600. Sum=26+14=40, sqrt(1600)=40. Correct.
+
+s=40 is valid.
+
+s=50:
+
+50*49=2450→2450%60=2450-40*60=2450-2400=50→invalid.
+
+s=55:
+
+55*54=2970→2970%60=2970-49*60=2970-2940=30→invalid.
+
+s=60:
+
+60*59=3540→3540%60=0→valid.
+
+So, s=16,40,45,60.
+
+So, four beautiful numbers.
+
+Wait, but earlier I thought it was three.
+
+Hmm, perhaps I made a mistake earlier.
+
+So, for d=60, four beautiful numbers.
+
+That's more than d=30.
+
+Wait, but perhaps I'm missing other s's.
+
+Let me check s=24 again: 24*23=552→552/60=9.2→not integer.
+
+s=30:870/60=14.5→not integer.
+
+s=40:1560/60=26→integer.
+
+s=45:1980/60=33→integer.
+
+s=55:2970/60=49.5→no.
+
+So, four beautiful numbers for d=60.
+
+Wait, perhaps I can try d=120 again.
+
+Wait, maybe there are more s's.
+
+Wait, d=120.
+
+s ranges from11 to120.
+
+We found s=16,40, etc.
+
+Let me check s=24:
+
+24*23=552→552%120=552-4*120=552-480=72→invalid.
+
+s=30:
+
+30*29=870→870%120=870-7*120=870-840=30→invalid.
+
+s=40:
+
+40*39=1560→1560%120=0→valid.
+
+a=1560/120=13 ≤120.
+
+c=40-13=27.
+
+n=13*121 +27=1600.
+
+Check: Correct.
+
+s=48:
+
+48*47=2256→2256%120=2256-18*120=2256-2160=96→invalid.
+
+s=60:
+
+60*59=3540→3540%120=3540-29*120=3540-3480=60→invalid.
+
+s=80:
+
+80*79=6320→6320%120=6320-52*120=6320-6240=80→invalid.
+
+s=96:
+
+96*95=9120→9120%120=0→valid.
+
+a=9120/120=76 ≤120.
+
+c=96-76=20.
+
+n=76*121 +20=9216 +20=9236.
+
+Check:9236 in base121 is76*121 +20=9236. Sum=76+20=96, sqrt(9236)=96. Correct.
+
+s=96 is valid.
+
+s=120:
+
+120*119=14280→14280%120=0→valid.
+
+a=14280/120=119 ≤120.
+
+c=120-119=1.
+
+n=119*121 +1=14399 +1=14400.
+
+Check:14400 in base121 is119*121 +1=14400. Sum=119+1=120, sqrt(14400)=120. Correct.
+
+So, for d=120, s=16,40,96,120.
+
+That's four beautiful numbers.
+
+Hmm, but that's still not enough.
+
+Wait, perhaps I can try d=240.
+
+d=240.
+
+s ranges from16 up to240.
+
+Check s where240 divides s(s-1).
+
+s can be16,48,80,160,240.
+
+Wait, let's compute:
+
+s=16:
+
+16*15=240→valid.
+
+a=240/240=1 ≤240.
+
+c=16-1=15.
+
+n=1*241 +15=256.
+
+Check:256 in base241 is1*241 +15=256. Sum=1+15=16, sqrt(256)=16. Correct.
+
+s=48:
+
+48*47=2256→2256%240=2256-9*240=2256-2160=96→invalid.
+
+s=80:
+
+80*79=6320→6320%240=6320-26*240=6320-6240=80→invalid.
+
+s=120:
+
+120*119=14280→14280%240=14280-59*240=14280-14160=120→invalid.
+
+s=160:
+
+160*159=25440→25440%240=0→valid.
+
+a=25440/240=106 ≤240.
+
+c=160-106=54.
+
+n=106*241 +54=25546 +54=25600.
+
+Check:25600 in base241 is106*241 +54=25600. Sum=106+54=160, sqrt(25600)=160. Correct.
+
+s=160 is valid.
+
+s=240:
+
+240*239=57360→57360%240=0→valid.
+
+a=57360/240=239 ≤240.
+
+c=240-239=1.
+
+n=239*241 +1=57559 +1=57560.
+
+Wait, wait: 239*241= (240-1)(240+1)=240^2 -1=57600-1=57599. +1=57600.
+
+So, n=57600.
+
+Check:57600 in base241 is239*241 +1=57600. Sum=239+1=240, sqrt(57600)=240. Correct.
+
+So, for d=240, s=16,160,240 are valid. So three beautiful numbers.
+
+Hmm, not enough.
+
+Wait, perhaps d=360.
+
+d=360.
+
+s ranges from19 up to360.
+
+Check s where360 divides s(s-1).
+
+Possible s's:
+
+s=24, 30, 40, 48, 60, 72, 90, 120, 180, 360.
+
+Let me check each:
+
+s=24:
+
+24*23=552→552%360=552-1*360=192→invalid.
+
+s=30:
+
+30*29=870→870%360=870-2*360=150→invalid.
+
+s=40:
+
+40*39=1560→1560%360=1560-4*360=1560-1440=120→invalid.
+
+s=48:
+
+48*47=2256→2256%360=2256-6*360=2256-2160=96→invalid.
+
+s=60:
+
+60*59=3540→3540%360=3540-9*360=3540-3240=300→invalid.
+
+s=72:
+
+72*71=5112→5112%360=5112-14*360=5112-5040=72→invalid.
+
+s=90:
+
+90*89=8010→8010%360=8010-22*360=8010-7920=90→invalid.
+
+s=120:
+
+120*119=14280→14280%360=14280-39*360=14280-14040=240→invalid.
+
+s=180:
+
+180*179=32220→32220%360=32220-89*360=32220-32040=180→invalid.
+
+s=360:
+
+360*359=129240→129240%360=0→valid.
+
+a=129240/360=360-1=359.
+
+Wait, 360*359=129240.
+
+a=129240/360=359.
+
+c=360-359=1.
+
+n=359*361 +1=129239 +1=129240.
+
+Wait, but 361 is the base here, so n=359*361 +1=129239+1=129240.
+
+Sum digits359+1=360, sqrt(129240)≈359.49, which is not exactly 360. So, perhaps a mistake.
+
+Wait, wait: 360^2=129600, which is greater than129240. So, sqrt(129240)≈359.49, which is not integer. So, s=360 is invalid.
+
+Hmm, perhaps I made a mistake.
+
+Wait, perhaps s=360 is invalid because sqrt(n) must be integer, so n must be a perfect square.
+
+Wait, but n=359*361 +1=129239 +1=129240, which isn't a perfect square.
+
+Wait, but s=360, so sqrt(n)=360, so n=360^2=129600.
+
+But 129600 in base361 is (360)*361 +0=129960, which is different from129600.
+
+Hmm, perhaps I made a miscalculation.
+
+Wait, perhaps I should compute n= a*b +c where b=361, a=359, c=1.
+
+n=359*361 +1.
+
+Compute 359*361:
+
+359*(360 +1)=359*360 +359=129240 +359=129599.
+
+n=129599 +1=129600.
+
+Yes, which is 360^2.
+
+So, 129600 in base361 is359*361 +1=129600.
+
+Sum digits359+1=360, sqrt(129600)=360. Correct.
+
+So, s=360 is valid.
+
+Similarly, s=180:
+
+180*179=32220→32220%360=32220-89*360=32220-32040=180→invalid.
+
+s=240:
+
+240*239=57360→57360%360=0→valid.
+
+a=57360/360=160 ≤360.
+
+c=240-160=80.
+
+n=160*361 +80=57760 +80=57840.
+
+Check:57840 in base361 is160*361 +80=57840. Sum=160+80=240, sqrt(57840)=240. Correct.
+
+So, s=240 is valid.
+
+s=360 is valid.
+
+So, for d=360, s=240,360 are valid. So two beautiful numbers.
+
+Hmm, still not enough.
+
+Wait, perhaps I'm missing other s's.
+
+s=120:
+
+120*119=14280→14280%360=14280-39*360=14280-14040=240→invalid.
+
+s=160:
+
+160*159=25440→25440%360=25440-69*360=25440-24840=600→600>360→invalid.
+
+Wait, 600%360=240→invalid.
+
+s=200:
+
+200*199=39800→39800%360=39800-110*360=39800-39600=200→invalid.
+
+s=240: valid.
+
+s=280:
+
+280*279=78120→78120%360=78120-217*360=78120-78120=0→valid.
+
+a=78120/360=217 ≤360.
+
+c=280-217=63.
+
+n=217*361 +63=78277 +63=78340.
+
+Wait, but 217*361=217*(360+1)=217*360 +217=78120 +217=78337. +63=78337+63=78400.
+
+Which is 280^2=78400.
+
+So, n=280^2=78400.
+
+Sum digits217+63=280, sqrt(78400)=280. Correct.
+
+So, s=280 is valid.
+
+So, for d=360, s=240,280,360 are valid. Three beautiful numbers.
+
+Hmm.
+
+Wait, perhaps I can find a d where more s's are valid.
+
+Alternatively, perhaps the minimal b is quite large, but since I'm supposed to find the least b with more than ten beautiful numbers, perhaps I can find a pattern or formula.
+
+Wait, looking back, for d=30, we had six beautiful numbers.
+
+For d=60, four.
+
+For d=120, four.
+
+For d=360, three.
+
+Wait, maybe I need to find a d where the number of s's is more than ten.
+
+Wait, perhaps d=2520, which is the least common multiple of 1-10.
+
+But that might be overkill.
+
+Alternatively, perhaps I can think about the problem differently.
+
+The number of beautiful numbers for a base b is equal to the number of s's where:
+
+- s(s-1) is divisible by d = b-1.
+- s(s-1) ≤d^2.
+- a = s(s-1)/d ≤d.
+
+But perhaps for a given d, the number of s's is equal to the number of divisors of d that are ≥sqrt(d).
+
+Wait, for example, d=30.
+
+sqrt(30)≈5.477.
+
+Divisors of30:1,2,3,5,6,10,15,30.
+
+Divisors ≥5.477:6,10,15,30. Four divisors.
+
+But earlier, for d=30, we had six s's. So that doesn't match.
+
+Wait, perhaps the count is different.
+
+Alternatively, perhaps the number of beautiful numbers for a given d is equal to the number of pairs (m, n) where m*n =d and m ≤ sqrt(d), n ≥sqrt(d).
+
+But I'm not sure.
+
+Alternatively, perhaps the number of s's is equal to the number of divisors of d that are less than or equal to sqrt(d).
+
+But for d=30, sqrt(d)=5.477. Divisors ≤5.477:1,2,3,5. Four divisors.
+
+But we have six s's, so that doesn't match.
+
+Hmm, perhaps I'm stuck here.
+
+Alternatively, perhaps the minimal b where f(b) >10 is 121, but I'm not sure.
+
+Wait, earlier for d=30, we had six beautiful numbers, which was the highest I found so far.
+
+Wait, perhaps I can try d=210.
+
+d=210.
+
+s ranges from15 up to210.
+
+Check s where210 divides s(s-1).
+
+Possible s's:
+
+s=21,42,70,105,140,210.
+
+Check each:
+
+s=21:
+
+21*20=420→420%210=0→valid.
+
+a=420/210=2 ≤210.
+
+c=21-2=19.
+
+n=2*211 +19=423 +19=442.
+
+Wait, 442 is not a perfect square. Hmm, sqrt(442)≈21.02, but 21^2=441. So, perhaps a mistake.
+
+Wait, no, 2*211=422 +19=441, which is21^2.
+
+So, n=441.
+
+Check:441 in base211 is2*211 +19=441. Sum=2+19=21, sqrt(441)=21. Correct.
+
+s=21 is valid.
+
+s=42:
+
+42*41=1722→1722%210=1722-8*210=1722-1680=42→invalid.
+
+s=70:
+
+70*69=4830→4830%210=4830-23*210=4830-4830=0→valid.
+
+a=4830/210=23 ≤210.
+
+c=70-23=47.
+
+n=23*211 +47=4853 +47=4900.
+
+4900 is70^2.
+
+Check:4900 in base211 is23*211 +47=4900. Sum=23+47=70, sqrt(4900)=70. Correct.
+
+s=70 is valid.
+
+s=105:
+
+105*104=10920→10920%210=10920-52*210=10920-10920=0→valid.
+
+a=10920/210=52 ≤210.
+
+c=105-52=53.
+
+n=52*211 +53=11012 +53=11065.
+
+Wait, 52*211=11012 +53=11065.
+
+Check if11065 is a perfect square.
+
+Compute sqrt(11065)≈105.15, which isn't integer. So, invalid.
+
+Wait, perhaps I made a mistake.
+
+Wait, 105*104=10920.
+
+a=10920/210=52.
+
+c=105-52=53.
+
+n=52*211 +53=52*211=11012 +53=11065.
+
+But 105^2=11025, which is less than11065, and 106^2=11236. So, not a perfect square. Thus, invalid.
+
+So, s=105 is invalid.
+
+s=140:
+
+140*139=19460→19460%210=19460-92*210=19460-19320=140→invalid.
+
+s=210:
+
+210*209=43890→43890%210=0→valid.
+
+a=43890/210=210-1=209.
+
+c=210-209=1.
+
+n=209*211 +1=44099 +1=44100.
+
+44100 is210^2.
+
+Check:44100 in base211 is209*211 +1=44100. Sum=209+1=210, sqrt(44100)=210. Correct.
+
+So, for d=210, s=21,70,210 are valid. Three beautiful numbers.
+
+Hmm.
+
+Wait, perhaps I need to find a d where many s's satisfy s(s-1) divisible by d.
+
+Wait, perhaps d=420.
+
+d=420.
+
+s ranges from21 up to420.
+
+Check s where420 divides s(s-1).
+
+Possible s's:
+
+s=21,42,84,140,210,420.
+
+Check each:
+
+s=21:
+
+21*20=420→valid.
+
+a=420/420=1 ≤420.
+
+c=21-1=20.
+
+n=1*421 +20=441.
+
+441=21^2.
+
+Correct.
+
+s=42:
+
+42*41=1722→1722%420=1722-4*420=1722-1680=42→invalid.
+
+s=84:
+
+84*83=6972→6972%420=6972-16*420=6972-6720=252→invalid.
+
+s=140:
+
+140*139=19460→19460%420=19460-46*420=19460-19320=140→invalid.
+
+s=210:
+
+210*209=43890→43890%420=43890-104*420=43890-43680=210→invalid.
+
+s=420:
+
+420*419=175980→175980%420=0→valid.
+
+a=175980/420=420-1=419.
+
+c=420-419=1.
+
+n=419*421 +1=175999 +1=176000.
+
+Wait, 419*421= (420-1)(420+Okay, so I have this problem here about something called "b-eautiful" numbers. Let me try to understand what it means. The problem says that a positive integer n is b-eautiful if two conditions are met. First, when expressed in base b, it has exactly two digits. Second, the sum of these two digits equals the square root of n.
+
+Hmm, okay. So for example, 81 is 13-eautiful because when you write 81 in base 13, it's 63 in base 13, right? And 6 + 3 equals 9, which is the square root of 81. That makes sense.
+
+The question is asking for the least integer b (where b is at least 2) such that there are more than ten b-eautiful integers. So I need to find the smallest base where there are more than ten numbers that satisfy this condition.
+
+Let me think about how to approach this. I need to model the problem mathematically. So, if n is a two-digit number in base b, that means n can be written as a * b + c, where a and c are digits in base b. Since it's a two-digit number, a must be between 1 and b-1, and c must be between 0 and b-1. The sum of the digits, a + c, must equal the square root of n. So, sqrt(n) = a + c.
+
+But n is equal to a * b + c, so substituting, we get sqrt(a * b + c) = a + c. Let me square both sides to eliminate the square root. That gives me a * b + c = (a + c)^2.
+
+Expanding the right side, (a + c)^2 = a^2 + 2ac + c^2. So the equation becomes a * b + c = a^2 + 2ac + c^2.
+
+Let me rearrange this equation to solve for b. Subtracting a * b and c from both sides, we get 0 = a^2 + 2ac + c^2 - a*b - c. Let's see, maybe I can isolate b.
+
+Alternatively, let's move terms around. Starting with a * b + c = a^2 + 2ac + c^2, I can write a * b = a^2 + 2ac + c^2 - c.
+
+Then, dividing both sides by a (assuming a ≠ 0, which it isn't because a is the leading digit), we have b = (a^2 + 2ac + c^2 - c) / a.
+
+Hmm, that might be a bit messy, but perhaps I can factor the numerator. Let's see:
+
+a^2 + 2ac + c^2 is (a + c)^2, so the numerator is (a + c)^2 - c.
+
+So, b = [ (a + c)^2 - c ] / a.
+
+Alternatively, maybe there's another way to approach this. Let me think about the equation again: a * b + c = (a + c)^2.
+
+Since a and c are digits in base b, a can be from 1 to b-1 and c can be from 0 to b-1.
+
+We can perhaps think of this as an equation in terms of a and c for a given b. For each base b, we can iterate through possible a and c values and check if the equation holds. However, since we need to find the smallest b where there are more than ten such numbers, we might need a smarter approach.
+
+Wait, maybe I can express b in terms of a and c. Let me rearrange the equation:
+
+a*b + c = a^2 + 2ac + c^2
+
+So, a*b = a^2 + 2ac + c^2 - c
+
+Divide both sides by a:
+
+b = a + 2c + (c^2 - c)/a
+
+Since b must be an integer, the term (c^2 - c)/a must be an integer. So, (c^2 - c) must be divisible by a.
+
+Let me denote k = c^2 - c. Then, k must be divisible by a. So, a is a divisor of k.
+
+But a is a digit in base b, so a < b. Also, since a is a digit, a is at least 1 and at most b-1.
+
+So, for given a and c, b is given by:
+
+b = a + 2c + (c^2 - c)/a
+
+But since a must divide (c^2 - c), let's write that as a | c(c - 1).
+
+So for each a and c, we can compute b as above, but a must divide c(c-1).
+
+But perhaps it's better to think in terms of variables. Let me consider variables s = a + c, which is equal to sqrt(n). So, s must be an integer because n is a perfect square (since sqrt(n) is the sum of a and c, which are integers).
+
+So, s = a + c, which implies that n = s^2. Also, n is a two-digit number in base b, so n = a*b + c.
+
+So, putting it together, we have s^2 = a*b + c.
+
+But a = s - c, so substituting that in:
+
+s^2 = (s - c) * b + c
+
+Expanding that, s^2 = s*b - c*b + c.
+
+Let me rearrange:
+
+s^2 = s*b + c*(1 - b)
+
+Hmm, solving for b:
+
+s^2 - s*b = c*(1 - b)
+
+So, s^2 - s*b = c*(1 - b)
+
+Let me factor the right side:
+
+s^2 - s*b = c*(- (b - 1))
+
+So, s^2 - s*b = -c*(b -1)
+
+Let me multiply both sides by -1:
+
+-s^2 + s*b = c*(b -1)
+
+So, s*b - s^2 = c*(b -1)
+
+Now, let's isolate b:
+
+s*b - c*(b -1) = s^2
+
+Factor out b:
+
+b*(s - c) + c = s^2
+
+Wait, maybe that's not the best way. Alternatively, let's factor b:
+
+s*b - c*b + c = s^2
+
+So, b*(s - c) + c = s^2
+
+Then, b*(s - c) = s^2 - c
+
+So, b = (s^2 - c) / (s - c)
+
+Hmm, that looks better. Let me compute this:
+
+b = (s^2 - c)/(s - c)
+
+We can perform polynomial division on the numerator. s^2 - c divided by (s - c).
+
+Let me write s^2 - c as (s - c)(s + c) + c^2 - c.
+
+Wait, let's see:
+
+(s - c)(s + c) = s^2 - c^2. So, s^2 - c = (s - c)(s + c) + (c^2 - c)
+
+So, s^2 - c = (s - c)(s + c) + (c^2 - c)
+
+Therefore, b = [ (s - c)(s + c) + (c^2 - c) ] / (s - c)
+
+Which simplifies to:
+
+b = s + c + (c^2 - c)/(s - c)
+
+Since b must be an integer, (c^2 - c) must be divisible by (s - c). Let me denote d = s - c.
+
+So, d = s - c, which implies s = c + d.
+
+Plugging back into the expression for b:
+
+b = (c + d) + c + (c^2 - c)/d
+
+Simplify:
+
+b = 2c + d + (c^2 - c)/d
+
+But d must be a positive integer because s = a + c and a is at least 1, so s >= 1 + 0 = 1, but since a is at least 1 and c is at least 0, s is at least 1. But d = s - c, so d can be from 1 up, because s >= c + 1 (since a is at least 1, a = s - c >=1, so s >= c +1).
+
+Wait, but s = a + c, and a can be up to b-1, but c can be up to b-1 as well. So, for each s, d is s - c = a. So, d = a.
+
+Wait, that's right! Because s = a + c, so s - c = a. So, d = a.
+
+So, substituting back, d = a, so:
+
+b = 2c + a + (c^2 - c)/a
+
+Which is the same as we had before. So, that's consistent.
+
+Thus, for each a and c, b is given by that equation, but in order for b to be an integer, (c^2 - c) must be divisible by a.
+
+So, a must be a divisor of c(c - 1). So, a | c(c - 1).
+
+But a is at least 1, and a <= b -1, which depends on b.
+
+So, perhaps instead of considering a and c, I can fix s and a, since s = a + c, so c = s - a.
+
+Wait, maybe another approach. Let's think about s.
+
+We have n = s^2, and n is a two-digit number in base b, so n is between b and b^2 - 1.
+
+Thus, b <= s^2 <= b^2 -1.
+
+So, s^2 must be >= b and <= b^2 -1.
+
+Which implies that sqrt(b) <= s <= sqrt(b^2 -1). But sqrt(b^2 -1) is approximately b - 1/(2b), so s must be less than or equal to b.
+
+Wait, but s is an integer, so s can be up to b.
+
+Wait, wait, sqrt(b^2 -1) is less than b, so s can be up to floor(sqrt(b^2 -1)) which is b-1.
+
+Wait, let's check for b=2:
+
+s^2 <= 2^2 -1=3, so s can be 1 or 2, but 2^2 is 4 which is greater than 3, so s can be 1 only. But that's a corner case.
+
+Wait, maybe for b >= 2, s can be from 2 up to b-1, or something like that. Hmm, perhaps this approach isn't the most straightforward.
+
+Let me think about all possible values of a and c. Since a can be from 1 to b-1, and c can be from 0 to b-1, and for each a and c, b is given by b = (s^2 - c)/(s - c), where s = a + c.
+
+So, for each base b, I need to find all pairs (a, c) such that b = (s^2 - c)/(s - c) is integer, and a = s - c, which is at least 1 and at most b-1, and c is between 0 and b-1.
+
+Alternatively, perhaps it's better to approach this by fixing s and a, then compute c and b.
+
+Wait, s is the square root of n, so s must be integer. So, for each s, n = s^2. Then, n must be a two-digit number in base b, so n is between b and b^2 -1. So, for each s, we can find the possible b's.
+
+Wait, but n = s^2. So, for each s, find the bases b where n is a two-digit number, so b <= s^2 <= b^2 -1.
+
+Which implies that b <= s^2 <= b^2 -1.
+
+So, solving for b in terms of s:
+
+From s^2 >= b, we get b <= s^2.
+
+From s^2 <= b^2 -1, we get b^2 >= s^2 +1, so b >= sqrt(s^2 +1). But since b is integer, b >= floor(sqrt(s^2 +1)) +1? Wait, not exactly.
+
+Wait, let's see, sqrt(s^2 +1) is just a bit more than s, so the minimal b such that b >= sqrt(s^2 +1) is b = s +1.
+
+Wait, because (s +1)^2 = s^2 + 2s +1, which is way larger than s^2 +1, but b needs to be such that s^2 <= b^2 -1.
+
+So, let's solve for b:
+
+s^2 <= b^2 - 1 => b^2 >= s^2 +1 => b >= sqrt(s^2 +1)
+
+But since b must be an integer, the minimal b is the ceiling of sqrt(s^2 +1).
+
+But sqrt(s^2 +1) is between s and s+1, so the ceiling of that is s+1. So, b must be at least s+1.
+
+Wait, let's verify with an example. Take s =3.
+
+So, n =9. Then, in base b, it's a two-digit number, so 9 must be >= b and <b^2.
+
+So, for b=4: 9 in base 4 is 21, which is two digits. So, yes, 4<=9 <16.
+
+Wait, but according to the earlier statement, b >= sqrt(s^2 +1) = sqrt(10) ≈3.16, so ceiling is 4. So, yes, b starts from 4.
+
+But wait, n=9 is 21 in base 4, which is two digits, and 2+1=3, which is sqrt(9). So, it is b-eautiful.
+
+But wait, is there a base less than 4 that allows n=9 to be a two-digit number? Let's see, for b=3: n=9 in base 3 is 100, which is three digits. So, no. So, b=4 is indeed the minimal base for s=3.
+
+Similarly, for s=4: n=16.
+
+What is the minimal b where 16 is a two-digit number? 16 in base 5 is 31, which is two digits. So, b=5, and 5 is the ceiling of sqrt(16 +1)=sqrt(17)≈4.123, so ceiling is 5.
+
+So, yes, that seems to hold.
+
+So, for each s, the minimal base is s+1, and the maximal base is s^2, since n = s^2 must be at least b. Wait, but n is s^2, so for it to be a two-digit number in base b, b must be <= s^2. Because, for example, for s=3, b=4, and s^2=9, which is two-digit in base 4.
+
+Wait, but n is s^2, which is a two-digit number in base b, so n >= b (since the smallest two-digit number is 10_b = b in decimal). So, s^2 >= b.
+
+But from the previous inequality, we have b >= s+1. So, s+1 <= b <= s^2.
+
+So, for each s, the permissible bases b lie in [s+1, s^2].
+
+But for each s, how many b's satisfy the conditions? Let's see.
+
+Wait, but for each s, we can find the possible b's by considering the equation:
+
+n = s^2 = a*b + c, where a and c are digits in base b, so 1 <= a <= b-1, 0 <= c <= b-1.
+
+And, s = a + c.
+
+So, for each s, the number of b's is equal to the number of pairs (a,c) such that a + c = s, a <= b-1, c <= b-1, and n = a*b + c = s^2.
+
+So, perhaps for each s, we can find the possible b's by solving for b.
+
+Let me see. So, a*b + c = s^2, and a + c = s.
+
+Substituting a = s - c into the first equation:
+
+(s - c)*b + c = s^2.
+
+Which simplifies to s*b - c*b + c = s^2.
+
+Then, s*b - c*(b -1) = s^2.
+
+So, s*b = s^2 + c*(b -1).
+
+Divide both sides by s:
+
+b = s + (c*(b -1))/s.
+
+Hmm, but this seems tricky. Alternatively, let's try to express b in terms of c.
+
+From s*b - c*(b -1) = s^2,
+
+We can write:
+
+b*(s - c) + c = s^2.
+
+So,
+
+b = (s^2 - c) / (s - c).
+
+We can factor this as:
+
+b = [s^2 - c] / [s - c].
+
+Let me perform the division:
+
+Divide s^2 - c by s - c.
+
+Using polynomial long division:
+
+Divide s^2 by s - c.
+
+The first term is s. Multiply (s - c) by s: s^2 - c*s.
+
+Subtract this from s^2 - c:
+
+s^2 - c - (s^2 - c*s) = c*s - c.
+
+So, the remainder is c*(s -1).
+
+Thus,
+
+b = s + [c*(s -1)]/(s - c).
+
+Wait, no, that might not be correct. Let me try again.
+
+Wait, perhaps I can write s^2 - c as (s - c)(s + c) + something.
+
+Wait, (s - c)(s + c) = s^2 - c^2.
+
+So, s^2 - c = (s - c)(s + c) + c^2 - c.
+
+Thus,
+
+b = [ (s - c)(s + c) + c^2 - c ] / (s - c )
+
+= s + c + (c^2 - c)/(s - c)
+
+So, the same as before.
+
+So, for b to be integer, (c^2 - c) must be divisible by (s - c).
+
+But s = a + c, and a = s - c.
+
+Wait, so (s - c) = a, which is a digit in base b. So, a divides (c^2 - c).
+
+So, a | c(c -1).
+
+Since a = s - c, which is at least 1, and c can be from 0 to b-1, but since a = s - c >=1, c can be from 0 to s -1.
+
+Wait, because a = s - c >=1 => c <= s -1.
+
+So, for each s, c can be from 0 to s -1.
+
+But since c is a digit in base b, c must be less than b, which is at least s+1 (from earlier). So, c is from 0 to s -1, which is less than s+1, so that's okay.
+
+So, for each s, c can be from 0 to s-1, and a = s - c.
+
+Now, a must divide c(c -1). So, (c(c-1)) must be divisible by a = s - c.
+
+So, for each s, c can range from 0 to s-1, and for each c, check if (s - c) divides c(c-1). If so, then compute b = (s^2 - c)/(s - c), and check that b is an integer and that a = s - c is a valid digit in base b, i.e., a <= b -1.
+
+Wait, but since b = (s^2 - c)/(s - c), and a = s - c, we can write:
+
+b = s + c + (c^2 - c)/(s - c) = s + c + [c(c -1)]/a
+
+Since a = s - c, and we've ensured that a divides c(c -1), so the term [c(c -1)]/a is integer.
+
+Therefore, for each s, the number of valid c's is equal to the number of c in 0 to s-1 such that a = s - c divides c(c -1).
+
+Therefore, for each s, the number of b's is equal to the number of such c's.
+
+So, for each s, the number of b's is equal to the number of c's in [0, s-1] such that (s - c) divides c(c -1).
+
+Hmm, that's a mouthful. Let me try to compute this for small s and see if I can find a pattern.
+
+Let's start with s=2:
+
+s=2: c can be 0 or 1.
+
+c=0: a=2-0=2. Check if 2 divides 0*(-1)=0. Yes, 2 divides 0. So, compute b = (4 - 0)/(2 - 0)=4/2=2. So, b=2.
+
+Check if a=2 is a valid digit in base b=2. Since in base 2, digits can be 0 or 1. But a=2 is invalid because it's equal to b. So, this is not a valid solution.
+
+c=1: a=2-1=1. Check if 1 divides 1*0=0. Yes. Compute b=(4 -1)/(2 -1)=3/1=3.
+
+Check if a=1 is a valid digit in base 3: yes, since digits go up to 2. So, 1 is valid.
+
+So, for s=2, there's 1 valid base b=3.
+
+Wait, but n=4 in base 3 is 11, which is two digits, and 1+1=2, which is sqrt(4). So, yes, 4 is 3-eautiful.
+
+So, only one b for s=2.
+
+Next, s=3:
+
+c can be 0,1,2.
+
+c=0: a=3. Check if 3 divides 0*(-1)=0. Yes. Compute b=(9 -0)/(3 - 0)=9/3=3.
+
+Check if a=3 is a valid digit in base 3: since base 3 digits are 0,1,2. a=3 is invalid.
+
+c=1: a=3-1=2. Check if 2 divides 1*0=0. Yes. Compute b=(9 -1)/(3 -1)=8/2=4.
+
+Check if a=2 is valid in base 4: yes, digits are 0-3.
+
+So, b=4 is valid.
+
+c=2: a=3-2=1. Check if 1 divides 2*1=2. Yes. Compute b=(9 -2)/(3 -2)=7/1=7.
+
+Check if a=1 is valid in base 7: yes.
+
+So, for s=3, c=0 gives invalid a, c=1 gives b=4, c=2 gives b=7. So, 2 valid bases.
+
+Thus, for s=3, there are 2 b's: 4 and 7.
+
+So, for each s, the number of b's is the number of c's such that (s - c) divides c(c -1), and a is a valid digit (i.e., a < b).
+
+Wait, but in the case of c=0, a =s, which for s=3, a=3, but base b=3, which would make a=3 invalid because in base 3, digits go up to 2.
+
+So, for c=0, a =s, which is equal to b, which is (s^2 -0)/(s -0) = s^2/s =s. So, a =s, and b =s, so a =b, which is invalid because digits must be less than b. So, c=0 always gives a =s and b =s, which is invalid. So, for each s, c=0 is invalid because a =s >=b, which is not allowed. So, c can only be from 1 to s-1.
+
+Wait, wait. Let's test s=2:
+
+c=0: a=2, b=2. But a must be less than b, so a=2 is invalid in base b=2.
+
+c=1: a=1, b=3. Valid.
+
+So, for s=2, only c=1 is valid.
+
+Similarly, for s=3:
+
+c=0: a=3, b=3. Invalid.
+
+c=1: a=2, b=4. Valid.
+
+c=2: a=1, b=7. Valid.
+
+So, two valid c's.
+
+So, in general, for each s >=2, c ranges from 1 to s-1, and for each c, check if (s - c) divides c(c-1). If so, compute b and check that a < b.
+
+But since b = (s^2 - c)/(s - c), and a = s - c, so a = s - c, and b = (s^2 - c)/a.
+
+So, a = s - c must be less than b.
+
+So, let's see: a < b => s - c < (s^2 - c)/(s - c)
+
+Multiply both sides by (s - c) (which is positive since s > c):
+
+(s - c)^2 < s^2 - c
+
+Expand the left side:
+
+s^2 - 2sc + c^2 < s^2 - c
+
+Subtract s^2 from both sides:
+
+-2sc + c^2 < -c
+
+Multiply both sides by (-1), which reverses the inequality:
+
+2sc - c^2 > c
+
+Factor out c:
+
+c(2s - c) > c
+
+Assuming c >0 (since c starts from 1), we can divide both sides by c:
+
+2s - c > 1
+
+So,
+
+2s - c >1 => c < 2s -1
+
+Which is always true since c <= s -1 < 2s -1 for s >=2.
+
+Thus, the condition a < b is automatically satisfied as long as c >=1. Because when c=0, it's invalid, but for c>=1, 2s - c >1 since c <= s-1. So, for each c from 1 to s-1, if a divides c(c-1), then a < b.
+
+Therefore, for each s >=2, the number of valid b's is equal to the number of c's from 1 to s-1 such that (s - c) divides c(c -1).
+
+So, now, the strategy is: for each s starting from 2 upwards, compute the number of c's (from 1 to s-1) such that (s - c) divides c(c -1). Each such c gives a valid b, and thus a b-eautiful number. We need to find the smallest b such that the total number of b-eautiful numbers across all s is more than ten.
+
+Wait, no. Wait a second. For each s, each valid c gives a unique b. So, each b can be associated with multiple s's. But the problem is to count the number of b-eautiful numbers, which are the n's. Each n is s^2, which is in base b a two-digit number with digits a and c, such that a + c = s.
+
+Wait, but for each s and c, we get a specific n = s^2, which is a specific number.
+
+Wait, but for each base b, the numbers that are b-eautiful are all the n's such that n = s^2, and n is a two-digit number in base b, with digits a and c where a + c = s.
+
+So, for each b, the number of b-eautiful numbers is equal to the number of pairs (a, c) such that a + c = s, and a*b + c = s^2.
+
+Which is equivalent to the number of s's for which there exists a c such that the above holds.
+
+But perhaps it's easier to, for each b, compute how many n's satisfy the condition. So, for each b, iterate through possible s's, and for each s, check if there's a c such that (s^2 - c) is divisible by (s - c) and that a = s - c is a valid digit.
+
+Alternatively, maybe a better approach is to note that for each s, the number of possible b's is equal to the number of c's (from 1 to s-1) such that (s - c) divides c(c -1). Each such c gives a unique b, but multiple s's can lead to the same b. So, for each b, the number of b-eautiful numbers is equal to the number of s's such that there exists a c where (s - c) divides c(c -1), leading to that b.
+
+But perhaps this is getting too abstract. Let me think of another way.
+
+Let me consider that for each s, each valid c gives a b. So, for each s, the number of b's contributed is equal to the number of valid c's.
+
+So, the total number of b-eautiful numbers is equal to the sum over s of the number of valid c's for that s.
+
+But actually, each s gives a unique n = s^2, so each s can contribute multiple n's for different b's. But the problem is asking for the number of b-eautiful integers for a given b. So, for each b, how many n's satisfy the condition. So, for each b, count how many s's there are such that n = s^2 is a two-digit number in base b, and the digits sum to s.
+
+So, perhaps I should approach it this way: for each b starting from 2, compute the number of n's that are b-eautiful. Once I find the smallest b where this count exceeds 10, that's the answer.
+
+But since b can be large, and the problem is asking for the smallest such b, I need an efficient way to compute this.
+
+Let me attempt to find for each b, the number of s's such that:
+
+1. n = s^2 is a two-digit number in base b, so b <= s^2 < b^2.
+
+2. There exists digits a and c in base b such that a + c = s and a*b + c = s^2.
+
+Which is equivalent to:
+
+a*b + c = s^2 and a + c = s.
+
+So, a = s - c.
+
+Substituting into the first equation:
+
+(s - c)*b + c = s^2.
+
+Which simplifies to:
+
+s*b - c*b + c = s^2.
+
+Rearranged:
+
+s*b = s^2 + c*(b - 1).
+
+Then,
+
+b = (s^2 + c*(b -1))/s.
+
+But that's not helpful.
+
+Wait, earlier we had:
+
+b = (s^2 - c)/(s - c).
+
+So, for each b, we can iterate through possible s's such that:
+
+- s^2 >= b
+
+- s^2 < b^2
+
+- b = (s^2 - c)/(s - c) for some c in 1 to s-1.
+
+But this seems a bit messy.
+
+Alternatively, perhaps for each b, the number of s's is equal to the number of divisors of (c^2 - c) for c from 1 to s-1 such that a = s - c divides c(c -1).
+
+Wait, maybe not.
+
+Alternatively, for each b, the number of s's is equal to the number of integers s such that there exists c where:
+
+1. s = a + c,
+
+2. a*b + c = s^2,
+
+3. 1 <= a <= b -1,
+
+4. 0 <= c <= b -1.
+
+So, for each b, the number of pairs (a, c) satisfying the above.
+
+But how to compute this?
+
+Alternatively, note that for each b, s must satisfy:
+
+s^2 = a*b + c,
+
+s = a + c.
+
+So, substituting a = s - c,
+
+s^2 = (s - c)*b + c.
+
+Which can be rearranged as:
+
+s^2 = s*b - c*b + c.
+
+Bring all terms to one side:
+
+s^2 - s*b + c*(b -1) = 0.
+
+This is a quadratic equation in s:
+
+s^2 - b*s + c*(b -1) = 0.
+
+For each c in 0 to b-1, this quadratic equation will have solutions s. But s must be integer, so discriminant must be a perfect square.
+
+Discriminant D = b^2 - 4*1*c*(b -1).
+
+So, D = b^2 -4c(b -1).
+
+For s to be integer, D must be a perfect square.
+
+So, for each c in 0 to b-1, compute D and check if it's a perfect square. If it is, then s can be found.
+
+But since s must be positive, and s = a + c, which is at least 1.
+
+But this seems a bit involved, but perhaps manageable.
+
+So, the approach would be:
+
+For each b starting from 2 upwards:
+
+1. For each c in 0 to b-1:
+
+   a. Compute D = b^2 -4c(b -1).
+
+   b. Check if D is a perfect square.
+
+   c. If D is a perfect square, compute s = [b ± sqrt(D)] / 2.
+
+   d. Check if s is integer and s >=1.
+
+   e. Also, check that a = s - c is between 1 and b-1.
+
+   f. If all conditions are met, count this as a valid b-eautiful number.
+
+2. After checking all c's, if the count exceeds 10, record b as the answer.
+
+But this seems computationally intensive, but perhaps manageable for small b.
+
+But since the problem is asking for the minimal b where there are more than ten b-eautiful numbers, perhaps b isn't extremely large.
+
+Wait, but even so, it's time-consuming to compute this manually for each b. Maybe there's a pattern or mathematical shortcut.
+
+Alternatively, perhaps we can model b in terms of s and c.
+
+From earlier, b = (s^2 - c)/(s - c).
+
+We can write this as:
+
+b = s + c + (c^2 - c)/(s - c).
+
+Wait, no, earlier we had:
+
+b = s + c + [c(c -1)]/(s - c).
+
+But since [c(c -1)] must be divisible by (s -c), which is a.
+
+So, we can write [c(c -1)] = k*(s - c), where k is integer.
+
+Thus,
+
+c(c -1) = k*(s - c).
+
+Rearranged:
+
+c^2 - c = k*s - k*c.
+
+Bring all terms to one side:
+
+c^2 - c + k*c -k*s = 0.
+
+c^2 + (k -1)c -k s =0.
+
+This is a quadratic in c:
+
+c^2 + (k -1)c -k s =0.
+
+The discriminant is D' = (k -1)^2 +4k s.
+
+Which needs to be a perfect square for c to be integer.
+
+But I'm not sure if this helps.
+
+Alternatively, perhaps for a fixed k, we can solve for c and s.
+
+But I think this might not be the most straightforward path.
+
+Alternatively, let's consider the equation b = (s^2 - c)/(s - c).
+
+Let me denote d = s - c, so d = a.
+
+Then, b = (s^2 - c)/d.
+
+But since d = s - c, c = s - d.
+
+Substituting back:
+
+b = (s^2 - (s - d))/d = (s^2 -s +d)/d = (s(s -1) + d)/d.
+
+Which is:
+
+b = [s(s -1)]/d + 1.
+
+So, b = [s(s -1)]/d + 1.
+
+But d must divide s(s -1), since [s(s -1)] must be divisible by d.
+
+So, d is a positive integer divisor of s(s -1).
+
+Also, since d = s - c and c >=1, d <= s -1.
+
+So, d can be any divisor of s(s -1) that is less than or equal to s -1.
+
+Thus, for each s, the number of possible d's (i.e., the number of divisors of s(s -1) that are <= s -1) gives the number of possible b's.
+
+Each such d gives a unique b, which is [s(s -1)]/d + 1.
+
+But since d must be a positive divisor of s(s -1), and d <= s -1, the number of b's for each s is equal to the number of such d's.
+
+Therefore, for each s, the number of b's is equal to the number of divisors of s(s -1) that are <= s -1.
+
+Thus, the total number of b-eautiful numbers for each b is equal to the number of s's such that d divides s(s -1) and d <= s -1, leading to that b.
+
+But perhaps this is another way to model it.
+
+Wait, but how does this help me find the number of b's that have more than ten b-eautiful numbers?
+
+Alternatively, perhaps instead of considering each s, I can consider that for a given b, the number of solutions is equal to the number of pairs (a, c) such that a*b + c = (a + c)^2.
+
+But maybe it's better to think in terms of a and c.
+
+Wait, another approach: for a given b, the equation is a*b + c = (a + c)^2.
+
+Let me denote t = a + c.
+
+So, a*b + c = t^2.
+
+But t = a + c => c = t - a.
+
+Substituting:
+
+a*b + (t - a) = t^2.
+
+So,
+
+a*b + t - a = t^2.
+
+Rearranged:
+
+a*(b -1) + t = t^2.
+
+So,
+
+a*(b -1) = t^2 - t.
+
+Thus,
+
+a = (t^2 - t)/(b -1).
+
+Since a must be a positive integer (as a digit in base b, 1 <= a <= b -1), (t^2 - t) must be divisible by (b -1), and the result must be an integer a in [1, b-1].
+
+So, for each b, the number of b-eautiful numbers is equal to the number of t's such that:
+
+1. (t^2 - t) is divisible by (b -1).
+
+2. a = (t^2 - t)/(b -1) is an integer in [1, b -1].
+
+3. c = t - a is an integer in [0, b -1].
+
+So, for each b, the number of valid t's is equal to the number of t's such that (t^2 - t) is divisible by (b-1), a is in [1, b-1], and c is in [0, b-1].
+
+Additionally, since n = t^2 is a two-digit number in base b, we have:
+
+b <= t^2 < b^2.
+
+Therefore, t must satisfy:
+
+sqrt(b) <= t < b.
+
+Because t^2 >= b => t >= sqrt(b), and t^2 < b^2 => t < b.
+
+So, t must be in [ceil(sqrt(b)), b -1].
+
+So, for each b, t ranges from ceil(sqrt(b)) to b-1.
+
+Thus, for each b, the number of b-eautiful numbers is equal to the number of t in [ceil(sqrt(b)), b-1] such that:
+
+1. (t^2 - t) is divisible by (b -1).
+
+2. a = (t^2 - t)/(b -1) is an integer in [1, b-1].
+
+3. c = t - a is in [0, b-1].
+
+So, for each b, we can compute the number of such t's.
+
+This seems manageable. Let's try to formalize this.
+
+Given b, for each t from ceil(sqrt(b)) to b-1:
+
+- Compute D = t^2 - t.
+
+- Check if D is divisible by (b -1). If not, continue.
+
+- If yes, compute a = D / (b -1).
+
+- Check if a is integer, 1 <= a <= b-1.
+
+- Compute c = t - a.
+
+- Check if c is integer, 0 <= c <= b -1.
+
+If all conditions are met, count this t as a valid solution, contributing to a b-eautiful number.
+
+Thus, for each b, the number of solutions is the number of t's in [ceil(sqrt(b)), b-1] satisfying the above.
+
+This seems feasible, especially since for smaller b, the range of t is manageable.
+
+So, the plan is:
+
+1. For b starting from 2, for each b:
+
+   a. Compute t_min = ceil(sqrt(b)).
+
+   b. For t from t_min to b -1:
+
+      i. Compute D = t^2 - t.
+
+      ii. If D mod (b -1) !=0, skip.
+
+      iii. Else, compute a = D/(b -1).
+
+      iv. Check if a is integer and 1 <= a <= b-1.
+
+      v. Compute c = t - a.
+
+      vi. Check if c is integer and 0 <= c <= b -1.
+
+      vii. If all conditions met, increment count.
+
+   c. After all t's, if count >10, return b.
+
+2. The first such b is the answer.
+
+This seems doable, but since I'm doing it manually, I need to find a way to compute this efficiently.
+
+Alternatively, perhaps I can find a pattern or a mathematical way to express the number of solutions.
+
+Wait, let's think about D = t^2 -t.
+
+D must be divisible by (b-1).
+
+So, t^2 - t ≡0 mod (b-1).
+
+Which can be written as t(t -1) ≡0 mod (b-1).
+
+So, either t ≡0 mod (b-1) or t ≡1 mod (b-1).
+
+But since t is in [ceil(sqrt(b)), b-1], let's see:
+
+t ≡0 mod (b-1): possible only if t = b-1.
+
+Similarly, t ≡1 mod (b-1): possible only if t =1, but t starts from ceil(sqrt(b)), which is at least 2 for b >=5, so t=1 is not in the range.
+
+Wait, but for t in [ceil(sqrt(b)), b-1], t ≡0 mod (b-1) only when t = b-1.
+
+Similarly, t ≡1 mod (b-1) only when t=1, which is less than ceil(sqrt(b)) for b >=5.
+
+But for small b, like b=2,3,4, t=1 may be included.
+
+But let's think: for t(t -1) ≡0 mod (b-1), it suffices that either t ≡0 mod d or t ≡1 mod d, where d is a divisor of b-1.
+
+But perhaps this is getting too abstract.
+
+Wait, t(t -1) must be divisible by (b -1). So, (b -1) must divide t(t -1).
+
+Therefore, for each b, the possible t's are those where t ≡0 or 1 mod (b -1), but t is in [ceil(sqrt(b)), b -1].
+
+So, let's see:
+
+Case 1: t ≡0 mod (b -1). Then, t = k*(b -1). But since t <= b -1, the only possibility is k=1, so t = b -1.
+
+Case 2: t ≡1 mod (b -1). Then, t = m*(b -1) +1. Since t <= b -1, m must be 0, so t=1. But t must be >= ceil(sqrt(b)) >=2 for b >=5. So, t=1 is only in range for small b.
+
+So, for b >=5, the only t that satisfies t(t -1) ≡0 mod (b-1) is t = b -1.
+
+But wait, is that necessarily the case? Because (b-1) may have factors, so t(t -1) could be divisible by (b-1) without t being 0 or 1 mod (b-1).
+
+Wait, for example, if (b-1) is composite, say 6. Then, t(t -1) must be divisible by 6. So, t or t-1 must be divisible by 2 and 3.
+
+So, for b -1 =6, t can be 2,3,4,5,6, etc., as long as t or t-1 is divisible by 6, or t divisible by 2 and t-1 divisible by 3, etc.
+
+Wait, perhaps it's better to think that t(t -1) must be divisible by (b -1). So, the product of two consecutive integers must be divisible by (b -1).
+
+Which is true if (b -1) is 1, but since b >=2, (b -1) >=1.
+
+But for (b -1) >=2, t(t -1) must be divisible by (b -1). So, for example, if (b -1) is a prime number p, then either t ≡0 mod p or t ≡1 mod p.
+
+But for composite numbers, t or t-1 must be divisible by the factors of (b -1).
+
+But regardless, for each b, the number of t's in [ceil(sqrt(b)), b -1] such that (b -1) divides t(t -1) is limited.
+
+But for the sake of this problem, perhaps the number of such t's is small, especially for higher b's.
+
+Wait, but for b=13, which was in the example, n=81=6*13 +3, which is 63 in base 13. So, t=9, a=6, c=3.
+
+So, let's compute for b=13.
+
+t must be in [ceil(sqrt(13))=4, 12].
+
+We need t where t(t -1) is divisible by 12.
+
+t=4: 4*3=12, which is divisible by 12. So, t=4 is valid.
+
+Compute a = (16 -4)/12=12/12=1.
+
+c=4 -1=3.
+
+Check if a=1 is valid (1 <=12, yes) and c=3 <=12.
+
+So, valid. So, n=16 is 13-eautiful.
+
+t=5: 5*4=20. 20 mod 12=8, not 0. So, invalid.
+
+t=6:6*5=30. 30 mod12=6, not 0.
+
+t=7:7*6=42. 42 mod12=6, not 0.
+
+t=8:8*7=56. 56 mod12=8, not 0.
+
+t=9:9*8=72. 72 mod12=0. So, valid.
+
+Compute a=(81 -9)/12=72/12=6.
+
+c=9 -6=3.
+
+Check a=6 <=12, c=3<=12. Valid. So, n=81 is 13-eautiful.
+
+t=10:10*9=90. 90 mod12=6, not 0.
+
+t=11:11*10=110. 110 mod12=10, not 0.
+
+t=12:12*11=132. 132 mod12=0.
+
+Compute a=(144 -12)/12=132/12=11.
+
+c=12 -11=1.
+
+Check a=11 <=12, c=1<=12. Valid. So, n=144 is 13-eautiful.
+
+So, for b=13, there are three t's:4,9,12. So, three b-eautiful numbers.
+
+But the question is to find the smallest b with more than ten.
+
+So, perhaps I need to find a b where there are multiple t's such that t(t -1) is divisible by (b -1).
+
+But perhaps the number of such t's increases as (b -1) has more factors.
+
+So, if (b -1) is a highly composite number, then more t's will satisfy t(t -1) divisible by (b -1).
+
+Thus, perhaps the minimal b where (b -1) is a number with many factors, allowing multiple t's.
+
+But let's think about how to compute this.
+
+Wait, for each b, the maximum number of t's is equal to the number of t in [ceil(sqrt(b)), b-1] such that t(t -1) is divisible by (b -1). So, for (b -1) being a highly composite number, we can have more t's.
+
+So, perhaps the minimal b where (b -1) is a number like 24, 36, 60, etc., which have many factors.
+
+But let's test with b=25, so b-1=24.
+
+Compute t in [5,24].
+
+We need t(t -1) divisible by 24.
+
+24=8*3.
+
+So, t(t -1) must be divisible by 8 and 3.
+
+Since t and t-1 are consecutive, one is even, and one of every three consecutive numbers is divisible by 3.
+
+So, for divisibility by 8, either t or t-1 must be divisible by 8, or one divisible by 4 and the other by 2.
+
+But since t and t-1 are consecutive, one is even and the other is odd.
+
+So, for divisibility by 8:
+
+Either t ≡0 mod8, or t≡1 mod8.
+
+Because:
+
+If t is even, then t must be divisible by 8 or t-1 must be divisible by 8.
+
+Wait, not exactly. Let me think:
+
+If t is even:
+
+- t must be divisible by 8, or t must be divisible by 4 and t-1 divisible by 2 (but t-1 is odd, so can't be divisible by 2. So, only t divisible by 8.
+
+If t is odd:
+
+- t-1 is even, so t-1 must be divisible by 8.
+
+Thus, t ≡0 or 1 mod8.
+
+Similarly, for divisibility by 3:
+
+Either t ≡0 mod3 or t≡1 mod3.
+
+So, combining, t must satisfy:
+
+t ≡0 or1 mod8,
+
+and
+
+t ≡0 or1 mod3.
+
+So, using Chinese Remainder Theorem, we can find t's in [5,24] that satisfy these.
+
+So, possible t's:
+
+t ≡0 mod8:
+
+t=8,16,24.
+
+But t must be in [5,24], so t=8,16,24.
+
+t ≡1 mod8:
+
+t=9,17.
+
+t=9,17.
+
+Now, for each of these, check t mod3:
+
+t=8: 8 mod3=2. Not 0 or1. So, invalid.
+
+t=16:16 mod3=1. Valid.
+
+t=24:24 mod3=0. Valid.
+
+t=9:9 mod3=0. Valid.
+
+t=17:17 mod3=2. Invalid.
+
+So, valid t's are t=9,16,24.
+
+But t must be in [5,24], so t=9,16,24.
+
+Wait, t=24 is allowed.
+
+So, for b=25, t=9,16,24.
+
+Now, compute a for each t:
+
+t=9:
+
+a=(81 -9)/24=72/24=3.
+
+c=9 -3=6.
+
+Check a=3 <=24, c=6 <=24. Valid.
+
+So, n=81 is 25-eautiful.
+
+t=16:
+
+a=(256 -16)/24=240/24=10.
+
+c=16 -10=6.
+
+Check a=10 <=24, c=6 <=24. Valid.
+
+So, n=256 is 25-eautiful.
+
+t=24:
+
+a=(576 -24)/24=552/24=23.
+
+c=24 -23=1.
+
+Check a=23 <=24, c=1 <=24. Valid.
+
+So, n=576 is 25-eautiful.
+
+Thus, for b=25, there are three b-eautiful numbers.
+
+But we need more than ten, so perhaps higher b's.
+
+Wait, perhaps b=49, since b-1=48, which is highly composite.
+
+But this might take too long. Alternatively, perhaps I can think that the number of t's for each b is equal to the number of divisors of (b-1) that are in a certain range.
+
+Alternatively, perhaps the number of t's is equal to the number of divisors d of (b-1) such that d <= b -1 and d >= something.
+
+Wait, earlier, we saw that for each s, the number of b's is equal to the number of c's (from 1 to s-1) such that (s - c) divides c(c -1).
+
+But perhaps this isn't directly helpful.
+
+Alternatively, perhaps the number of solutions for a given b is equal to the number of ways to write (b -1) as a product of two integers, considering the equation t(t -1) = k*(b -1).
+
+But I'm not sure.
+
+Alternatively, let's think about the equation:
+
+t^2 - t = m*(b -1),
+
+where m is a positive integer.
+
+So, for each b, the number of solutions is the number of integers m such that t^2 - t - m*(b -1) =0 has integer solutions t in [ceil(sqrt(b)), b -1].
+
+The discriminant of this quadratic in t is D = 1 + 4m*(b -1).
+
+For t to be integer, D must be a perfect square.
+
+So, 1 +4m*(b -1) must be a perfect square.
+
+Let me denote D = k^2, so:
+
+k^2 = 1 +4m*(b -1).
+
+So,
+
+4m*(b -1) = k^2 -1.
+
+Which implies:
+
+m = (k^2 -1)/(4*(b -1)).
+
+Since m must be a positive integer, (k^2 -1) must be divisible by 4*(b -1).
+
+Thus, for each b, the number of solutions is equal to the number of integers k such that:
+
+1. k^2 ≡1 mod 4*(b -1).
+
+2. m = (k^2 -1)/(4*(b -1)) is a positive integer.
+
+3. The corresponding t is in [ceil(sqrt(b)), b -1].
+
+This seems too abstract, but perhaps for specific b's, we can find multiple k's.
+
+But without a clear pattern, perhaps it's better to look for b's where (b -1) is a factorial or highly composite.
+
+Alternatively, perhaps it's better to consider that for a given b, the number of solutions is equal to the number of divisors of (b -1), since t(t -1) must be divisible by (b -1). But this isn't exactly correct because t and t-1 are consecutive, so they are coprime. Thus, (b -1) must divide either t or t-1.
+
+Wait, no. Because (b -1) could have factors in both t and t-1, but since t and t-1 are coprime, the factors of (b -1) must lie entirely in either t or t-1.
+
+Thus, for t(t -1) to be divisible by (b -1), either:
+
+- t is divisible by (b -1), or
+
+- t -1 is divisible by (b -1).
+
+But t is in [ceil(sqrt(b)), b -1].
+
+Thus, the only possibilities are t = b -1 or t =1.
+
+But t=1 is only in the range for small b's.
+
+So, for b >=5, the only t is t = b -1.
+
+Wait, that can't be, because in the example with b=13, t=4,9,12 were valid.
+
+But according to this logic, only t=12 would be valid, but we saw t=4 and t=9 also worked.
+
+Hmm, perhaps my reasoning is flawed.
+
+Wait, for b=13, b-1=12.
+
+t=4: t(t -1)=12, which is divisible by 12.
+
+t=9: t(t -1)=72, divisible by 12.
+
+t=12: t(t -1)=132, divisible by12.
+
+So, in this case, t can be 4,9,12.
+
+So, the earlier assumption that only t= b -1 is valid is incorrect.
+
+Therefore, perhaps the number of t's is equal to the number of divisors of (b -1) that are less than or equal to t_max = b -1.
+
+But since t(t -1) must be divisible by (b -1), and t and t-1 are coprime, (b -1) must divide either t or t-1.
+
+Wait, no, that's not necessary because (b -1) could be a product of factors from t and t-1, but since they are coprime, the factors must be entirely in one or the other.
+
+So, for example, if (b -1) = d1 * d2, where d1 divides t and d2 divides t-1, but since t and t-1 are coprime, d1 and d2 must be coprime.
+
+But (b -1) can be written as a product of two coprime numbers d1 and d2, such that d1 divides t and d2 divides t-1.
+
+Thus, for each factorization of (b -1) into two coprime factors d1 and d2, we can solve for t ≡0 mod d1 and t ≡1 mod d2.
+
+By the Chinese Remainder Theorem, each such coprime factorization gives a solution t.
+
+So, the number of solutions t is equal to the number of ways to write (b -1) as a product of two coprime factors d1 and d2, where d1*d2 = (b -1), and d1, d2 >=1.
+
+Each such factorization gives a unique solution t modulo (b -1). But t must be in [ceil(sqrt(b)), b -1].
+
+Thus, for each coprime factorization, we get a t in [1, b -1], but we need t >= ceil(sqrt(b)).
+
+So, the number of t's is equal to the number of such factorizations where the solution t is in the desired range.
+
+Therefore, the number of solutions for each b is equal to the number of coprime factorizations of (b -1) = d1*d2, where d1 and d2 are positive integers, and gcd(d1, d2)=1.
+
+Each such factorization gives a unique t, provided t is in the range.
+
+So, the number of coprime factorizations of (b -1) is 2^{k-1}, where k is the number of distinct prime factors of (b -1). Because each prime factor can go to d1 or d2, but not both, since they must be coprime.
+
+Thus, if (b -1) has k distinct prime factors, the number of coprime factorizations is 2^{k-1}.
+
+Therefore, the number of t's is equal to 2^{k-1}, but each t must be in [ceil(sqrt(b)), b -1].
+
+So, for example, if (b -1) is a prime, then k=1, so 2^{0}=1 factorization, so one t.
+
+If (b -1) is a product of two distinct primes, k=2, so 2^{1}=2 factorizations, so two t's.
+
+If (b -1) is a product of three distinct primes, k=3, so 4 factorizations, leading to four t's.
+
+But wait, in the example with b=13, (b -1)=12=2^2*3.
+
+So, the number of distinct prime factors k=2 (2 and 3).
+
+Thus, the number of coprime factorizations is 2^{2-1}=2.
+
+But in reality, for b=13, we had three t's:4,9,12.
+
+Hmm, perhaps my reasoning is off.
+
+Wait, because in the case where (b -1) has multiple prime factors, including multiplicities, the number of coprime factorizations is 2^{k}, where k is the number of distinct prime factors.
+
+Wait, for (b -1)=12=2^2*3, the distinct prime factors are 2 and3, so k=2.
+
+The number of coprime factorizations is 2^{k}=4.
+
+But in reality, for b=13, we found three t's:4,9,12.
+
+So, perhaps one of the factorizations leads to t=1, which is invalid for b >=5.
+
+Thus, the number of valid t's is 2^{k} -1, but this is just a guess.
+
+Alternatively, perhaps the number of valid t's is 2^{k}, but with some exceptions.
+
+This is getting too abstract. Perhaps it's better to compute the number of t's for specific b's.
+
+Let me try b=33, so b-1=32.
+
+32=2^5, which has k=1 distinct prime factor.
+
+Thus, number of coprime factorizations is 2^{1}=2.
+
+So, two factorizations: d1=1, d2=32; and d1=32, d2=1.
+
+Each gives a t.
+
+For d1=1, d2=32:
+
+t ≡0 mod1 (always true), t≡1 mod32.
+
+Thus, t=1, which is less than ceil(sqrt(33))=6. Invalid.
+
+For d1=32, d2=1:
+
+t≡0 mod32, t≡1 mod1 (always true).
+
+So, t=32. Check if 32 is in [6,32]. Yes.
+
+Compute a=(32^2 -32)/32=(1024 -32)/32=992/32=31.
+
+c=32 -31=1.
+
+Check a=31 <=32, c=1<=32. Valid.
+
+So, only one valid t=32.
+
+Thus, for b=33, one b-eautiful number.
+
+But in reality, for b=33, t=32 would give n=1024, which is two digits in base33 as 31 1.
+
+But let's check another b.
+
+Take b=17, so b-1=16=2^4.
+
+k=1 distinct prime, so number of coprime factorizations=2.
+
+Factorizations:
+
+d1=1, d2=16: t=1, invalid.
+
+d1=16, d2=1: t=16.
+
+Compute a=(256 -16)/16=240/16=15.
+
+c=16 -15=1.
+
+Valid.
+
+Thus, only one valid t=16.
+
+But wait, in reality, for b=17, let's compute t's:
+
+t must be in [4,16].
+
+t(t-1) must be divisible by16.
+
+t=4:4*3=12. 12 mod16=12≠0.
+
+t=5:5*4=20. 20 mod16=4≠0.
+
+t=6:6*5=30. 30 mod16=14≠0.
+
+t=7:7*6=42. 42 mod16=10≠0.
+
+t=8:8*7=56. 56 mod16=8≠0.
+
+t=9:9*8=72. 72 mod16=8≠0.
+
+t=10:10*9=90. 90 mod16=10≠0.
+
+t=11:11*10=110. 110 mod16= 110-6*16=110-96=14≠0.
+
+t=12:12*11=132. 132 mod16=132-8*16=132-128=4≠0.
+
+t=13:13*12=156. 156 mod16=156-9*16=156-144=12≠0.
+
+t=14:14*13=182. 182 mod16=182-11*16=182-176=6≠0.
+
+t=15:15*14=210. 210 mod16=210-13*16=210-208=2≠0.
+
+t=16:16*15=240. 240 mod16=0. Valid.
+
+So, only t=16 is valid.
+
+Thus, only one t, which matches our earlier calculation.
+
+But earlier, for b=13, which had b-1=12=2^2*3, we had three t's:4,9,12.
+
+So, perhaps the number of t's depends on the number of ways (b -1) can be expressed as a product of two coprime factors, each >=1.
+
+In the case of b=13, (b-1)=12=3*4, 2*6, 1*12.
+
+But in our earlier case, t=4,9,12.
+
+Wait, t=4: corresponds to d1=3, d2=4.
+
+Because t ≡0 mod3 and t≡1 mod4.
+
+t=4: 4 mod3=1, which isn't 0. Hmm, no.
+
+Wait, perhaps I'm getting confused.
+
+Wait, for (b -1)=12, the coprime factorizations are (1,12), (3,4), (4,3), (12,1).
+
+But since d1 and d2 must be coprime, (3,4) and (4,3) are valid.
+
+For each factorization:
+
+1. d1=1, d2=12: t≡0 mod1 (always true), t≡1 mod12. So, t=1,13,25,... But t must be <=12, so t=1 invalid.
+
+2. d1=3, d2=4: t≡0 mod3, t≡1 mod4.
+
+Find t in [4,12]:
+
+t ≡0 mod3: t=3,6,9,12.
+
+t ≡1 mod4: t=1,5,9,13.
+
+Intersection: t=9.
+
+So, t=9.
+
+3. d1=4, d2=3: t≡0 mod4, t≡1 mod3.
+
+t ≡0 mod4: t=4,8,12.
+
+t ≡1 mod3: t=1,4,7,10,13.
+
+Intersection: t=4,10.
+
+But t must be <=12.
+
+t=4 and t=10.
+
+Check t=4:4 mod3=1. Yes.
+
+t=10:10 mod3=1. Yes.
+
+But t=10:10*9=90. 90 mod12=6≠0. Wait, why is this discrepancy?
+
+Wait, t=10: t(t-1)=90. 90 mod12=6≠0. So, it's invalid.
+
+Hmm, so perhaps not all factorizations lead to valid t's.
+
+Wait, perhaps I made a mistake in the factorization approach.
+
+Alternatively, perhaps I should just accept that for each b, the number of t's is equal to the number of solutions to t(t -1) ≡0 mod (b-1) in the range [ceil(sqrt(b)), b -1].
+
+Thus, to find the number of b-eautiful numbers for a given b, I can:
+
+1. For each t from ceil(sqrt(b)) to b -1:
+
+   a. Check if t(t -1) is divisible by (b -1).
+
+   b. If yes, compute a = (t^2 - t)/(b -1).
+
+   c. Check if a is integer and 1 <= a <= b -1.
+
+   d. Compute c = t - a, check if 0 <=c <= b -1.
+
+   e. If all conditions met, count as a valid solution.
+
+2. The total count is the number of such t's.
+
+Thus, for each b, the count can be found by this method.
+
+Given that, perhaps the minimal b with more than ten b-eautiful numbers is when (b -1) is a number with many factors, allowing multiple t's.
+
+But to find this without a program, perhaps I can look for b's where (b -1) is highly composite.
+
+The highly composite numbers are numbers with more divisors than any smaller number.
+
+The sequence starts at 1, 2, 4, 6, 12, 24, 36, 48, 60, 120, etc.
+
+So, perhaps I can test b's where (b -1) is one of these numbers.
+
+Let's try b=25, which we did earlier, with (b -1)=24, which is highly composite.
+
+We found three t's:9,16,24.
+
+But that's only three.
+
+Wait, perhaps higher b's.
+
+Let's try b=49, so (b -1)=48.
+
+48 is highly composite.
+
+Compute t in [7,48].
+
+We need t(t -1) divisible by48.
+
+48=16*3.
+
+So, t(t -1) must be divisible by16 and3.
+
+Since t and t-1 are consecutive, one is even, and one is odd.
+
+For divisibility by16:
+
+Either t or t-1 must be divisible by16.
+
+Also, for divisibility by3:
+
+Either t or t-1 must be divisible by3.
+
+So, t must satisfy:
+
+t ≡0 or1 mod16,
+
+and
+
+t ≡0 or1 mod3.
+
+So, four cases:
+
+1. t ≡0 mod16 and t≡0 mod3.
+
+2. t ≡0 mod16 and t≡1 mod3.
+
+3. t ≡1 mod16 and t≡0 mod3.
+
+4. t ≡1 mod16 and t≡1 mod3.
+
+Using Chinese Remainder Theorem, each case will give a solution modulo 48.
+
+Case1: t ≡0 mod16 and t≡0 mod3.
+
+t ≡0 mod LCM(16,3)=48.
+
+So, t=0 mod48. But t <=48, so t=0 invalid, t=48: check t=48.
+
+t=48: compute a=(48^2 -48)/48=(2304 -48)/48=2256/48=47.
+
+c=48 -47=1. Valid.
+
+So, t=48 is valid.
+
+Case2: t ≡0 mod16 and t≡1 mod3.
+
+Find t such that t≡0 mod16 and t≡1 mod3.
+
+Let t=16k.
+
+16k ≡1 mod3 => 16k mod3= (1k) mod3= k mod3=1.
+
+Thus, k≡1 mod3. So, k=3m +1.
+
+Thus, t=16*(3m +1)=48m +16.
+
+Within t <=48: m=0: t=16.
+
+m=1: t=64>48. So, t=16.
+
+Check t=16:
+
+Compute a=(256 -16)/48=240/48=5.
+
+c=16 -5=11.
+
+Check a=5 <=48, c=11<=48. Valid.
+
+So, t=16 is valid.
+
+Case3: t ≡1 mod16 and t≡0 mod3.
+
+t=16k +1.
+
+16k +1 ≡0 mod3 => 16k ≡-1 mod3 => (1k)≡2 mod3 =>k≡2 mod3.
+
+Thus, k=3m +2.
+
+t=16*(3m +2) +1=48m +33.
+
+Within t <=48: m=0: t=33.
+
+m=1: t=81>48.
+
+So, t=33.
+
+Check t=33:
+
+Compute a=(33^2 -33)/48=(1089 -33)/48=1056/48=22.
+
+c=33 -22=11.
+
+Check a=22 <=48, c=11<=48. Valid.
+
+Case4: t ≡1 mod16 and t≡1 mod3.
+
+t=16k +1.
+
+16k +1 ≡1 mod3 =>16k ≡0 mod3 =>k≡0 mod3.
+
+Thus, k=3m.
+
+t=16*(3m) +1=48m +1.
+
+Within t <=48: m=0: t=1 invalid.
+
+m=1: t=49>48.
+
+So, no solution in this case.
+
+Thus, the valid t's are t=16,33,48.
+
+But wait, t=48 is allowed.
+
+But let's check t=48: a=47, c=1. Valid.
+
+t=16: a=5, c=11. Valid.
+
+t=33: a=22, c=11. Valid.
+
+Thus, three t's.
+
+But we need more than ten.
+
+Hmm.
+
+Wait, perhaps I made a mistake in the factorization approach.
+
+Wait, for b=49, (b -1)=48=16*3, but perhaps other factorizations exist where d1 and d2 are coprime.
+
+Wait, 48 can be factorized as 1*48, 3*16,  etc.
+
+Wait, using coprime factorizations:
+
+Since 48=16*3, and 16 and3 are coprime, so the factorizations are (1,48), (3,16), (16,3), (48,1).
+
+Each of these gives a solution t:
+
+1. d1=1, d2=48: t=1 invalid.
+
+2. d1=3, d2=16: t=9.
+
+Wait, t=9: compute a=(81 -9)/48=72/48=1.5. Not integer. So, invalid.
+
+Wait, this contradicts earlier results.
+
+Wait, perhaps my approach is incorrect.
+
+Alternatively, perhaps I should just proceed to compute the number of t's for each b until I find one with more than ten.
+
+But this is time-consuming. Alternatively, perhaps I can think that for each b, the number of t's is equal to the number of divisors of (b -1) that are less than or equal to b -1.
+
+Wait, but no, that's not exactly correct.
+
+Alternatively, perhaps for each b, the number of t's is equal to the number of ways to write (b -1) as a product of two coprime factors, as earlier.
+
+But in the case of b=13, (b -1)=12, which has four coprime factorizations:
+
+(1,12), (3,4), (4,3), (12,1).
+
+Each of these gives a solution t.
+
+But in reality, only three t's were valid because t=1 was invalid.
+
+So, perhaps for each b, the number of t's is equal to the number of such factorizations minus those that result in t=1.
+
+Thus, for (b -1)=12, four factorizations, but one leads to t=1, so three valid t's.
+
+Similarly, for (b -1)=24, which has more factorizations.
+
+But perhaps this is getting too involved.
+
+Alternatively, perhaps I can consider that the number of t's for each b is equal to the number of divisors of (b -1) that are greater than or equal to sqrt(b -1).
+
+But I'm not sure.
+
+Alternatively, perhaps I can think that the number of t's is equal to the number of ways to write (b -1) as a product of two integers, not necessarily coprime, but considering the equation t(t -1) = m*(b -1).
+
+But without a clear pattern, perhaps it's better to look for known highly composite numbers for (b -1) and compute the number of t's manually.
+
+But given the time constraints, perhaps I can make an educated guess.
+
+Given that for (b -1)=24, we had three t's, and for (b -1)=48, we had three t's.
+
+Wait, perhaps higher b's with (b -1) being 60, which has many factors.
+
+Let's try b=61, so (b -1)=60.
+
+Factorizations of 60 into coprime pairs:
+
+(1,60), (3,20), (4,15), (5,12), (12,5), (15,4), (20,3), (60,1).
+
+Each will give a solution t.
+
+Compute t for each:
+
+1. d1=1, d2=60: t=1 invalid.
+
+2. d1=3, d2=20:
+
+t ≡0 mod3, t≡1 mod20.
+
+Find t in [8,60].
+
+Solve t=20k +1 ≡0 mod3.
+
+20k +1 ≡2k +1 ≡0 mod3 => 2k ≡-1 mod3 => 2k≡2 mod3 =>k≡1 mod3.
+
+Thus, k=3m +1.
+
+t=20*(3m +1) +1=60m +21.
+
+Within t <=60: m=0: t=21.
+
+Check t=21:
+
+a=(441 -21)/60=420/60=7.
+
+c=21 -7=14.
+
+Valid.
+
+3. d1=4, d2=15:
+
+t≡0 mod4, t≡1 mod15.
+
+t=15k +1 ≡0 mod4.
+
+15k +1 ≡3k +1 ≡0 mod4 =>3k≡-1≡3 mod4 =>k≡1 mod4.
+
+Thus, k=4m +1.
+
+t=15*(4m +1)+1=60m +16.
+
+Within t <=60: m=0: t=16.
+
+Check t=16:
+
+a=(256 -16)/60=240/60=4.
+
+c=16 -4=12.
+
+Valid.
+
+4. d1=5, d2=12:
+
+t≡0 mod5, t≡1 mod12.
+
+t=12k +1 ≡0 mod5.
+
+12k +1 ≡2k +1 ≡0 mod5 =>2k ≡-1≡4 mod5 =>k≡2 mod5.
+
+Thus, k=5m +2.
+
+t=12*(5m +2)+1=60m +25.
+
+Within t <=60: m=0: t=25.
+
+Check t=25:
+
+a=(625 -25)/60=600/60=10.
+
+c=25 -10=15.
+
+Valid.
+
+5. d1=12, d2=5:
+
+t≡0 mod12, t≡1 mod5.
+
+t=12k ≡1 mod5 =>12k≡2k≡1 mod5 =>k≡3 mod5.
+
+Thus, k=5m +3.
+
+t=12*(5m +3)=60m +36.
+
+Within t <=60: m=0: t=36.
+
+Check t=36:
+
+a=(1296 -36)/60=1260/60=21.
+
+c=36 -21=15.
+
+Valid.
+
+6. d1=15, d2=4:
+
+t≡0 mod15, t≡1 mod4.
+
+t=15k ≡1 mod4 =>15k≡3k≡1 mod4 =>k≡3 mod4.
+
+Thus, k=4m +3.
+
+t=15*(4m +3)=60m +45.
+
+Within t <=60: m=0: t=45.
+
+Check t=45:
+
+a=(2025 -45)/60=1980/60=33.
+
+c=45 -33=12.
+
+Valid.
+
+7. d1=20, d2=3:
+
+t≡0 mod20, t≡1 mod3.
+
+t=20k ≡1 mod3 =>20k≡2k≡1 mod3 =>k≡2 mod3.
+
+Thus, k=3m +2.
+
+t=20*(3m +2)=60m +40.
+
+Within t <=60: m=0: t=40.
+
+Check t=40:
+
+a=(1600 -40)/60=1560/60=26.
+
+c=40 -26=14.
+
+Valid.
+
+8. d1=60, d2=1:
+
+t≡0 mod60, t≡1 mod1.
+
+t=60k.
+
+Within t <=60: t=60.
+
+Check t=60:
+
+a=(3600 -60)/60=3540/60=59.
+
+c=60 -59=1.
+
+Valid.
+
+Thus, for b=61, the valid t's are 21,16,25,36,45,40,60.
+
+Wait, that's seven t's.
+
+Wait, let's recount:
+
+From factorizations:
+
+2. t=21
+
+3. t=16
+
+4. t=25
+
+5. t=36
+
+6. t=45
+
+7. t=40
+
+8. t=60
+
+That's seven t's.
+
+But wait, each factorization gave one t, except the first which gave t=1 invalid.
+
+Thus, eight factorizations minus one invalid gives seven t's.
+
+So, for b=61, seven b-eautiful numbers.
+
+Still less than ten.
+
+Let me try b=121, so (b -1)=120.
+
+120 has many factors.
+
+Compute the number of coprime factorizations.
+
+120=2^3*3*5.
+
+The number of distinct prime factors k=3, so number of coprime factorizations is 2^{3}=8.
+
+Thus, eight factorizations:
+
+(1,120), (3,40), (5,24), (8,15), (15,8), (24,5), (40,3), (120,1).
+
+Each will give a solution t.
+
+Compute t for each:
+
+1. d1=1, d2=120: t=1 invalid.
+
+2. d1=3, d2=40:
+
+t≡0 mod3, t≡1 mod40.
+
+Solve t=40k +1 ≡0 mod3.
+
+40k +1 ≡(1k) +1 ≡k +1 ≡0 mod3 =>k≡2 mod3.
+
+Thus, k=3m +2.
+
+t=40*(3m +2) +1=120m +81.
+
+Within t <=120: m=0: t=81.
+
+Check t=81:
+
+a=(81^2 -81)/120=(6561 -81)/120=6480/120=54.
+
+c=81 -54=27.
+
+Valid.
+
+3. d1=5, d2=24:
+
+t≡0 mod5, t≡1 mod24.
+
+t=24k +1 ≡0 mod5.
+
+24k +1 ≡4k +1 ≡0 mod5 =>4k ≡-1≡4 mod5 =>k≡1 mod5.
+
+Thus, k=5m +1.
+
+t=24*(5m +1)+1=120m +25.
+
+Within t <=120: m=0: t=25.
+
+Check t=25:
+
+a=(625 -25)/120=600/120=5.
+
+c=25 -5=20.
+
+Valid.
+
+4. d1=8, d2=15:
+
+t≡0 mod8, t≡1 mod15.
+
+t=15k +1 ≡0 mod8.
+
+15k +1 ≡7k +1 ≡0 mod8 =>7k ≡-1≡7 mod8 =>k≡1 mod8.
+
+Thus, k=8m +1.
+
+t=15*(8m +1)+1=120m +16.
+
+Within t <=120: m=0: t=16.
+
+Check t=16:
+
+a=(256 -16)/120=240/120=2.
+
+c=16 -2=14.
+
+Valid.
+
+5. d1=15, d2=8:
+
+t≡0 mod15, t≡1 mod8.
+
+t=15k ≡1 mod8 =>15k≡7k≡1 mod8 =>7k≡1 mod8 =>k≡7 mod8.
+
+Thus, k=8m +7.
+
+t=15*(8m +7)=120m +105.
+
+Within t <=120: m=0: t=105.
+
+Check t=105:
+
+a=(11025 -105)/120=10920/120=91.
+
+c=105 -91=14.
+
+Valid.
+
+6. d1=24, d2=5:
+
+t≡0 mod24, t≡1 mod5.
+
+t=24k ≡1 mod5 =>24k≡4k≡1 mod5 =>4k≡1 mod5 =>k≡4 mod5.
+
+Thus, k=5m +4.
+
+t=24*(5m +4)=120m +96.
+
+Within t <=120: m=0: t=96.
+
+Check t=96:
+
+a=(9216 -96)/120=9120/120=76.
+
+c=96 -76=20.
+
+Valid.
+
+7. d1=40, d2=3:
+
+t≡0 mod40, t≡1 mod3.
+
+t=40k ≡1 mod3 =>40k≡1k≡1 mod3 =>k≡1 mod3.
+
+Thus, k=3m +1.
+
+t=40*(3m +1)=120m +40.
+
+Within t <=120: m=0: t=40.
+
+Check t=40:
+
+a=(1600 -40)/120=1560/120=13.
+
+c=40 -13=27.
+
+Valid.
+
+8. d1=120, d2=1:
+
+t≡0 mod120, t≡1 mod1.
+
+t=120k.
+
+Within t <=120: t=120.
+
+Check t=120:
+
+a=(14400 -120)/120=14280/120=119.
+
+c=120 -119=1.
+
+Valid.
+
+Thus, the valid t's are 81,25,16,105,96,40,120.
+
+Wait, that's seven t's.
+
+Wait, but according to the factorizations, eight factorizations, minus one invalid, gives seven t's.
+
+But wait, let's recount:
+
+From the eight factorizations:
+
+2. t=81
+
+3. t=25
+
+4. t=16
+
+5. t=105
+
+6. t=96
+
+7. t=40
+
+8. t=120
+
+That's seven t's.
+
+Thus, for b=121, seven b-eautiful numbers.
+
+Still less than ten.
+
+Hmm, perhaps I need a larger b.
+
+Wait, perhaps b=241, so (b -1)=240.
+
+240 has 20 divisors, which is quite a lot.
+
+Let me compute the number of t's.
+
+But this is getting too time-consuming.
+
+Alternatively, perhaps the minimal b is 122, where (b -1)=121, which is 11^2.
+
+But 121 is a square, so the number of coprime factorizations is limited.
+
+Alternatively, perhaps the minimal b is 242, where (b -1)=241, which is prime.
+
+But that would give only one t.
+
+Alternatively, perhaps the minimal b is 122, as (b -1)=121=11^2.
+
+Compute t's:
+
+t must be in [11,121].
+
+t(t -1) must be divisible by121.
+
+Since 121=11^2, t or t-1 must be divisible by121.
+
+Thus, t=121 or t=1.
+
+t=1 is invalid, t=121 is valid.
+
+Thus, only one t.
+
+No.
+
+Alternatively, b=122, which gives (b -1)=121.
+
+Wait, same as above.
+
+Hmm.
+
+Alternatively, perhaps I need to consider that (b -1) must have multiple small factors to allow more t's.
+
+Wait, for example, (b -1)=60, which has factors 2,3,4,5,6, etc.
+
+But earlier, for b=61, we had seven t's.
+
+Wait, perhaps the minimal b where (b -1) is 210, which is 2*3*5*7.
+
+But 210 is a large number, leading to b=211.
+
+But computing manually is tedious.
+
+Alternatively, perhaps I can note that the number of t's increases as the number of coprime factorizations of (b -1) increases.
+
+Thus, the minimal b where (b -1) has enough coprime factorizations to give more than ten t's.
+
+But without a program, I can't compute this quickly.
+
+Wait, perhaps the minimal b is 122, with (b -1)=121, but that only gives one t.
+
+Wait, alternatively, perhaps b=122, but I don't see it.
+
+Alternatively, perhaps I'm approaching this incorrectly.
+
+Wait, perhaps I should think that for each b, the number of b-eautiful numbers is equal to the number of divisors of (b -1) that are less than or equal to (b -1)/2.
+
+But I'm not sure.
+
+Alternatively, perhaps the minimal b is 21, since (b -1)=20, which has several factors.
+
+But for b=21, let's compute:
+
+t in [5,20].
+
+t(t -1) must be divisible by20.
+
+t=5:5*4=20. 20 mod20=0. Valid.
+
+Compute a=(25 -5)/20=20/20=1.
+
+c=5 -1=4.
+
+Valid.
+
+t=10:10*9=90. 90 mod20=10≠0.
+
+t=15:15*14=210. 210 mod20=10≠0.
+
+t=20:20*19=380. 380 mod20=0.
+
+Compute a=(400 -20)/20=380/20=19.
+
+c=20 -19=1.
+
+Valid.
+
+t=4:4*3=12. 12 mod20≠0.
+
+t=6:6*5=30. 30 mod20=10≠0.
+
+t=8:8*7=56. 56 mod20=16≠0.
+
+t=9:9*8=72. 72 mod20=12≠0.
+
+t=12:12*11=132. 132 mod20=12≠0.
+
+t=14:14*13=182. 182 mod20=2≠0.
+
+t=16:16*15=240. 240 mod20=0.
+
+Compute a=(256 -16)/20=240/20=12.
+
+c=16 -12=4.
+
+Valid.
+
+t=18:18*17=306. 306 mod20=6≠0.
+
+t=20: already done.
+
+t=25: beyond 20.
+
+Wait, t=5,16,20 are valid.
+
+Thus, three t's.
+
+So, only three b-eautiful numbers.
+
+Not enough.
+
+Hmm.
+
+Wait, perhaps the minimal b is 122. But earlier attempts show that even for b=121, there are seven t's.
+
+Wait, perhaps the minimal b is 242, but I'm not sure.
+
+Alternatively, perhaps the minimal b is 122, but I need more information.
+
+Alternatively, perhaps I can consider that the number of t's increases with the number of divisors of (b -1), so to get more than ten t's, (b -1) must have at least eleven coprime factorizations, which would require (b -1) to have many small prime factors.
+
+But without a program, I can't compute this quickly.
+
+Alternatively, perhaps the minimal b is 241, but that's speculative.
+
+Given the time I've spent, perhaps the minimal b is 122, but I'm not certain.
+
+Wait, perhaps I can find a pattern.
+
+For each b, the number of t's is equal to the number of ways to write (b -1)=d1*d2, where d1 and d2 are coprime, and then solve for t in each case.
+
+Thus, the number of t's is equal to 2^{k-1}, where k is the number of distinct prime factors of (b -1).
+
+So, to have more than ten t's, we need 2^{k-1} >10.
+
+Which implies k-1 >=4, since 2^4=16>10.
+
+Thus, k>=5.
+
+Therefore, (b -1) must have at least five distinct prime factors.
+
+The smallest number with five distinct prime factors is 2*3*5*7*11=2310.
+
+Thus, b=2311.
+
+But this seems too large, and the problem likely expects a smaller b.
+
+Alternatively, perhaps I'm overcomplicating.
+
+Wait, perhaps the minimal b is 122, as (b -1)=121=11^2, but that gives only one t.
+
+Alternatively, perhaps the minimal b is 242, but that's also not helpful.
+
+Wait, perhaps I made a mistake earlier.
+
+Wait, in the case of b=13, (b -1)=12=2^2*3.
+
+The number of coprime factorizations is 4, leading to three valid t's.
+
+Similarly, for (b -1)=24=2^3*3, which has k=2 distinct primes, the number of coprime factorizations is 4, leading to three valid t's.
+
+But earlier, for (b -1)=60=2^2*3*5, which has k=3 distinct primes, the number of coprime factorizations is 8, leading to seven valid t's.
+
+Thus, the number of t's seems to be 2^{k} -1, where k is the number of distinct prime factors.
+
+But for k=3, 2^3=8, leading to seven t's.
+
+For k=4, number of t's would be 15.
+
+Thus, to have more than ten t's, we need k=4, leading to 15 t's.
+
+Thus, the minimal (b -1) must have four distinct prime factors.
+
+The smallest such number is 2*3*5*7=210.
+
+Thus, (b -1)=210 =>b=211.
+
+Thus, for b=211, the number of t's would be 15, which is more than ten.
+
+Therefore, the minimal b is 211.
+
+But wait, let's check:
+
+For b=211, (b -1)=210=2*3*5*7.
+
+Number of coprime factorizations is 2^4=16.
+
+Thus, 16 factorizations, minus one leading to t=1, gives 15 t's.
+
+Thus, for b=211, there are 15 b-eautiful numbers.
+
+Therefore, the minimal b is 211.
+
+
+--- Final Answer Content ---
+
+
+To solve the problem, we need to find the smallest base \( b \) such that there are more than ten \( b \)-eautiful numbers. A number \( n \) is \( b \)-eautiful if it has exactly two digits in base \( b \) and the sum of these digits equals \( \sqrt{n} \).
+
+### Key Steps:
+
+1. **Understanding \( b \)-eautiful Numbers**:
+   - A \( b \)-eautiful number \( n \) can be expressed as \( n = a \cdot b + c \), where \( a \) and \( c \) are digits in base \( b \) (i.e., \( 1 \leq a \leq b-1 \) and \( 0 \leq c \leq b-1 \)).
+   - The sum of the digits \( a + c \) must equal \( \sqrt{n} \).
+
+2. **Mathematical Formulation**:
+   - Let \( s = a + c \). Then \( n = s^2 \).
+   - Substituting \( n = a \cdot b + c \) and \( a = s - c \) into the equation, we derive:
+     \[
+     s^2 = (s - c) \cdot b + c
+     \]
+     Simplifying, we get:
+     \[
+     b = \frac{s^2 - c}{s - c}
+     \]
+   - For \( b \) to be an integer, \( s - c \) must divide \( s^2 - c \).
+
+3. **Finding Valid \( b \)**:
+   - For each \( b \), we need to find all pairs \( (a, c) \) such that \( n = s^2 \) is a two-digit number in base \( b \), and the conditions above are satisfied.
+   - The number of such pairs increases with the number of divisors of \( b - 1 \), as \( b - 1 \) must be factorizable into coprime pairs.
+
+4. **Determining the Minimal \( b \)**:
+   - The minimal \( b \) where there are more than ten \( b \)-eautiful numbers occurs when \( b - 1 \) has enough divisors. Specifically, \( b - 1 \) must be a product of multiple distinct primes to allow numerous coprime factorizations.
+   - The smallest \( b \) where \( b - 1 \) has four distinct prime factors is \( b = 211 \), as \( 210 = 2 \times 3 \times 5 \times 7 \) has 16 coprime factorizations, leading to 15 valid \( b \)-eautiful numbers.
+
+### Final Answer:
+The least integer \( b \) for which there are more than ten \( b \)-eautiful integers is \(\boxed{211}\).
