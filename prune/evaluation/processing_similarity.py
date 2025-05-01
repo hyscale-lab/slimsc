@@ -189,7 +189,7 @@ async def process_question_similarity_prune(
         tokenizer_path: Path to the tokenizer
         similarity_threshold: Threshold for pruning (0.0-1.0)
         pruning_strategy: Strategy for pruning ("fewest_thoughts", "most_thoughts", or "diversity")
-        dataset_name: Name of the dataset ("gpqa_diamond" or "aime")
+        dataset_name: Name of the dataset ("gpqa_diamond", "aime", "math500")
         max_analysis_steps: Maximum number of analysis intervals
     """
     # Validate strategy

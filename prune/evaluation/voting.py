@@ -273,7 +273,7 @@ def majority_vote_for_sim_prune(
     Args:
         chain_results: List of chain result dictionaries.
         correct_answer_letter: The correct answer for scoring.
-        dataset_name: The dataset type ("gpqa_diamond" or "aime").
+        dataset_name: The dataset type ("gpqa_diamond", "aime", "math500").
 
     Returns:
         Tuple of (voted_answer, score, all_extracted_answers).

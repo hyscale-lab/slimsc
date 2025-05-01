@@ -58,9 +58,9 @@ async def process_question_sc_stream(
     try:
         if dataset_name == "gpqa_diamond":
             prompt, choices, correct_answer = handler.create_prompt(example)
-        else:  # aime
+        else:
             prompt, correct_answer = handler.create_prompt(example)
-            choices = None  # AIME doesn't use choices
+            choices = None  # other datasets don't use choices
     except Exception as e:
         logger.exception(f"[red]Error creating prompt for question {iteration}[/red]")
         # Save a failure summary for this question
