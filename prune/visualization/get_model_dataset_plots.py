@@ -84,8 +84,14 @@ def collect_metrics_data(results_dir: str = "../results") -> pd.DataFrame:
                             row['pruning_method'] = 'most_thoughts'
                         elif 'diversity' in strategy_name:
                             row['pruning_method'] = 'diversity'
-                        elif 'sc_10_' in strategy_name:
-                            row['pruning_method'] = 'sc_control'
+                        elif 'sc_' in strategy_name:
+                            # Extract the number from sc_X_control or sc_X variants
+                            sc_match = re.search(r'sc_(\d+)', strategy_name)
+                            if sc_match:
+                                sc_num = sc_match.group(1)
+                                row['pruning_method'] = f'sc_control_{sc_num}'
+                            else:
+                                row['pruning_method'] = 'sc_control'
                         else:
                             row['pruning_method'] = 'unknown'
                         
@@ -213,12 +219,26 @@ def plot_threshold_vs_accuracy(df: pd.DataFrame,
     # Filter for similarity methods
     similarity_df = plot_df[plot_df['pruning_method'].isin(['fewest_thoughts', 'most_thoughts', 'diversity'])]
     
-    # Get SC control accuracy
-    sc_control_df = plot_df[plot_df['pruning_method'] == 'sc_control']
-    sc_control_accuracy = None
-    if not sc_control_df.empty:
-        sc_control_accuracy = sc_control_df['overall_accuracy'].mean()
-        plt.axhline(y=sc_control_accuracy, color='r', linestyle='--', label=f'SC Control: {sc_control_accuracy:.2f}')
+    # Define color map for SC control lines
+    sc_colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    
+    # Plot a line for each SC control version
+    sc_control_methods = [method for method in plot_df['pruning_method'].unique() 
+                          if method.startswith('sc_control')]
+    
+    for i, sc_method in enumerate(sc_control_methods):
+        sc_control_df = plot_df[plot_df['pruning_method'] == sc_method]
+        if not sc_control_df.empty:
+            sc_control_accuracy = sc_control_df['overall_accuracy'].mean()
+            color_idx = i % len(sc_colors)
+            
+            # Extract number from the SC control method name for display
+            sc_num = sc_method.replace('sc_control_', '')
+            label = f'SC Control {sc_num}: {sc_control_accuracy:.2f}'
+            
+            plt.axhline(y=sc_control_accuracy, color=sc_colors[color_idx], 
+                       linestyle='--', label=label)
+            print(f"Plotting {sc_method} with accuracy {sc_control_accuracy:.4f}")
     
     # Plot each pruning method
     if not similarity_df.empty:
