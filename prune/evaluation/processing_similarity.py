@@ -444,8 +444,30 @@ async def process_question_similarity_prune(
                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
 
                             if prune_target_id:
-                                chains_to_prune_this_interval.add(prune_target_id)
-                                pruning_info_this_interval[prune_target_id] = analysis_step
+                                # Check how many chains are currently marked active
+                                num_active_before_this_prune = sum(1 for state in active_chains.values() if state['is_active'])
+                                # How many are already marked for pruning in this interval
+                                num_already_marked_this_interval = len(chains_to_prune_this_interval)
+
+                                # Check if this prune_target_id is already marked (can happen if compared multiple times)
+                                target_already_marked = prune_target_id in chains_to_prune_this_interval
+
+                                # Calculate how many would be left if we prune this target
+                                # (only decrement count if it's not already marked for pruning)
+                                potential_remaining_active = num_active_before_this_prune - num_already_marked_this_interval
+                                if not target_already_marked:
+                                     potential_remaining_active -= 1
+
+                                # Only add to prune list if doing so leaves AT LEAST ONE active chain
+                                if potential_remaining_active >= 1:
+                                     if not target_already_marked: # Add only if not already present
+                                        chains_to_prune_this_interval.add(prune_target_id)
+                                        pruning_info_this_interval[prune_target_id] = analysis_step
+                                        logger.warning(f"--> OK to prune Chain {prune_target_id} (based on T{thought_idx} from {chain_id}). Will leave {potential_remaining_active} active.")
+                                     # else: chain was already marked for pruning this interval, no action needed
+                                else:
+                                     # This prune would eliminate the last chain(s), so we skip it.
+                                     logger.warning(f"--> Skipped pruning Chain {prune_target_id} (based on T{thought_idx} from {chain_id}). Pruning would leave {potential_remaining_active} active chain(s). Keeping >= 1 active.")
                             else: # Should not happen if logic is correct, but as fallback:
                                 if chain_id not in chains_to_prune_this_interval:
                                     embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
