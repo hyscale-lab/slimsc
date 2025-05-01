@@ -32,12 +32,12 @@ def setup_output_directories(base_output_dir: str, model_name: str, dataset_name
     kvcache_usages_dir = os.path.join(model_dataset_dir, "kvcache_usages")
     aggregated_metrics_path = os.path.join(model_dataset_dir, "aggregated_metrics.json")
 
+    os.makedirs(model_dataset_dir, exist_ok=True)
     os.makedirs(chains_output_dir, exist_ok=True)
     os.makedirs(summary_output_dir, exist_ok=True)
     os.makedirs(kvcache_usages_dir, exist_ok=True)
 
-    home_dir = os.path.expanduser('~')
-    source_kv_file = os.path.join(home_dir, 'scratch', 'kvcache_usage.csv')
+    source_kv_file = os.path.join(model_dataset_dir, "kvcache_usages.csv")
 
     return {
         "base": model_dataset_dir,

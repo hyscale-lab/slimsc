@@ -7,6 +7,7 @@ import textwrap
 import time
 import yaml # Using YAML for configuration
 import shlex # For quoting paths safely
+from typing import Optional
 
 # --- Configuration ---
 # These paths are relative to where the PBS job starts ($PBS_O_WORKDIR),
@@ -97,7 +98,15 @@ def create_server_pbs_script(
     reasoning_parser: str | None,
     vllm_use_v1: bool,
     dependency_job_id: str | None,
-    logs_subdir: str, # New argument
+    logs_subdir: str,
+    eval_type: str,
+    base_output_dir: str,
+    model_name: str,
+    dataset_name: str,
+    n_start: int,
+    # --- Similarity specific (can be None if eval_type is sc_control) ---
+    pruning_strategy: Optional[str],
+    threshold: Optional[float],
 ) -> tuple[str, str, str, str]: # Return: pbs_script_content, relative_ip_file, relative_pbs_log_file, relative_vllm_serve_log_file
     """
     Creates the PBS script content for the vLLM server job.
@@ -109,6 +118,17 @@ def create_server_pbs_script(
     relative_pbs_log_file = os.path.join(logs_subdir, f"{server_job_name}.log") # Main log for PBS script steps
     relative_vllm_serve_log_file = os.path.join(logs_subdir, f"{job_name_prefix}_vllm_serve.log") # Specific log for vllm serve output
     relative_server_ip_file = os.path.join(logs_subdir, f"{job_name_prefix}_server_ip.txt") # File for server IP
+
+    run_name: Optional[str] = None
+    if eval_type == "similarity":
+        run_name = f"{pruning_strategy}_n{n_start}_thresh{threshold:.2f}"
+    elif eval_type == "sc_control":
+        # Assuming sc_control run_name is based on n_start
+        run_name = f"sc_{n_start}_control"
+
+    model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
+    target_kvc_file_path = os.path.join(model_dataset_dir, "kvcache_usages.csv")
+    quoted_target_kvc_file_path = shlex.quote(target_kvc_file_path)
 
     # Quote paths that might contain spaces or special characters for shell safety
     quoted_model_path = shlex.quote(model_path)
@@ -124,8 +144,9 @@ def create_server_pbs_script(
     if dependency_job_id:
         dependency_directive = f"#PBS -W depend=afterok:{dependency_job_id}"
 
-    # --- Construct vLLM Command ---
+    # Construct vLLM Command
     vllm_command_parts = [
+        f'KVC_USAGE_FILE={quoted_target_kvc_file_path}',
         "vllm", "serve", f'{quoted_model_path}',
         f"--tensor-parallel-size {tensor_parallel_size}",
         "--port 8000", # Explicitly set port
@@ -154,6 +175,8 @@ def create_server_pbs_script(
     ]
     if not vllm_use_v1:
         exports.append("export VLLM_USE_V1=0")
+    
+    create_run_dir_command = f'mkdir -p {shlex.quote(os.path.dirname(target_kvc_file_path))}'
 
     # --- PBS Script Content ---
     # NOTE: All paths referenced inside the script now need to be relative to $PBS_O_WORKDIR
@@ -210,6 +233,9 @@ echo "PBS work directory: $PBS_O_WORKDIR"
 echo "Main PBS Log File: $PBS_O_WORKDIR/$MAIN_PBS_LOG_RELPATH"
 echo "vLLM Serve Output Log: $PBS_O_WORKDIR/$VLLM_SERVE_LOG_RELPATH" # Indicate the specific log
 echo "Server IP File: $PBS_O_WORKDIR/$SERVER_IP_FILE_RELPATH"
+echo "Eval Type: {eval_type}" # Log eval type
+echo "Run Name: {run_name if run_name else 'Error: Could not determine'}" # Log derived run name
+echo "Target KVC Usage File: {target_kvc_file_path}" # Log the target path
 echo "----------------------------"
 
 # Go to the submission directory
@@ -224,6 +250,11 @@ if [ -f "$VLLM_SERVE_LOG_RELPATH" ]; then
     echo "Removing existing file: $VLLM_SERVE_LOG_RELPATH"
     rm -f "$VLLM_SERVE_LOG_RELPATH"
 fi
+
+# Ensure Run Directory Exists
+echo "Ensuring target run directory for KVC log exists..."
+{create_run_dir_command} || {{ echo "Error creating target run directory for KVC log: {os.path.dirname(target_kvc_file_path)}"; exit 1; }}
+echo "Directory ensured: {os.path.dirname(target_kvc_file_path)}"
 
 # Activate Conda
 echo "Sourcing Conda..."
@@ -830,6 +861,26 @@ def main_yaml():
         client_initial_delay_minutes = get_config_value(client_cfg, ['initial_delay_minutes'], 0) # Default 0
         client_initial_wait_seconds = int(client_initial_delay_minutes * 60)
 
+        # --- Extract eval params needed for KVC path ---
+        eval_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
+        eval_model_name = get_config_value(eval_cfg, ['model_name'])
+        eval_dataset_name = get_config_value(eval_cfg, ['dataset_name'])
+        eval_n_start = get_config_value(eval_cfg, ['n_start']) # Needed by both
+
+        # --- Conditionally extract similarity params ---
+        eval_pruning_strategy = None
+        eval_threshold = None
+        if eval_type == 'similarity':
+            eval_pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
+            eval_threshold = get_config_value(eval_cfg, ['threshold'])
+            if None in [eval_pruning_strategy, eval_n_start, eval_threshold]:
+                 print(f"Error: Missing similarity params (pruning_strategy, n_start, threshold) in eval config for job '{job_name_prefix}'. Skipping.")
+                 continue
+        elif eval_type == 'sc_control':
+             if eval_n_start is None:
+                 print(f"Error: Missing required 'n_start' in eval config for sc_control job '{job_name_prefix}'. Skipping.")
+                 continue
+
         print(f"--- Job Details ({job_name_prefix}) ---")
         print(f"  Model: {model_path}")
         print(f"  Server: TP={tp_size}, Hours={server_hours}, Reasoning={enable_reasoning}")
@@ -842,7 +893,14 @@ def main_yaml():
             job_name_prefix, model_path, tp_size, server_hours, gpu_mem_util,
             enable_reasoning, reasoning_parser, vllm_use_v1,
             dependency_job_id=previous_client_jobid,
-            logs_subdir=LOGS_DIR_NAME # Pass the subdir name
+            logs_subdir=LOGS_DIR_NAME,
+            eval_type=eval_type,
+            base_output_dir=eval_output_dir,
+            model_name=eval_model_name,
+            dataset_name=eval_dataset_name,
+            n_start=eval_n_start,
+            pruning_strategy=eval_pruning_strategy,
+            threshold=eval_threshold
         )
         # Write script into the logs directory
         server_pbs_path = write_pbs_script(job_name_prefix, server_pbs_content, "server", workdir, LOGS_DIR_NAME)
