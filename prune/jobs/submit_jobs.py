@@ -25,6 +25,8 @@ CONDA_ENV_NAME = "vllm"
 # PBS Project configuration (adjust if necessary)
 PBS_PROJECT_PREFIX = "personal"
 
+LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="/home/users/ntu/{user}/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
+
 # --- Helper Functions ---
 
 def check_existing_files(job_name_prefix: str, eval_type: str, workdir: str, logs_subdir: str):
@@ -139,6 +141,7 @@ def create_server_pbs_script(
     user = os.environ.get("USER", "default_user")
     conda_init_script = CONDA_INIT_PATH.format(user=user)
     pbs_project = f"{PBS_PROJECT_PREFIX}-{user}"
+    formatted_ld_export_command = LD_LIBRARY_EXPORT_COMMAND_TEMPLATE.format(user=user)
 
     dependency_directive = ""
     if dependency_job_id:
@@ -146,7 +149,6 @@ def create_server_pbs_script(
 
     # Construct vLLM Command
     vllm_command_parts = [
-        f'KVC_USAGE_FILE={quoted_target_kvc_file_path}',
         "vllm", "serve", f'{quoted_model_path}',
         f"--tensor-parallel-size {tensor_parallel_size}",
         "--port 8000", # Explicitly set port
@@ -172,6 +174,8 @@ def create_server_pbs_script(
 
     exports = [
         f"export CUDA_VISIBLE_DEVICES=$(seq -s , 0 {tensor_parallel_size - 1})",
+        f"export KVC_USAGE_FILE={quoted_target_kvc_file_path}",
+        formatted_ld_export_command,
     ]
     if not vllm_use_v1:
         exports.append("export VLLM_USE_V1=0")
@@ -887,12 +891,12 @@ def main_yaml():
         print(f"  Client: Type={eval_type}, Hours={client_hours}, GPUs={client_gpus if eval_type != 'sc_control' else 'N/A'}, Mem={client_mem}, Initial Delay={client_initial_delay_minutes}min")
 
         # --- Create and Submit Server ---
-        print(f"Dependency for this server: {previous_client_jobid if previous_client_jobid else 'None'}")
+        # print(f"Dependency for this server: {previous_client_jobid if previous_client_jobid else 'None'}")
         # Pass logs_subdir name; returns relative paths including logs_subdir
         server_pbs_content, rel_server_ip_file, rel_pbs_server_log, rel_vllm_serve_log = create_server_pbs_script(
             job_name_prefix, model_path, tp_size, server_hours, gpu_mem_util,
             enable_reasoning, reasoning_parser, vllm_use_v1,
-            dependency_job_id=previous_client_jobid,
+            dependency_job_id=None,
             logs_subdir=LOGS_DIR_NAME,
             eval_type=eval_type,
             base_output_dir=eval_output_dir,
