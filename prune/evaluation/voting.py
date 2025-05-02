@@ -254,7 +254,7 @@ def _tie_break_by_pruned_count(
         if best_chain_similarity:
             winner_answer = best_chain_similarity.get("extracted_answer")
             winner_index = best_chain_similarity.get('chain_index', 'N/A')
-            winner_sim = best_chain_similarity.get('final_internal_similarity', 'N/A')
+            winner_sim = best_chain_similarity.get('final_internal_similarity', float('nan'))
             winner_count_orig = best_chain_similarity.get('pruned_count', 'N/A') # Log original count for context
             logger.info(f"Tie broken via lowest internal similarity fallback: Chose chain {winner_index} "
                         f"with internal_similarity={winner_sim:.4f} (Original pruned_count={winner_count_orig}) "
