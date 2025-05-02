@@ -25,7 +25,7 @@ class DatasetHandler:
         Args:
             dataset_type (str): Type of dataset ("gpqa_diamond" or "aime")
         """
-        if dataset_name not in ["gpqa_diamond", "aime"]:
+        if dataset_name not in ["gpqa_diamond", "aime", "math500"]:
             raise ValueError(f"Unknown dataset type: {dataset_name}")
         self.dataset_name = dataset_name
 

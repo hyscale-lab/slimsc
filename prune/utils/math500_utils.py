@@ -8,11 +8,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def load_data_math500(dataset_name: str = "math500", split: str = "train") -> List[Dict]:
+def load_data_math500(dataset_name: str = "math500", split: str = "test") -> List[Dict]:
     """Load and prepare the MATH-500 dataset."""
     try:
         # Load the dataset
-        df = load_dataset("HuggingFaceH4/MATH-500", split=split)
+        df = load_dataset("HuggingFaceH4/MATH-500", split="test")
         
         # Optionally rename columns for consistency with other datasets
         if "problem" in df.column_names:
@@ -63,7 +63,56 @@ def extract_answer_math500(content: Optional[str]) -> Optional[str]:
         logger.error("[red]MATH-500 extract_answer: Content is None.[/red]")
         return None
 
-    # Regex to find \boxed{ANSWER} pattern
+    # Approach: Use a brace-matching algorithm that counts open and close braces 
+    # to properly extract nested LaTeX expressions within \boxed{}
+    if content:
+        matches = []
+        i = 0
+        while i < len(content):
+            # Look for \boxed{
+            boxed_start = content.find('\\boxed{', i)
+            if boxed_start == -1:
+                # Try alternative form without backslash
+                boxed_start = content.find('boxed{', i)
+                if boxed_start == -1:
+                    break
+
+            # Check if it has backslash or not
+            has_backslash = content[boxed_start:boxed_start+1] == '\\'
+            
+            # Start after the opening brace
+            open_brace_pos = boxed_start + (7 if has_backslash else 6)
+            brace_counter = 1
+            close_brace_pos = None
+            
+            # Find the matching closing brace by counting open/close braces
+            for j in range(open_brace_pos, len(content)):
+                if content[j] == '{':
+                    brace_counter += 1
+                elif content[j] == '}':
+                    brace_counter -= 1
+                    if brace_counter == 0:
+                        close_brace_pos = j
+                        break
+            
+            # If we found a matching close brace, extract the content
+            if close_brace_pos is not None:
+                extracted = content[open_brace_pos:close_brace_pos]
+                matches.append(extracted)
+                i = close_brace_pos + 1
+            else:
+                # No matching close brace found, move past this occurrence
+                i = boxed_start + 1
+    
+        # If matches were found, return the last one (most likely to be the final answer)
+        if matches:
+            return matches[-1].strip()
+    
+    # If the brace-matching approach failed, fall back to regex patterns
+    # These will only work for simple cases without nested braces
+    logger.warning(f"[yellow]Brace-matching algorithm didn't find answers, trying regex fallbacks.[/yellow]")
+    
+    # Regex to find \boxed{ANSWER} pattern (simple version, no nested braces)
     BOXED_PATTERN = r'\\boxed\{([^{}]+)\}'
 
     # Search the entire content, but prioritize the last match if multiple exist
@@ -155,6 +204,32 @@ if __name__ == "__main__":
         "Answer with spaces: \\boxed{ 55 }"  # Should handle spaces
     ]
     
+    # Add new test cases for nested braces
+    nested_brace_tests = [
+        "\\boxed{\\dfrac{3}{2}}",  # Test case from question 49
+        "\\boxed{\\frac{3}{2}}",   # Alternative fraction format
+        "\\boxed{\\sqrt{64} + \\frac{1}{3}}",  # Multiple LaTeX commands
+        "\\boxed{\\left(\\frac{3}{2}\\right)}",  # More complex nesting
+        "\\boxed{\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}}",  # Matrix
+        "Therefore, the solution is \\boxed{\\dfrac{3}{2}}.",  # With surrounding text
+    ]
+    
+    # Add the specific test cases mentioned
+    specific_test_cases = [
+        "\\boxed{\\text{Evelyn}}",  # Text command
+        "\\boxed{\\left( 3, \\frac{\\pi}{2} \\right)}",  # Coordinates with fraction
+        "\\boxed{-2 + 7i}",  # Complex number
+        "\\boxed{3, 5, 7}",  # List of values
+        "\\boxed{11\\sqrt{2}}",  # Expression with square root
+        # More complex combinations
+        "\\boxed{\\text{Evelyn and } \\frac{3}{4}}",  # Text with fraction
+        "\\boxed{\\{3, 5, 7\\}}",  # Set with braces
+        "\\boxed{f(x) = \\begin{cases} x^2 & \\text{if } x > 0 \\\\ 0 & \\text{otherwise} \\end{cases}}",  # Function definition with cases
+    ]
+    
+    test_responses.extend(nested_brace_tests)
+    test_responses.extend(specific_test_cases)
+    
     for i, response in enumerate(test_responses):
         print(f"\nTest {i+1}:")
         print(f"Response: {response}")
@@ -162,5 +237,20 @@ if __name__ == "__main__":
         print(f"Extracted: {extracted}")
         
         # Test 4: Score calculation
-        score = calculate_score_math500(extracted, "55")
-        print(f"Score: {score}")
+        if i < 9:  # Only test score calculation for the original examples with "55"
+            score = calculate_score_math500(extracted, "55")
+            print(f"Score: {score}")
+        elif response is not None:
+            # For other test cases, check if we successfully extract anything
+            print(f"Extraction successful: {extracted is not None}")
+            if extracted is not None:
+                # Check if key parts of the input are preserved in the output
+                input_markers = [
+                    "\\dfrac", "\\frac", "\\sqrt", "\\text", "\\left", "\\right",
+                    "\\begin", "\\end", "3, 5, 7", "-2 + 7i", "11\\sqrt"
+                ]
+                found_markers = [marker for marker in input_markers if marker in response and marker in extracted]
+                if found_markers:
+                    print(f"Preserved elements: {found_markers}")
+                else:
+                    print("No specific markers preserved, but extraction completed")
