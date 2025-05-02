@@ -179,44 +179,94 @@ def _tie_break_by_tokens(
         return tied_answers[0]
 
 
-def _tie_break_by_internal_similarity( # Renamed for clarity
+def _tie_break_by_pruned_count(
     valid_chain_results: List[Dict],
     tied_answers: List[str],
 ) -> Optional[str]:
     """
-    Tie-breaking logic based on lowest internal similarity (mean_sim / num_thoughts).
-    Priority: final_internal_similarity (lowest) -> chain_index (lowest).
-    Requires chain_results dicts to contain 'final_internal_similarity'.
+    Tie-breaking logic based on the highest accumulated pruned_count.
+    Fallback Priority:
+    1. pruned_count (highest)
+    2. final_internal_similarity (lowest)
+    3. chain_index (lowest)
+    Requires chain_results dicts to contain 'pruned_count' and 'final_internal_similarity'.
     """
-    logger.debug("Attempting tie-breaker (lowest internal similarity).")
+    logger.debug("Attempting tie-breaker (highest pruned count).")
     chains_in_tie = [
         chain for chain in valid_chain_results
         if chain.get("extracted_answer") in tied_answers
     ]
 
-    if not chains_in_tie: return None
+    if not chains_in_tie:
+        logger.error("[red]Cannot perform tie-break: No chains found matching tied answers.[/red]")
+        return None # Should not happen
 
-    # 1. Try 'final_internal_similarity' (lower is better)
-    logger.debug("Trying 'final_internal_similarity' (lowest) for tie-break.")
-    best_chain_sim = _get_best_chain_by_key(chains_in_tie, 'final_internal_similarity', minimize=True)
+    # --- Primary Tie-breaker: Highest Pruned Count ---
+    # Use _get_best_chain_by_key to find the chain with the maximum pruned_count
+    # maximize=True means higher pruned_count is better
+    # lower_index_better=True (default) ensures lowest index wins ONLY if counts are equal
+    best_chain_pruned_count = _get_best_chain_by_key(
+        chains_in_tie,
+        key='pruned_count',
+        minimize=False # We want the MAXIMUM count
+    )
 
-    if best_chain_sim:
-        winner_answer = best_chain_sim.get("extracted_answer")
-        logger.info(f"Tie broken via lowest internal similarity: Chose chain {best_chain_sim.get('chain_index', 'N/A')} "
-                    f"with internal_similarity {best_chain_sim.get('final_internal_similarity'):.4f} (Answer: {winner_answer})")
-        return winner_answer
+    # Check if the primary tie-breaker produced a unique winner *before* falling back to index
+    # This requires checking if multiple chains shared the best pruned_count value.
+    # We can do this by filtering chains_in_tie for the best count and seeing if > 1 remain.
+    potential_winners = []
+    if best_chain_pruned_count:
+        best_count = best_chain_pruned_count.get('pruned_count')
+        if best_count is not None:
+            potential_winners = [
+                c for c in chains_in_tie
+                if c.get('pruned_count') == best_count
+            ]
 
-    # 2. Fallback: Lowest chain index
-    logger.warning("[yellow]Internal Similarity tie-breaking failed (score unavailable or tie remained). Using lowest chain index.[/yellow]")
-    best_chain_index = _get_best_chain_by_key(chains_in_tie, 'chain_index', minimize=True)
-
-    if best_chain_index:
-        winner_answer = best_chain_index.get("extracted_answer")
-        logger.info(f"Tie broken via lowest index: Chose chain {best_chain_index.get('chain_index', 'N/A')} (Answer: {winner_answer})")
-        return winner_answer
+    # If _get_best_chain_by_key resolved the tie (implicitly using index if counts were equal)
+    # or if there was only one chain with the best count, we have our winner.
+    if best_chain_pruned_count and len(potential_winners) <= 1:
+         winner_answer = best_chain_pruned_count.get("extracted_answer")
+         winner_index = best_chain_pruned_count.get('chain_index', 'N/A')
+         winner_count = best_chain_pruned_count.get('pruned_count', 'N/A')
+         logger.info(f"Tie broken via highest pruned count (or index if counts tied): Chose chain {winner_index} "
+                     f"with pruned_count={winner_count} (Answer: {winner_answer})")
+         return winner_answer
     else:
-        logger.error("[red]Cannot break similarity tie even by index. Falling back to first tied answer.[/red]")
-        return tied_answers[0]
+        # --- Fallback Tie-breaker: Lowest Internal Similarity ---
+        # This block is reached if:
+        # a) 'pruned_count' key was missing from all tied chains.
+        # b) Multiple chains tied for the highest 'pruned_count' (and _get_best_chain_by_key's index tie-break is bypassed by this logic structure, which is intended here).
+        logger.warning("[yellow]Pruned count tie-breaking failed or resulted in a tie. "
+                       "Falling back to lowest final_internal_similarity.[/yellow]")
+
+        # We now only consider the 'potential_winners' if they exist (i.e., if the tie was in pruned_count)
+        # Otherwise, we use the original 'chains_in_tie' (if pruned_count key was missing)
+        chains_for_similarity_tiebreak = potential_winners if potential_winners else chains_in_tie
+
+        best_chain_similarity = _get_best_chain_by_key(
+            chains_for_similarity_tiebreak,
+            key='final_internal_similarity',
+            minimize=True # Lower similarity is better
+            # lower_index_better=True (default) is the final fallback if similarities are also tied
+        )
+
+        if best_chain_similarity:
+            winner_answer = best_chain_similarity.get("extracted_answer")
+            winner_index = best_chain_similarity.get('chain_index', 'N/A')
+            winner_sim = best_chain_similarity.get('final_internal_similarity', 'N/A')
+            winner_count_orig = best_chain_similarity.get('pruned_count', 'N/A') # Log original count for context
+            logger.info(f"Tie broken via lowest internal similarity fallback: Chose chain {winner_index} "
+                        f"with internal_similarity={winner_sim:.4f} (Original pruned_count={winner_count_orig}) "
+                        f"(Answer: {winner_answer})")
+            return winner_answer
+        else:
+            # This should be extremely rare: means chains_in_tie was empty OR
+            # none of the chains had 'pruned_count' AND none had 'final_internal_similarity'.
+            logger.error("[red]Cannot break tie even by internal similarity fallback. "
+                         "Arbitrarily choosing the first tied answer.[/red]")
+            # Use the original tied_answers list as the ultimate fallback
+            return tied_answers[0] if tied_answers else None
 
 
 # --- Public Voting Functions ---
@@ -260,28 +310,38 @@ def majority_vote_for_sim_prune(
     correct_answer_letter: str,
 ) -> Tuple[Optional[str], int, List[str]]:
     """
-    Performs majority voting using internal similarity tie-breaking (lowest is best).
+    Performs majority voting using pruned count tie-breaking (highest count is best).
+    Falls back to lowest internal similarity, then lowest chain index.
     Requires 'extracted_answer'. Optional keys for tie-breaking:
-    'final_internal_similarity', 'chain_index'.
+    'pruned_count', 'final_internal_similarity', 'chain_index'.
 
     Args:
         chain_results: List of dicts for completed chains. Must contain
-                       'final_internal_similarity' if tie-breaking is needed.
+                       'pruned_count' and 'final_internal_similarity'
+                       if tie-breaking is needed.
         correct_answer_letter: The correct answer.
 
     Returns:
         Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
     """
+    # Assumes chain_results dictionaries now contain 'pruned_count' and 'final_internal_similarity'
     status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
 
     if status == "empty":
         return None, 0, []
     if status == "winner":
+        # Log winner details
+        winner_chain = next((c for c in valid_chains if c.get("extracted_answer") == voted_answer), None)
+        winner_count = winner_chain.get('pruned_count', 'N/A') if winner_chain else 'N/A'
+        winner_sim = winner_chain.get('final_internal_similarity', 'N/A') if winner_chain else 'N/A'
+        sim_str = f"{winner_sim:.4f}" if isinstance(winner_sim, (int, float)) else 'N/A'
+        logger.info(f"Clear majority winner {voted_answer} had pruned_count: {winner_count}, internal_sim: {sim_str}")
         score = calculate_score_gpqa(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
-
+    
     # Status is "tie"
-    final_voted_answer = _tie_break_by_internal_similarity(valid_chains, tied_answers)
+    final_voted_answer = _tie_break_by_pruned_count(valid_chains, tied_answers)
 
+    # Calculate score based on the tie-broken answer
     score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers
