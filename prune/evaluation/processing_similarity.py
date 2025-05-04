@@ -8,7 +8,7 @@ from typing import Dict, Optional, List, Tuple, Set, AsyncGenerator, Any
 
 # Keep necessary imports
 from ..clients import stream_vllm_request, close_aiohttp_session
-from ..utils import create_prompt_gpqa, extract_answer_gpqa
+from ..utils import create_prompt_gpqa, extract_answer_gpqa, count_tokens
 from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
@@ -79,8 +79,19 @@ async def stream_processing_worker(
             # Update token counts from usage if present in chunk
             if "usage" in chunk and chunk["usage"] is not None:
                  usage = chunk["usage"]
-                 if chain_state["prompt_tokens"] is None: # Capture initial prompt tokens
-                      chain_state["prompt_tokens"] = usage.get("prompt_tokens", 0)
+                 # Check if prompt_tokens from usage is valid before overwriting
+                 server_prompt_tokens = usage.get("prompt_tokens")
+                 if server_prompt_tokens is not None and server_prompt_tokens > 0: # Ensure it's a plausible value
+                      # Overwrite the pre-calculated value if we get a valid one from the server
+                      if chain_state["prompt_tokens"] != server_prompt_tokens:
+                           logger.debug(f"Chain {chain_id}: Updating prompt_tokens from {chain_state['prompt_tokens']} (pre-calc/old) to {server_prompt_tokens} (server usage).")
+                           chain_state["prompt_tokens"] = server_prompt_tokens
+                 else:
+                     # Keep the pre-calculated value if server sends None or 0
+                     if chain_state["prompt_tokens"] is None: # Should not happen with pre-calculation, but safety check
+                          chain_state["prompt_tokens"] = 0 # Set to 0 if pre-calculation failed AND server didn't provide
+                          logger.warning(f"Chain {chain_id}: Server did not provide valid prompt_tokens in usage, and pre-calculation missing. Setting to 0.")
+
                  chain_state["completion_tokens"] = usage.get("completion_tokens", chain_state["completion_tokens"])
 
             # Check for natural stop
@@ -206,6 +217,19 @@ async def process_question_similarity_prune(
         except IOError as e_save:
            logger.exception(f"[red]Error writing prompt error summary file[/red]")
         return None # Return None to indicate failure
+    
+    pre_calculated_prompt_tokens: Optional[int] = None
+    try:
+        pre_calculated_prompt_tokens = count_tokens(prompt, tokenizer_path)
+        if pre_calculated_prompt_tokens is None:
+             logger.warning(f"[yellow]Pre-calculation of prompt tokens failed for Q{iteration}. Will rely on server usage report.[/yellow]")
+             pre_calculated_prompt_tokens = 0 # Default to 0 if calculation fails
+        else:
+             logger.info(f"Q{iteration}: Pre-calculated prompt tokens: {pre_calculated_prompt_tokens}")
+    except Exception as e_tok:
+        logger.exception(f"[red]Error during prompt token pre-calculation for Q{iteration}. Setting initial to 0.[/red]")
+        pre_calculated_prompt_tokens = 0 # Default to 0 on exception
+
     try:
         embedding_model = get_embedding_model()
         index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension())
@@ -241,7 +265,8 @@ async def process_question_similarity_prune(
             "reasoning_complete": False, # Track if non-reasoning 'content' has started
             "is_active": True, "finished": False,
             "finish_reason": None, "error": None, 
-            "prompt_tokens": None, "completion_tokens": 0,
+            "prompt_tokens": pre_calculated_prompt_tokens,
+            "completion_tokens": 0,
             "pruned_count": 0,
             "pruned_by": None,
             "pruned_others": []
@@ -668,9 +693,14 @@ async def process_question_similarity_prune(
 
     # Prepare results for voting - use only chains that completed their stream naturally and have an extracted answer
     successful_chain_results_for_voting = []
-    # Aggregate metrics across ALL chains that started, for reporting
-    # Prompt tokens assumed uniform across chains
-    total_prompt_tokens_agg = active_chains.get(f"q{iteration}_c1", {}).get("prompt_tokens", 0) # Get from the first chain
+    # Aggregate metrics across ALL chains
+    # Now, get the prompt tokens from the first chain's final state.
+    # It will either be the pre-calculated value or the server-reported one if received.
+    # Default to 0 if chain 1 state is somehow missing
+    first_chain_state = active_chains.get(f"q{iteration}_c1")
+    total_prompt_tokens_agg = first_chain_state.get("prompt_tokens", 0) if first_chain_state else 0
+    if total_prompt_tokens_agg == 0:
+         logger.warning(f"Q{iteration}: Aggregated prompt tokens is 0. Check if pre-calculation failed and server usage was not received for chain 1.")
 
     # total_completion_tokens_across_all_started_chains: Sum of completion tokens
     # from usage reports for ALL chains that were started and whose worker task finished,
@@ -849,7 +879,7 @@ async def process_question_similarity_prune(
         "correct_answer": correct_answer_letter,
         "voted_answer": voted_answer,
         "final_score": final_score,
-        "prompt_tokens": prompt_tokens_for_csv, # Sum across all started chains (assuming uniform)
+        "prompt_tokens": prompt_tokens_for_csv,
         "total_completion_tokens": total_completion_tokens_across_all_started_chains, # Sum across ALL started chains whose streams finished (includes pruned)
         "total_tokens": prompt_tokens_for_csv + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
         "individual_answers_str": json.dumps(all_extracted_answers), # Answers from chains used for voting
