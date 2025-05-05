@@ -236,6 +236,8 @@ async def run_similarity_pruning_evaluation_async(
         pbar.update(1)
         # Optional: Small delay between questions if server needs cooldown
         # await asyncio.sleep(0.5)
+        
+    clear_source_kv_cache(paths.get("source_usage_file"))
     pbar.close()
 
     # --- Final processing and summary ---
@@ -400,8 +402,8 @@ def main():
     parser.add_argument('--n_start', type=int, required=True, help='Initial number of chains (N_start).')
     parser.add_argument('--threshold', type=float, required=True,
                         help='Cosine similarity threshold for pruning (e.g., 0.85).')
-    parser.add_argument('--pruning_strategy', type=str, required=True, choices=['fewest_thoughts', 'diversity', 'most_thoughts'],
-                        help='Strategy to use for pruning decision: "fewest_thoughts", "most_thoughts", or "diversity".')
+    parser.add_argument('--pruning_strategy', type=str, required=True, choices=['fewest_thoughts', 'diversity', 'most_thoughts', 'random'],
+                        help='Strategy to use for pruning decision: "fewest_thoughts", "most_thoughts", "diversity", or "random".')
     parser.add_argument('--vllm_url', type=str, default="http://localhost:8000",
                         help='URL of the vLLM server OpenAI-compatible endpoint.')
     parser.add_argument('--model_name', type=str, required=True,
