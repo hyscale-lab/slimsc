@@ -69,7 +69,7 @@ async def run_sc_evaluation_async(
         logger.warning("[yellow]--tokenizer_path not provided. Reasoning/Non-reasoning token counts will not be calculated.[/yellow]")
     paths = setup_output_directories(base_output_dir, model_name, dataset_name, n_chains)
 
-    clear_source_kv_cache(paths["source_usage_file"])
+    clear_source_kv_cache(paths.get("source_usage_file"))
 
     results_list = []
     processed_iterations = set()
@@ -187,6 +187,8 @@ async def run_sc_evaluation_async(
             else:
                 logger.error(f"[red]Skipping results storage for question {i} due to processing error.[/red]")
             pbar.update(1)
+
+        clear_source_kv_cache(paths.get("source_usage_file"))
         pbar.close()
 
     # --- Final processing and summary ---
