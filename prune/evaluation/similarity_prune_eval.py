@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SEED = 4
+DEFAULT_SEED = 12
 
 def setup_output_directories_prune(
         base_output_dir: str,

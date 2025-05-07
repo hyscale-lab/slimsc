@@ -19,7 +19,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SEED = 4
+DEFAULT_SEED = 12
 
 
 def setup_output_directories(base_output_dir: str, model_name: str, dataset_name: str, sc_value: int) -> Dict[str, str]:
