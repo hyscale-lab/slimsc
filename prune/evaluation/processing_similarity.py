@@ -8,7 +8,7 @@ from typing import Dict, Optional, List, Tuple, Set, AsyncGenerator, Any
 
 # Keep necessary imports
 from ..clients import stream_vllm_request, close_aiohttp_session
-from ..utils import create_prompt_gpqa, extract_answer_gpqa
+from ..utils import create_prompt_gpqa, extract_answer_gpqa, count_tokens
 from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
@@ -79,8 +79,19 @@ async def stream_processing_worker(
             # Update token counts from usage if present in chunk
             if "usage" in chunk and chunk["usage"] is not None:
                  usage = chunk["usage"]
-                 if chain_state["prompt_tokens"] is None: # Capture initial prompt tokens
-                      chain_state["prompt_tokens"] = usage.get("prompt_tokens", 0)
+                 # Check if prompt_tokens from usage is valid before overwriting
+                 server_prompt_tokens = usage.get("prompt_tokens")
+                 if server_prompt_tokens is not None and server_prompt_tokens > 0: # Ensure it's a plausible value
+                      # Overwrite the pre-calculated value if we get a valid one from the server
+                      if chain_state["prompt_tokens"] != server_prompt_tokens:
+                           logger.debug(f"Chain {chain_id}: Updating prompt_tokens from {chain_state['prompt_tokens']} (pre-calc/old) to {server_prompt_tokens} (server usage).")
+                           chain_state["prompt_tokens"] = server_prompt_tokens
+                 else:
+                     # Keep the pre-calculated value if server sends None or 0
+                     if chain_state["prompt_tokens"] is None: # Should not happen with pre-calculation, but safety check
+                          chain_state["prompt_tokens"] = 0 # Set to 0 if pre-calculation failed AND server didn't provide
+                          logger.warning(f"Chain {chain_id}: Server did not provide valid prompt_tokens in usage, and pre-calculation missing. Setting to 0.")
+
                  chain_state["completion_tokens"] = usage.get("completion_tokens", chain_state["completion_tokens"])
 
             # Check for natural stop
@@ -206,6 +217,19 @@ async def process_question_similarity_prune(
         except IOError as e_save:
            logger.exception(f"[red]Error writing prompt error summary file[/red]")
         return None # Return None to indicate failure
+    
+    pre_calculated_prompt_tokens: Optional[int] = None
+    try:
+        pre_calculated_prompt_tokens = count_tokens(prompt, tokenizer_path)
+        if pre_calculated_prompt_tokens is None:
+             logger.warning(f"[yellow]Pre-calculation of prompt tokens failed for Q{iteration}. Will rely on server usage report.[/yellow]")
+             pre_calculated_prompt_tokens = 0 # Default to 0 if calculation fails
+        else:
+             logger.info(f"Q{iteration}: Pre-calculated prompt tokens: {pre_calculated_prompt_tokens}")
+    except Exception as e_tok:
+        logger.exception(f"[red]Error during prompt token pre-calculation for Q{iteration}. Setting initial to 0.[/red]")
+        pre_calculated_prompt_tokens = 0 # Default to 0 on exception
+
     try:
         embedding_model = get_embedding_model()
         index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension())
@@ -241,7 +265,11 @@ async def process_question_similarity_prune(
             "reasoning_complete": False, # Track if non-reasoning 'content' has started
             "is_active": True, "finished": False,
             "finish_reason": None, "error": None, 
-            "prompt_tokens": None, "completion_tokens": 0
+            "prompt_tokens": pre_calculated_prompt_tokens,
+            "completion_tokens": 0,
+            "pruned_count": 0,
+            "pruned_by": None,
+            "pruned_others": []
         }
         # Create the long-running stream request
         stream_generator = stream_vllm_request(
@@ -339,8 +367,9 @@ async def process_question_similarity_prune(
         # --- Check Similarity and Prune ---
         chains_to_prune_this_interval: Set[str] = set()
         embeddings_to_add_to_faiss: List[Tuple[np.ndarray, str, int, str]] = []
-        # Store pruning step info temporarily
-        pruning_info_this_interval: Dict[str, int] = {} # {chain_id: analysis_step}
+        # Store pruning step info temporarily AND who pruned whom
+        # Format: {loser_id: (analysis_step, winner_id)}
+        pruning_info_this_interval: Dict[str, Tuple[int, str]] = {}
 
         # The FAISS index should only contain embeddings from chains that are currently active
         # We don't need to rebuild the index, but the search must filter results
@@ -444,6 +473,47 @@ async def process_question_similarity_prune(
                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
 
                             if prune_target_id:
+                                # Pruned Count Transfer Logic
+                                loser_id = prune_target_id
+                                # Determine the winner (the chain NOT being pruned in this comparison)
+                                winner_id = None
+                                if loser_id == chain_id:
+                                    winner_id = neighbor_chain_id
+                                elif loser_id == neighbor_chain_id:
+                                    winner_id = chain_id
+                                else:
+                                    # This case shouldn't happen if logic is correct
+                                    logger.error(f"Logic error: prune_target_id {loser_id} matched neither {chain_id} nor {neighbor_chain_id}")
+                                    winner_id = None # Cannot determine winner
+
+                                loser_state = active_chains.get(loser_id)
+                                winner_state = active_chains.get(winner_id) if winner_id else None
+
+                                # Ensure both winner and loser are valid and active before transferring count
+                                if loser_state and winner_state and loser_state['is_active'] and winner_state['is_active']:
+                                    loser_pruned_count = loser_state.get("pruned_count", 0)
+                                    count_to_transfer = 1 + loser_pruned_count # 1 for the current prune + loser's history
+
+                                    # Add count to the winner
+                                    winner_state["pruned_count"] = winner_state.get("pruned_count", 0) + count_to_transfer
+
+                                    # Optional: Track details
+                                    winner_state.setdefault("pruned_others", []).append({
+                                        "pruned_chain_id": loser_id,
+                                        "transferred_count": count_to_transfer,
+                                        "step": analysis_step
+                                    })
+                                    loser_state["pruned_by"] = winner_id
+
+                                    logger.info(f"Chain {winner_id} pruned chain {loser_id} (strategy: {pruning_strategy}). "
+                                                f"Transferring count: 1 (current) + {loser_pruned_count} (previous) = {count_to_transfer}. "
+                                                f"New count for {winner_id}: {winner_state['pruned_count']}")
+                                else:
+                                    logger.warning(f"Could not transfer pruned count from {loser_id} to {winner_id}. "
+                                                   f"Winner active: {winner_state.get('is_active', 'N/A') if winner_state else 'Not Found'}, "
+                                                   f"Loser active: {loser_state.get('is_active', 'N/A') if loser_state else 'Not Found'}")
+                                
+                                # Check if pruning this target is allowed (leaves >= 1 active)
                                 # Check how many chains are currently marked active
                                 num_active_before_this_prune = sum(1 for state in active_chains.values() if state['is_active'])
                                 # How many are already marked for pruning in this interval
@@ -460,14 +530,13 @@ async def process_question_similarity_prune(
 
                                 # Only add to prune list if doing so leaves AT LEAST ONE active chain
                                 if potential_remaining_active >= 1:
-                                     if not target_already_marked: # Add only if not already present
-                                        chains_to_prune_this_interval.add(prune_target_id)
-                                        pruning_info_this_interval[prune_target_id] = analysis_step
-                                        logger.warning(f"--> OK to prune Chain {prune_target_id} (based on T{thought_idx} from {chain_id}). Will leave {potential_remaining_active} active.")
-                                     # else: chain was already marked for pruning this interval, no action needed
+                                     if not target_already_marked:
+                                        chains_to_prune_this_interval.add(loser_id)
+                                        # Store winner_id here too for clarity later if needed
+                                        pruning_info_this_interval[loser_id] = (analysis_step, winner_id)
+                                        logger.warning(f"--> Marked Chain {loser_id} for pruning by {winner_id} (based on T{thought_idx} from {chain_id}). Will leave {potential_remaining_active} active.")
                                 else:
-                                     # This prune would eliminate the last chain(s), so we skip it.
-                                     logger.warning(f"--> Skipped pruning Chain {prune_target_id} (based on T{thought_idx} from {chain_id}). Pruning would leave {potential_remaining_active} active chain(s). Keeping >= 1 active.")
+                                     logger.warning(f"--> Skipped pruning Chain {loser_id} (by {winner_id}). Would leave {potential_remaining_active} active chain(s). Keeping >= 1 active.")
                             else: # Should not happen if logic is correct, but as fallback:
                                 if chain_id not in chains_to_prune_this_interval:
                                     embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
@@ -494,8 +563,10 @@ async def process_question_similarity_prune(
                     # We also set the finish_reason here for clarity in logs/summary
                     active_chains[prune_id]["finish_reason"] = active_chains[prune_id].get("finish_reason", "pruned_similarity")
 
-                    # Store the pruning step in the chain's state
-                    active_chains[prune_id]["pruned_at_step"] = pruning_info_this_interval.get(prune_id)
+                    # Store pruning step and who pruned it, if info available
+                    prune_info = pruning_info_this_interval.get(prune_id)
+                    if prune_info:
+                         active_chains[prune_id]["pruned_at_step"] = prune_info[0]
 
                     # Cancel the worker task associated with the pruned chain
                     task_to_cancel = consumer_tasks.get(prune_id)
@@ -622,9 +693,14 @@ async def process_question_similarity_prune(
 
     # Prepare results for voting - use only chains that completed their stream naturally and have an extracted answer
     successful_chain_results_for_voting = []
-    # Aggregate metrics across ALL chains that started, for reporting
-    # Prompt tokens assumed uniform across chains
-    total_prompt_tokens_agg = active_chains.get(f"q{iteration}_c1", {}).get("prompt_tokens", 0) # Get from the first chain
+    # Aggregate metrics across ALL chains
+    # Now, get the prompt tokens from the first chain's final state.
+    # It will either be the pre-calculated value or the server-reported one if received.
+    # Default to 0 if chain 1 state is somehow missing
+    first_chain_state = active_chains.get(f"q{iteration}_c1")
+    total_prompt_tokens_agg = first_chain_state.get("prompt_tokens", 0) if first_chain_state else 0
+    if total_prompt_tokens_agg == 0:
+         logger.warning(f"Q{iteration}: Aggregated prompt tokens is 0. Check if pre-calculation failed and server usage was not received for chain 1.")
 
     # total_completion_tokens_across_all_started_chains: Sum of completion tokens
     # from usage reports for ALL chains that were started and whose worker task finished,
@@ -659,7 +735,8 @@ async def process_question_similarity_prune(
             "completion_tokens": chain_state.get("completion_tokens", 0),
             "completed_thought_count": chain_state.get("completed_thought_count", 0),
             "final_mean_pairwise_similarity": final_mean_similarity, # Keep for logging/analysis if needed
-            "final_internal_similarity": final_internal_similarity
+            "final_internal_similarity": final_internal_similarity,
+            "pruned_count": chain_state.get("pruned_count", 0)
         })
 
     # Majority Vote - uses the extracted_answer field we just added.
@@ -693,9 +770,11 @@ async def process_question_similarity_prune(
                 f.write(f"Prompt Tokens: {chain_state.get('prompt_tokens', 'N/A')}\n")
                 f.write(f"Completion Tokens: {chain_state.get('completion_tokens', 'N/A')}\n")
                 f.write(f"Completed Thoughts: {chain_state.get('completed_thought_count', 0)}\n")
+                f.write(f"Accumulated Pruned Count: {chain_state.get('pruned_count', 0)}\n")
                 # Add pruned_at_step if the chain was pruned
                 if final_status == "pruned":
                      f.write(f"Pruned at Analysis Step: {chain_state.get('pruned_at_step', 'N/A')}\n")
+                     f.write(f"Pruned By Chain ID: {chain_state.get('pruned_by', 'N/A')}\n")
 
                 # Add final similarity scores if available
                 # Find the corresponding entry in successful_chain_results_for_voting
@@ -744,7 +823,8 @@ async def process_question_similarity_prune(
                 "completion_tokens": cr.get("completion_tokens"),
                 "completed_thought_count": cr.get("completed_thought_count"),
                 "final_mean_pairwise_similarity": cr.get("final_mean_pairwise_similarity"),
-                "final_internal_similarity": cr.get("final_internal_similarity")
+                "final_internal_similarity": cr.get("final_internal_similarity"),
+                "pruned_count": cr.get("pruned_count")
              } for cr in successful_chain_results_for_voting
          ],
          "pruned_chain_details": [ # Details for chains explicitly pruned by similarity
@@ -754,7 +834,9 @@ async def process_question_similarity_prune(
                  "completion_tokens": state.get('completion_tokens'), # Tokens generated before pruning
                  "completed_thought_count": state.get('completed_thought_count'),
                  "full_text_len": len(state.get('full_text', '')),
-                 "pruned_at_step": state.get("pruned_at_step", None)
+                 "pruned_at_step": state.get("pruned_at_step", None),
+                 "pruned_by_chain_id": state.get("pruned_by", None),
+                 "initial_pruned_count": state.get("pruned_count", 0)
               } for state in pruned_chains_data
          ],
          "error_chain_details": [ # Details for chains that encountered errors
@@ -797,7 +879,7 @@ async def process_question_similarity_prune(
         "correct_answer": correct_answer_letter,
         "voted_answer": voted_answer,
         "final_score": final_score,
-        "prompt_tokens": prompt_tokens_for_csv, # Sum across all started chains (assuming uniform)
+        "prompt_tokens": prompt_tokens_for_csv,
         "total_completion_tokens": total_completion_tokens_across_all_started_chains, # Sum across ALL started chains whose streams finished (includes pruned)
         "total_tokens": prompt_tokens_for_csv + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
         "individual_answers_str": json.dumps(all_extracted_answers), # Answers from chains used for voting
