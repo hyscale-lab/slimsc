@@ -1,0 +1,94 @@
+--- Chain 8 for Question 21 ---
+Status: PRUNED
+Is Active Flag: False
+Finish Reason: worker_terminated_unexpectedly
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 1193
+Completed Thoughts: 2
+Pruned at Analysis Step: 8
+Final Processed Boundaries: [0, 2351]
+
+--- Full Content ---
+Okay, so I've got this problem here about b-eautiful numbers. Let me try to wrap my head around it. 
+
+The problem says: For an integer b ≥ 2, a positive integer n is called b-eautiful if two conditions are met. First, when you write n in base b, it has exactly two digits. Second, the sum of these two digits equals the square root of n. They gave an example, 81 is 13-eautiful because in base 13, 81 is written as 63, and 6 + 3 = 9, which is the square root of 81. Cool, so I think I get the basic idea.
+
+Now, the task is to find the smallest integer b (where b is at least 2) such that there are more than ten b-eautiful numbers. So, I need to figure out for each b, how many n satisfy these two conditions, and find the smallest b where this count exceeds ten.
+
+Let me restate the conditions to make sure I understand them. 
+
+1. n has exactly two digits in base b. That means n can be expressed as a two-digit number in base b, which is equivalent to saying that n is between b^1 and b^2 - 1 in decimal. Because in base b, the first digit can't be zero, so the smallest two-digit number is 10_b which is b in decimal, and the largest is (b-1)(b-1)_b which is b^2 - 1.
+
+2. The sum of the two digits in base b equals the square root of n. So, if the two digits are a and c, then a + c = sqrt(n). But n is equal to a*b + c in decimal because it's a two-digit number in base b.
+
+So, putting it all together, we have:
+
+n = a*b + c
+
+and
+
+a + c = sqrt(n)
+
+So, we can write sqrt(n) as a + c, which implies that n = (a + c)^2.
+
+But n is also a two-digit number in base b, so n must satisfy b ≤ n ≤ b^2 - 1.
+
+So substituting n from the first equation into the second, we have:
+
+b ≤ a*b + c ≤ b^2 - 1
+
+But since n = (a + c)^2, we can write:
+
+b ≤ (a + c)^2 ≤ b^2 - 1
+
+So, (a + c)^2 must be between b and b^2 - 1. Additionally, a and c are digits in base b, so a can be from 1 to b-1 (since it's the leading digit) and c can be from 0 to b-1.
+
+So, let me try to formalize this. Let’s denote s = a + c. Then, n = s^2. Also, since n is a two-digit number in base b, that means:
+
+b ≤ s^2 ≤ b^2 - 1
+
+So, taking square roots on all sides:
+
+sqrt(b) ≤ s ≤ sqrt(b^2 - 1)
+
+But sqrt(b^2 - 1) is just a bit less than b, so s is at most b - 1 because s has to be an integer. Wait, because s is the sum of two digits, which are both integers, so s must also be an integer.
+
+Wait, but sqrt(b^2 - 1) is less than b, so s can be up to floor(sqrt(b^2 - 1)).
+
+But let's think about this. Since n is a two-digit number in base b, s must satisfy:
+
+sqrt(b) ≤ s ≤ b - 1
+
+Because s = a + c, and a is at least 1, c is at least 0, so s is at least 1. But n is at least b, so s^2 is at least b, meaning s is at least sqrt(b). So, s is in the range [sqrt(b), b - 1].
+
+But s has to be an integer, so s must be an integer in that interval.
+
+So, for each base b, we can find all possible s such that sqrt(b) ≤ s ≤ b - 1, and for each s, check how many pairs (a, c) with a in [1, b-1] and c in [0, b-1] satisfy a + c = s and s^2 = a*b + c.
+
+Wait, but s^2 = a*b + c, and a + c = s. So, let me write that as a system of equations:
+
+a + c = s
+a*b + c = s^2
+
+Subtract the first equation from the second:
+
+a*b + c - (a + c) = s^2 - s
+a*(b - 1) = s^2 - s
+
+So, a = (s^2 - s)/(b - 1)
+
+Since a must be an integer between 1 and b - 1, this fraction must result in an integer, and that integer must be within the valid range for a.
+
+So, for each s, (s^2 - s) must be divisible by (b - 1). And then a must be (s^2 - s)/(b - 1), and then c = s - a.
+
+Moreover, c must be between 0 and b - 1, inclusive.
+
+So, summarizing the steps:
+
+For each base b:
+
+1. Determine the possible values of s, which are integers such that sqrt(b) ≤ s ≤ b - 1.
+
+2. For each s in this

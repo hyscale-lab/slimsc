@@ -151,7 +151,7 @@ def create_server_pbs_script(
     vllm_command_parts = [
         "vllm", "serve", f'{quoted_model_path}',
         f"--tensor-parallel-size {tensor_parallel_size}",
-        "--port 8000", # Explicitly set port
+        "--port $PORT", # Use dynamic PORT variable instead of hardcoded 8000
     ]
     if gpu_memory_utilization is not None and 0 < gpu_memory_utilization <= 1:
          vllm_command_parts.append(f"--gpu-memory-utilization {gpu_memory_utilization}")
@@ -281,8 +281,39 @@ if [ -z "$HOST_IP" ]; then
    exit 1
 fi
 echo "Host IP: $HOST_IP"
-echo "$HOST_IP" > "$SERVER_IP_FILE_RELPATH"
-echo "IP address saved to $SERVER_IP_FILE_RELPATH"
+
+# Find an available port
+echo "Finding an available port..."
+# Start with a port derived from the job ID to reduce chance of collisions
+# Extract numeric part of PBS_JOBID (e.g., 10170350 from 10170350.pbs101)
+JOB_NUM=$(echo $PBS_JOBID | cut -d. -f1)
+# Use modulo 1000 to get a number between 0-999, then add to base port 8000
+PORT_START=$((8000 + (JOB_NUM % 1000)))
+PORT=$PORT_START
+MAX_PORT=$((PORT_START + 100))  # Try up to 100 ports
+
+while [[ $PORT -lt $MAX_PORT ]]; do
+    echo "Checking port $PORT..."
+    if ! nc -z localhost $PORT &>/dev/null; then
+        echo "Port $PORT is available"
+        break
+    fi
+    echo "Port $PORT is in use, trying next port"
+    PORT=$((PORT + 1))
+done
+
+if [[ $PORT -ge $MAX_PORT ]]; then
+    echo "Error: Could not find an available port in range $PORT_START-$MAX_PORT" >&2
+    echo "ERROR_NO_PORT" > "$SERVER_IP_FILE_RELPATH"
+    exit 1
+fi
+
+echo "Selected port: $PORT"
+export PORT
+
+# Write IP:PORT to file
+echo "$HOST_IP:$PORT" > "$SERVER_IP_FILE_RELPATH"
+echo "IP:PORT saved to $SERVER_IP_FILE_RELPATH"
 
 # Start vLLM Server in Background using setsid
 echo "Starting vLLM server in background..."
@@ -544,12 +575,23 @@ done
 
 # Read IP and set URL
 SERVER_IP=$(cat "$SERVER_IP_FILE_RELPATH")
-if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" == "ERROR_NO_IP" ]; then # Double check
-    echo "[$(date)] Error: Server IP is empty or indicates an error after file found." >&2
+if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" == "ERROR_NO_IP" ] || [ "$SERVER_IP" == "ERROR_NO_PORT" ]; then # Check for both error types
+    echo "[$(date)] Error: Server IP file contains error indicator: '$SERVER_IP'" >&2
     exit 1
 fi
-export VLLM_URL="http://${{SERVER_IP}}:8000"
-echo "Read Server IP: $SERVER_IP"
+
+# Check if it contains both IP and port in format IP:PORT
+if [[ "$SERVER_IP" == *":"* ]]; then
+    # Extract the port from the IP:PORT format
+    SERVER_PORT=$(echo "$SERVER_IP" | cut -d':' -f2)
+    SERVER_IP=$(echo "$SERVER_IP" | cut -d':' -f1)
+    export VLLM_URL="http://${{SERVER_IP}}:${{SERVER_PORT}}"
+    echo "Read Server IP: $SERVER_IP, Port: $SERVER_PORT"
+else
+    # Fallback to default port 8000 for backward compatibility
+    export VLLM_URL="http://${{SERVER_IP}}:8000"
+    echo "Read Server IP: $SERVER_IP (using default port 8000)"
+fi
 echo "Set VLLM_URL=$VLLM_URL"
 
 # --- Wait for Server Ready String in Log (Phase 2) ---
@@ -558,7 +600,7 @@ echo "Set VLLM_URL=$VLLM_URL"
 # If the server starts fast and the client has a delay, this check might fail after the server exits.
 # We add a check to see if the server job still exists during the wait loop.
 echo "Waiting for vLLM server to be ready (checking for '{SERVER_READY_STRING}' in $SERVER_VLLM_LOG_RELPATH)..."
-MAX_LOG_WAIT_SEC=600 # 10 minutes total timeout for server to become ready
+MAX_LOG_WAIT_SEC=720 # 12 minutes total timeout for server to become ready
 LOG_WAIT_INTERVAL=30
 elapsed_log_wait=0
 server_ready=0

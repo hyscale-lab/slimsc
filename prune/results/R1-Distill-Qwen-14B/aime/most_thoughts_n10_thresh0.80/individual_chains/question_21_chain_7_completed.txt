@@ -1,0 +1,4645 @@
+--- Chain 7 for Question 21 ---
+Status: COMPLETED
+Is Active Flag: True
+Finish Reason: stop
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 23473
+Completed Thoughts: 5
+Final Mean Pairwise Similarity: 0.5758
+Final Internal Similarity: 0.1152
+Final Processed Boundaries: [0, 2195, 2898, 4724, 4987]
+
+--- Full Content ---
+Okay, so I have this problem here about something called "b-eautiful" numbers. Let me try to understand what it's asking. 
+
+It says that for an integer b (which is at least 2), a positive integer n is called b-eautiful if two conditions are met. First, when n is expressed in base b, it has exactly two digits. Second, the sum of these two digits equals the square root of n. 
+
+They gave an example: 81 is 13-eautiful because when you write 81 in base 13, it's 63 (since 6*13 + 3 = 81), and 6 + 3 equals 9, which is the square root of 81. Got it. So, my goal is to find the smallest integer b (where b is at least 2) such that there are more than ten b-eautiful numbers. 
+
+Alright, let's break this down. First, I need to figure out what it means for a number to have exactly two digits in base b. In any base b, a two-digit number is of the form d1 * b + d0, where d1 and d0 are digits in base b. Since it's a two-digit number, d1 can't be zero. So, d1 must be between 1 and b-1, and d0 can be between 0 and b-1. 
+
+So, any two-digit number in base b is n = a * b + c, where a is the first digit (1 ≤ a ≤ b-1), and c is the second digit (0 ≤ c ≤ b-1). 
+
+The condition for b-eautiful is that a + c = sqrt(n). Since sqrt(n) has to be an integer because a and c are integers, n must be a perfect square. So, n = k^2 where k is a positive integer. 
+
+So, putting this all together: n = a * b + c = k^2, and a + c = k. 
+
+So, our equations are:
+1. a * b + c = k^2
+2. a + c = k
+
+From equation 2, we can express c as c = k - a. Substitute this into equation 1:
+
+a * b + (k - a) = k^2
+
+Simplify that:
+
+a * b + k - a = k^2
+
+Factor out a:
+
+a (b - 1) + k = k^2
+
+Then, rearrange:
+
+a (b - 1) = k^2 - k
+
+Which can be written as:
+
+a = (k^2 - k) / (b - 1)
+
+Since a has to be an integer (as it's a digit in base b), (k^2 - k) must be divisible by (b - 1). Also, since a must satisfy 1 ≤ a ≤ b - 1, the value of (k^2 - k)/(b - 1) must be in that range.
+
+So, to find b-eautiful numbers, for each b, we need to find all k such that (k^2 - k) is divisible by (b - 1). Then, for each such k, we can compute a = (k^2 - k)/(b - 1), and c = k - a. Then, we need to ensure that c is a valid digit, meaning 0 ≤ c ≤ b - 1. 
+
+But wait, since a and c are digits, c = k - a must be between 0 and b - 1. So, let's see what constraints this puts on k.
+
+From a being at least 1: a = (k^2 - k)/(b - 1) ≥ 1 → (k^2 - k) ≥ (b - 1)
+Also, a ≤ b - 1 → (k^2 - k)/(b - 1) ≤ (b - 1) → (k^2 - k) ≤ (b - 1)^2
+
+So, for each b, the possible k's must satisfy:
+1. (k^2 - k) ≥ (b - 1)
+2. (k^2 - k) ≤ (b - 1)^2
+3. (k^2 - k) must be divisible by (b - 1)
+
+Additionally, since n = k^2, and n is a two-digit number in base b, the range for n is from b^1 to b^2 - 1. So, we have:
+
+b ≤ k^2 ≤ b^2 - 1
+
+Which implies:
+
+sqrt(b) ≤ k ≤ sqrt(b^2 - 1)
+
+But since sqrt(b^2 - 1) is just a bit less than b, k must be less than or equal to b - 1. Wait, let me think. 
+
+Wait, for a two-digit number in base b, the smallest two-digit number is 10_b, which is equal to b in decimal. The largest two-digit number is (b-1)(b) + (b-1) = b^2 - 1 in decimal. So, n = k^2 must satisfy:
+
+b ≤ k^2 ≤ b^2 - 1
+
+So, taking square roots:
+
+sqrt(b) ≤ k ≤ sqrt(b^2 - 1)
+
+But since k is an integer, k must be at least ceiling(sqrt(b)) and at most floor(sqrt(b^2 - 1)). Since sqrt(b^2 - 1) is just less than b, the maximum k is b - 1. Because for example, if b=13, sqrt(13^2 -1)=sqrt(168)=12.96..., so k can be up to 12.
+
+So, the possible k's for each b are integers from ceiling(sqrt(b)) up to (b - 1). 
+
+So, for each b, I can iterate k from ceiling(sqrt(b)) to (b - 1), check if (k^2 - k) is divisible by (b - 1), compute a, and then check if a is between 1 and (b - 1) and c = k - a is between 0 and (b - 1).
+
+If all these conditions are satisfied, then n = k^2 is a b-eautiful number, and we count it.
+
+The problem asks for the smallest b where there are more than ten such numbers.
+
+So, my plan is:
+
+1. For each b starting from 2 upwards:
+   a. Find all integers k such that ceiling(sqrt(b)) ≤ k ≤ b - 1.
+   b. For each k, compute (k^2 - k). If (k^2 - k) mod (b -1) == 0, then compute a = (k^2 -k)/(b-1).
+   c. Check if a is between 1 and (b -1) and c = k - a is between 0 and (b -1). If yes, count this as a b-eautiful number.
+2. For each b, count how many such k's satisfy all the conditions. 
+3. Find the smallest b where the count is more than ten.
+
+This seems computationally intensive, but perhaps we can find a formula or a pattern.
+
+Let me think about the equations again.
+
+We have a = (k^2 -k)/(b -1). Let's denote d = b -1, so a = (k^2 -k)/d.
+
+Since a must be an integer, d must divide (k^2 -k). So, d | k(k -1). Since d = b -1, and k is in [ceiling(sqrt(b)), b-1], which is [ceiling(sqrt(d+1)), d].
+
+Wait, ceiling(sqrt(d+1)) could be written as ceiling(sqrt(d+1)). Let me denote m = ceiling(sqrt(d +1)). So, k ranges from m to d.
+
+So, for each d, find k in [m, d] such that d divides k(k - 1). Then, a = k(k -1)/d must be ≤ d, and c = k - a must be ≥ 0 and ≤ d.
+
+Wait, since a = k(k - 1)/d, and k is up to d, then a is up to d(d-1)/d = d - 1/ d, which is less than d. So, a is less than d. But a must be at least 1.
+
+Similarly, c = k - a = k - [k(k -1)/d] = [dk - k(k -1)] / d = [dk -k^2 +k ] /d = [k(d -k +1)] /d 
+
+Since c must be between 0 and d, that may impose more constraints.
+
+Alternatively, perhaps we can express a and c in terms of d and k. Let me see.
+
+Wait, perhaps factorizing d. Since d divides k(k -1), and k and k-1 are consecutive integers, so they are coprime. So, d must divide the product k(k-1). Since k and k-1 are coprime, the factors of d must be distributed between k and k-1. So, d1 divides k and d2 divides k-1, such that d1*d2 = d, and d1 and d2 are coprime.
+
+Therefore, for each divisor pair (d1, d2) of d, where d1*d2 = d and gcd(d1, d2) = 1, we can set k ≡0 mod d1 and k ≡1 mod d2. Then, by Chinese Remainder Theorem, there exists a solution for k in the range [1, d] if d1 and d2 are coprime.
+
+Wait, but for each such divisor pair, we can find a unique solution modulo d. So, for each such pair, we can find k in the range [1, d]. But we are interested in k in [m, d], where m = ceiling(sqrt(d+1)).
+
+So, perhaps for each d, the number of such k's is equal to the number of coprime pairs (d1, d2) such that d1*d2 = d, and the corresponding k is in the desired range.
+
+But this might complicate things. Maybe an alternative approach.
+
+Let me think about small b and see how it goes.
+
+Let's try with b=2.
+
+d =1.
+
+So, k ranges from ceiling(sqrt(2))=2 to 1? Wait, d=1, so b=2. Then, k must be from ceiling(sqrt(2))=2 to b-1=1. Wait, that's impossible because 2>1. So, no k's. So, 0 b-eautiful numbers.
+
+Similarly, b=3:
+
+d=2.
+
+k ranges from ceiling(sqrt(3))=2 to 2.
+
+So, k=2.
+
+Check if (2^2 -2)=2 is divisible by d=2: 2/2=1, which is integer, so a=1.
+
+c=2 -1=1.
+
+So, digits a=1, c=1 in base 3. So, n=1*3 +1=4, which is 2^2. Check: 1+1=2, sqrt(4)=2. So, yes, 4 is 3-eautiful.
+
+So, count=1.
+
+Next, b=4:
+
+d=3.
+
+k ranges from ceiling(sqrt(4))=2 to 3.
+
+k=2: (4-2)=2. 2 mod 3 is 2, not 0. So, no.
+
+k=3: (9 -3)=6. 6 mod 3=0, so a=6/3=2.
+
+c=3-2=1.
+
+a=2, c=1. So, n=2*4 +1=9. 9 is 3^2, and 2+1=3. So, yes. So, count=1.
+
+So, for b=4, count=1.
+
+b=5:
+
+d=4.
+
+k ranges from ceiling(sqrt(5))=3 to 4.
+
+k=3: 9 -3=6. 6 mod4=2, not 0. No.
+
+k=4: 16 -4=12. 12 mod4=0. So, a=12/4=3.
+
+c=4 -3=1.
+
+n=3*5 +1=16=4^2. 3+1=4. So, yes. Count=1.
+
+b=5: count=1.
+
+b=6:
+
+d=5.
+
+k ranges from ceiling(sqrt(6))=3 to 5.
+
+k=3: 9-3=6. 6 mod5=1≠0.
+
+k=4: 16-4=12. 12 mod5=2≠0.
+
+k=5: 25-5=20. 20 mod5=0. So, a=20/5=4.
+
+c=5-4=1.
+
+n=4*6 +1=25=5^2. 4+1=5. Yes. So, count=1.
+
+So, b=6:1.
+
+Hmm, so far, each b from 2 to 6 has only 1 b-eautiful number.
+
+Let me try b=10.
+
+d=9.
+
+k ranges from ceiling(sqrt(10))=4 to 9.
+
+So, k=4,5,6,7,8,9.
+
+For each k, check if (k^2 -k) mod9=0.
+
+Compute (k^2 -k):
+
+k=4: 16-4=12. 12 mod9=3≠0.
+
+k=5:25-5=20 mod9=2≠0.
+
+k=6:36-6=30 mod9=3≠0.
+
+k=7:49-7=42 mod9=6≠0.
+
+k=8:64-8=56 mod9=2≠0.
+
+k=9:81-9=72 mod9=0. So, a=72/9=8.
+
+c=9-8=1.
+
+n=8*10 +1=81=9^2. 8+1=9. So, yes. So, only k=9 works. Count=1.
+
+Wait, so for b=10, count is 1.
+
+Wait, maybe I'm missing something. Let's try b=13:
+
+d=12.
+
+k ranges from ceiling(sqrt(13))=4 to 12.
+
+Compute (k^2 -k) mod12.
+
+k=4:16-4=12 mod12=0. So, a=12/12=1.
+
+c=4-1=3.
+
+n=1*13 +3=16=4^2. 1+3=4. So, yes.
+
+k=5:25-5=20 mod12=8≠0.
+
+k=6:36-6=30 mod12=6≠0.
+
+k=7:49-7=42 mod12=6≠0.
+
+k=8:64-8=56 mod12=8≠0.
+
+k=9:81-9=72 mod12=0. a=72/12=6.
+
+c=9-6=3.
+
+n=6*13 +3=81=9^2. 6+3=9. So, yes.
+
+k=10:100-10=90 mod12=6≠0.
+
+k=11:121-11=110 mod12=110-9*12=110-108=2≠0.
+
+k=12:144-12=132 mod12=0. a=132/12=11.
+
+c=12 -11=1.
+
+n=11*13 +1=143 +1=144=12^2. 11+1=12. So, yes.
+
+So, for b=13, we have k=4,9,12. So, count=3.
+
+Wait, so for b=13, count is 3.
+
+So, it can have more than one.
+
+Wait, so maybe when d is a composite number, it can have multiple k's.
+
+Wait, let's think more about this.
+
+We have a = (k^2 -k)/d, and d must divide k(k -1). Since k and k-1 are coprime, d must be a product of two coprime numbers, say d1 and d2, such that d1 divides k and d2 divides (k -1). So, for each such pair, we can solve for k.
+
+But maybe another way: for each d, the number of solutions k is equal to the number of divisors of d where the divisor is ≤ k, and the co-divisor is ≤ (k-1). Hmm, not sure.
+
+Alternatively, the number of such k's is equal to the number of divisors t of d such that t ≤ k and d/t ≤ (k -1). But since k is in [m, d], perhaps this is too vague.
+
+Wait, perhaps it's better to code this or find a pattern.
+
+But since I'm doing it manually, let's see.
+
+Wait, earlier when d=12 (b=13), we had three k's: 4,9,12.
+
+Wait, let's think about the factors of 12.
+
+12 can be written as 1*12, 2*6, 3*4.
+
+Each pair (d1, d2) where d1*d2=12 and d1 ≤d2.
+
+For each such pair, we can set up congruences:
+
+k ≡0 mod d1
+
+k ≡1 mod d2
+
+And solve for k in [m, d].
+
+So, for each divisor pair, we can find solutions.
+
+Case 1: d1=1, d2=12.
+
+Then, k ≡0 mod1 (always true), and k≡1 mod12.
+
+So, k=12t +1. Since k must be ≤12, possible k=1,13,... But 13 is beyond d=12, so only k=1 is a solution. But k must be ≥4. So, no solution here.
+
+Case 2: d1=2, d2=6.
+
+So, k ≡0 mod2, and k≡1 mod6.
+
+Solutions are k ≡4 mod6. Because 0 mod2 and 1 mod6: numbers are 4,10,16,... Within 1-12, 4 and10.
+
+But k must be ≥4, so k=4,10.
+
+Check if (k^2 -k) is divisible by 12.
+
+k=4:16-4=12, which is divisible by12. So, yes.
+
+k=10:100-10=90. 90 mod12=6≠0. Wait, but 90/12=7.5, which is not integer. Hmm, but according to our earlier approach, k=10 should satisfy the conditions. But in reality, (10^2 -10) is 90, which is not divisible by12. That's a problem.
+
+Wait, perhaps my approach is flawed. Because d1=2 and d2=6, and k must be ≡0 mod2 and ≡1 mod6. So, k=6t +1, and also even. Let's solve for k:
+
+k ≡0 mod2
+
+k ≡1 mod6
+
+So, let me see, k must be even, and when divided by6 leaves remainder1.
+
+So, k=6t +1. But 6t+1 must be even. 6t is even or odd? 6t is even, so 6t +1 is odd. But we need k to be even. So, no solution. So, this case has no solution.
+
+Wait, so perhaps this pair doesn't give any solution.
+
+Case3: d1=3, d2=4.
+
+So, k ≡0 mod3 and k≡1 mod4.
+
+Find k in [4,12] that satisfies both.
+
+Numbers congruent to0 mod3: 6,9,12.
+
+Check if they are congruent to1 mod4.
+
+6 mod4=2≠1.
+
+9 mod4=1. So, k=9.
+
+12 mod4=0≠1.
+
+So, only k=9.
+
+So, that's one solution.
+
+So, in this case, for pair (3,4), we get k=9.
+
+Similarly, other pairs may or may not yield solutions.
+
+Case4: d1=4, d2=3.
+
+k≡0 mod4 and k≡1 mod3.
+
+Find k in [4,12] such that k=4t and k=3s +1.
+
+So, 4t=3s +1.
+
+Looking for t and s such that 4t -3s =1.
+
+Try t=1:4 -3s=1 → 3s=3 → s=1. So, k=4.
+
+t=2:8 -3s=1 →3s=7→ s not integer.
+
+t=3:12 -3s=1→3s=11→ no.
+
+t=4:16 exceeds d=12.
+
+So, only t=1, k=4.
+
+Check k=4: 16-4=12, which is divisible by12. So, yes.
+
+So, that's another solution.
+
+Case5: d1=6, d2=2.
+
+k≡0 mod6 and k≡1 mod2.
+
+But k≡0 mod6 implies k is even. k≡1 mod2 implies k is odd. Contradiction. So, no solution.
+
+Case6: d1=12, d2=1.
+
+k≡0 mod12 and k≡1 mod1 (which is always true). So, k=12.
+
+Check if 144-12=132 is divisible by12: yes, 132/12=11.
+
+So, k=12 is a solution.
+
+So, in total, for d=12, we have k=4,9,12. Which matches our earlier count of 3.
+
+So, the number of solutions is equal to the number of coprime divisor pairs (d1,d2) of d such that k ≡0 mod d1 and k≡1 mod d2, and k is within [m, d].
+
+So, perhaps for each d, the number of such k's is equal to the number of such coprime divisor pairs.
+
+But this is getting a bit involved. Maybe it's better to think in terms of the number of divisors.
+
+Wait, but perhaps for each d, the number of possible k's is equal to the number of divisors t of d where t <= d/2, and t and d/t are coprime. Hmm, not sure.
+
+Alternatively, perhaps for each d, the number of k's is equal to the number of ways to write d as a product of two coprime numbers t and s, where t < s, and then solving for k ≡0 mod t and k≡1 mod s, and check if k is in the desired range.
+
+But perhaps another way: For each d, the number of solutions is equal to the number of divisors t of d such that t <= d - t, and t divides d and t-1 divides d - t.
+
+Wait, maybe I'm overcomplicating.
+
+Alternatively, perhaps let's find a formula for the number of k's for each d.
+
+Wait, looking back at the earlier examples:
+
+For d=12, we had 3 solutions.
+
+For d=6, let's check:
+
+d=6, b=7.
+
+k ranges from ceiling(sqrt(7))=3 to 6.
+
+k=3:9-3=6. 6 mod6=0. a=6/6=1.
+
+c=3-1=2.
+
+n=1*7 +2=9=3^2. 1+2=3. So, yes.
+
+k=4:16-4=12. 12 mod6=0. a=12/6=2.
+
+c=4-2=2.
+
+n=2*7 +2=16=4^2. 2+2=4. Yes.
+
+k=5:25-5=20. 20 mod6=2≠0.
+
+k=6:36-6=30 mod6=0. a=30/6=5.
+
+c=6-5=1.
+
+n=5*7 +1=36=6^2. 5+1=6. Yes.
+
+So, for b=7 (d=6), k=3,4,6. So, count=3.
+
+So, d=6 also has 3 solutions.
+
+Wait, so is there a pattern here? For d=6 and 12, which are multiples of 6, we get 3 solutions each.
+
+Wait, trying d=24 (so b=25). Let's see how many k's we can get.
+
+But this might take too long. Alternatively, perhaps the number of solutions for each d is equal to the number of divisors of d, but only certain ones.
+
+Wait, but for d=12, number of solutions is 3. The number of divisors is 6 (1,2,3,4,6,12). But perhaps only certain pairs contribute.
+
+Alternatively, perhaps the number of solutions is equal to the number of ways to write d as a product of two coprime numbers greater than 1. For d=12, the coprime pairs are (3,4), (4,3), (2,6) isn't coprime, etc.
+
+Wait, but in the case of d=12, we had two coprime pairs (3,4) and (4,3) leading to k=9 and k=4, and then another solution from the pair (12,1) leading to k=12. So, that's three solutions.
+
+But 12 has multiple such pairs.
+
+Wait, perhaps the number of solutions is equal to the number of ways to factor d into two coprime factors, including 1 and d itself.
+
+In that case, for d=12, the pairs are (1,12), (3,4), (4,3), (12,1). Each of these can potentially give a solution, but some may not because of the congruence conditions.
+
+Wait, but for d=12, the pairs (1,12) and (12,1) gave us k=12 and k=4, but (3,4) gave us k=9.
+
+Wait, but (3,4) and (4,3) are both considered, but in this case, (4,3) gave us k=4, but when we did the Chinese Remainder Theorem, we found that for (4,3), k=4 mod12.
+
+Wait, perhaps I'm overcomplicating.
+
+Alternatively, perhaps for each d, the number of solutions is equal to the number of divisors t of d such that t is less than sqrt(d) and coprime with d/t.
+
+Wait, but I don't know.
+
+Alternatively, perhaps the number of solutions is equal to the number of distinct prime factors of d, but for d=6=2*3, we have 3 solutions, and d=12=2^2*3, also 3 solutions.
+
+Hmm, but d=4=2^2 has how many solutions? Let's check.
+
+d=4, b=5.
+
+k ranges from ceiling(sqrt(5))=3 to 4.
+
+k=3:9-3=6 mod4=2≠0.
+
+k=4:16-4=12 mod4=0. a=12/4=3.
+
+c=4-3=1.
+
+n=3*5 +1=16=4^2. 3+1=4. So, count=1.
+
+Wait, so d=4 has 1 solution, but it's not a multiple of 6. So, perhaps the number of solutions is not directly tied to being a multiple of 6.
+
+Wait, but maybe if d is a multiple of 6, it can have more solutions. Let's see.
+
+Wait, d=8, b=9.
+
+k ranges from ceiling(sqrt(9))=3 to 8.
+
+k=3:9-3=6. 6 mod8=6≠0.
+
+k=4:16-4=12 mod8=4≠0.
+
+k=5:25-5=20 mod8=4≠0.
+
+k=6:36-6=30 mod8=6≠0.
+
+k=7:49-7=42 mod8=2≠0.
+
+k=8:64-8=56 mod8=0. a=56/8=7.
+
+c=8-7=1.
+
+n=7*9 +1=64=8^2. 7+1=8. So, count=1.
+
+So, d=8 (b=9) has 1 solution.
+
+Hmm, so it's not that every multiple of 6 has multiple solutions. It's more nuanced.
+
+Wait, perhaps the number of solutions increases when d has more factors. Let's see:
+
+d=24.
+
+b=25.
+
+k ranges from ceiling(sqrt(25))=5 to 24.
+
+We need to find k in [5,24] such that (k^2 -k) is divisible by24.
+
+So, 24 divides k(k-1). Since 24=8*3, and since k and k-1 are coprime, one of them must be divisible by8, and the other by3.
+
+So, cases:
+
+Case1: k divisible by8, and k-1 divisible by3.
+
+So, k=8m. Then, 8m ≡1 mod3 → 8m ≡1 mod3 → 8≡2 mod3, so 2m≡1 mod3 → m≡2 mod3.
+
+So, m=3t +2.
+
+So, k=8*(3t +2)=24t +16.
+
+Looking for k in [5,24], so t=0: k=16.
+
+t=1:24*1 +16=40>24. So, only k=16.
+
+Check:16^2 -16=240. 240/24=10. So, a=10.
+
+c=16 -10=6.
+
+But in base25, digits must be less than25. So, a=10 is allowed, c=6 is allowed.
+
+n=10*25 +6=256=16^2. 10+6=16. Yes, works.
+
+Case2: k divisible by3, and k-1 divisible by8.
+
+So, k=3m. Then, 3m -1 ≡0 mod8 →3m ≡1 mod8.
+
+Multiplicative inverse of3 mod8 is 3, since 3*3=9≡1 mod8. So, m≡3 mod8.
+
+So, m=8t +3.
+
+Thus, k=3*(8t +3)=24t +9.
+
+Looking for k in [5,24]:
+
+t=0: k=9.
+
+t=1:24*1 +9=33>24.
+
+So, only k=9.
+
+Check:9^2 -9=72. 72/24=3. So, a=3.
+
+c=9 -3=6.
+
+n=3*25 +6=81=9^2. 3+6=9. Yes, works.
+
+So, for d=24, two solutions: k=9 and16.
+
+But wait, earlier for d=6 and12, we had 3 solutions. So, perhaps d=24 has 2 solutions.
+
+Wait, but perhaps I missed some.
+
+Wait, are there any other k's?
+
+Let me check k= 8: 64 -8=56. 56 mod24=8≠0.
+
+k=12:144 -12=132. 132 mod24=12≠0.
+
+k=17:17^2=289-17=272. 272/24=11.333, no.
+
+k=24:24^2-24=528. 528/24=22. So, a=22.
+
+c=24-22=2.
+
+n=22*25 +2=552 +2=554. Wait, 22^2=484, but 554≠22^2. Wait, that can't be.
+
+Wait, wait, wait, k=24.
+
+n=k^2=24^2=576.
+
+But a=22, c=2.
+
+n=22*25 +2=552 +2=554. But 554≠576. So, that can't be.
+
+Wait, that's a problem. So, perhaps I made a mistake.
+
+Wait, if k=24, then n=k^2=576.
+
+But in base25, the two-digit number is a*25 +c=576.
+
+So, a*25 +c=576.
+
+But a must be (k^2 -k)/(b-1) = (576 -24)/24=552/24=23.
+
+So, a=23, c=24 -23=1.
+
+Wait, c=1, but earlier, I thought c=k -a=24 -23=1.
+
+So, n=23*25 +1=575 +1=576=24^2.
+
+Yes, that works. So, k=24 is a solution.
+
+Wait, but earlier when I thought about the congruence, I thought k=24 would imply c=2, but actually, c=1.
+
+Hmm, perhaps I made a mistake earlier.
+
+Wait, let me re-examine.
+
+When d=24, and k=24:
+
+a=(24^2 -24)/24=(576-24)/24=552/24=23.
+
+c=24 -23=1.
+
+So, n=23*25 +1=576=24^2. Correct.
+
+So, k=24 is a solution. So, why didn't it show up earlier?
+
+Because when I was looking for k divisible by8 and3m, I found k=16 and9, but I missed k=24.
+
+Wait, perhaps because when k=d=24, it's a separate case.
+
+So, for d=24, we have three solutions: k=9,16,24.
+
+Wait, how did that happen?
+
+Because when k=d=24, it's another solution.
+
+So, let's think.
+
+When d=24, the k's that satisfy the conditions are:
+
+1. k=9 (from k≡0 mod3 and k≡1 mod8).
+
+2. k=16 (from k≡0 mod8 and k≡1 mod3).
+
+3. k=24 (from k=d, which is a separate case).
+
+Wait, but earlier, for d=12, we had k=4,9,12. So, k=d=12 was a solution.
+
+Similarly, for d=6, k=6 was a solution.
+
+So, perhaps for each d, k=d is always a solution, because:
+
+a=(d^2 -d)/d= (d^2 -d)/d = d -1.
+
+Which is a valid digit since a=d-1 ≤d.
+
+c=k -a=d - (d-1)=1.
+
+So, c=1, which is also a valid digit.
+
+So, for each d, k=d is a solution, giving a= d-1, c=1, n= (d-1)* (d+1) +1= d^2 -1 +1= d^2. Wait, no.
+
+Wait, n= a*b +c = (d-1)* (d+1) +1= (d^2 -1) +1= d^2.
+
+Wait, but k=d, so n=k^2= d^2. So, yes, it's correct.
+
+So, for each d, k=d is a solution.
+
+So, for d=12, k=12 is a solution.
+
+Similarly, for d=24, k=24 is a solution.
+
+So, perhaps when I was looking at d=24, I missed that k=24 is a solution.
+
+So, for d=24, the three solutions are k=9,16,24.
+
+Similarly, for d=12, the solutions are k=4,9,12.
+
+So, for each d, the number of solutions is equal to the number of pairs (d1,d2) where d1*d2=d, d1 and d2 coprime, plus the solution k=d.
+
+Wait, but in d=12, the solutions from the pairs were k=4 and9, plus k=12, making 3.
+
+Similarly, in d=24, the solutions from pairs were k=9 and16, plus k=24, making 3.
+
+Wait, but earlier for d=6, we had k=3,4,6. So, 3 solutions.
+
+Hmm, so maybe for d=6, the pairs gave k=3 and4, plus k=6.
+
+So, perhaps the number of solutions is equal to the number of such coprime pairs, plus 1 for k=d.
+
+Wait, but in d=6, the coprime pairs were (3,2) leading to k=3 and4, and (2,3) leading to k=4 and3. But for d=6:
+
+k=3: a= (9-3)/6=1, c=3-1=2.
+
+k=4: a=(16-4)/6=12/6=2, c=4-2=2.
+
+k=6: a=5, c=1.
+
+So, all these are valid.
+
+So, perhaps the number of solutions is equal to the number of coprime pairs (d1,d2) where d1*d2=d, plus 1 for k=d. Or maybe not.
+
+Wait, no, because in d=6, the coprime pairs were (3,2) and (2,3), leading to k=3 and4, and then k=6.
+
+So, three solutions.
+
+Similarly, for d=12, the coprime pairs (3,4) and (4,3) gave k=9 and4, plus k=12.
+
+Wait, 4 is from (4,3), 9 from (3,4), and 12 from k=d.
+
+So, three solutions.
+
+Similarly, for d=24, the coprime pairs (3,8) and (8,3) gave k=9 and16, plus k=24.
+
+So, three solutions.
+
+Wait, so perhaps for each d, the number of solutions is equal to the number of coprime pairs (d1,d2) where d1*d2=d, which is equal to 2^m, where m is the number of distinct prime factors of d.
+
+Wait, d=6=2*3, has two distinct primes, so m=2. So, 2^2=4? But we only have 3 solutions. Hmm, that doesn't fit.
+
+Wait, d=12=2^2*3, which has two distinct primes. So, m=2, 2^2=4. But we have three solutions.
+
+Wait, perhaps it's the number of coprime pairs, which is equal to 2^(number of distinct prime factors of d). But for d=6, which is 2*3, that's 2^2=4, but we have 3 solutions.
+
+Wait, perhaps not. Alternatively, perhaps it's the number of ways to write d as a product of two coprimes, which is 2^(number of distinct prime factors). For d=6, that would be 4: (1,6), (2,3), (3,2), (6,1). But only three of them give solutions.
+
+Wait, for d=6:
+
+(1,6): k=1, which is below m=3. So, no.
+
+(2,3): leads to k=2 mod3? Wait, earlier, we saw that for d=6, d1=2, d2=3:
+
+k≡0 mod2 and k≡1 mod3.
+
+Which gave k=4.
+
+Similarly, d1=3, d2=2:
+
+k≡0 mod3 and k≡1 mod2.
+
+Which gave k=3.
+
+But k=3 is ≥3, so it's acceptable.
+
+So, for d=6, we have two solutions from the coprime pairs, and one from k=d=6. So, total 3.
+
+Similarly, for d=12, we have two solutions from coprime pairs, and one from k=12. Total 3.
+
+For d=24, same thing: two solutions from coprime pairs, one from k=24. Total 3.
+
+Wait, so perhaps for each d, the number of solutions is equal to the number of coprime pairs (d1,d2) where d1*d2=d, and d1 <d2, plus one solution from k=d.
+
+But no, for d=6, we have two coprime pairs (2,3) and (3,2). Wait, but in reality, (2,3) and (3,2) are not distinct in terms of factor pairs, but in terms of coprime pairs, they are different because the congruence conditions are different.
+
+Wait, perhaps the number of solutions is equal to the number of ways to write d as a product of two coprime numbers, including 1 and d.
+
+But for d=6, number of coprime pairs is 4: (1,6), (6,1), (2,3), (3,2). But for each such pair, we need to see if the corresponding k is in the desired range.
+
+So, for each coprime pair (d1,d2):
+
+If d1 ≤d2, then solve for k≡0 mod d1 and k≡1 mod d2.
+
+If the solution k is in [m, d], then count it.
+
+So, for d=6:
+
+Pairs:
+
+(1,6): k≡0 mod1 (always true) and k≡1 mod6. So, k=6t +1. Within [3,6], t=0: k=1 (too small), t=1:7>6. So, no solution.
+
+(2,3): k≡0 mod2 and k≡1 mod3. Solution is k=4.
+
+(3,2):k≡0 mod3 and k≡1 mod2. Solution is k=3.
+
+(6,1):k≡0 mod6 and k≡1 mod1 (always true). So, k=6.
+
+So, solutions are k=3,4,6. So, three solutions.
+
+Similarly, for d=12:
+
+Pairs:
+
+(1,12):k=12t +1. t=0:1 (too small), t=1:13>12. No.
+
+(3,4):k≡0 mod3 and k≡1 mod4. Solution k=9.
+
+(4,3):k≡0 mod4 and k≡1 mod3. Solution k=4.
+
+(12,1):k=12.
+
+So, solutions:4,9,12. Three.
+
+Similarly, for d=24:
+
+Pairs:
+
+(1,24):k=24t +1. t=0:1 (too small), t=1:25>24.
+
+(3,8):k≡0 mod3 and k≡1 mod8. Solution k=9.
+
+(8,3):k≡0 mod8 and k≡1 mod3. Solution k=16.
+
+(24,1):k=24.
+
+So, solutions:9,16,24. Three.
+
+So, the number of solutions is equal to the number of coprime pairs (d1,d2) where d1 <d2, and the corresponding k falls into the range [m,d], plus the solution from (d,1). But in this case, the number of solutions seems to be 3 for d=6,12,24.
+
+Wait, but for d=4:
+
+d=4=2^2.
+
+Coprime pairs:
+
+(1,4):k=1,5,… but k must be in [2,4]. k=1 is too small, next is5>4. No.
+
+(2,2): not coprime.
+
+(4,1):k=4.
+
+So, only solution is k=4.
+
+But earlier, for d=4, we found one solution, which is k=4.
+
+So, number of solutions is1.
+
+Similarly, for d=5 (prime):
+
+Coprime pairs:
+
+(1,5):k=1,6>5. No.
+
+(5,1):k=5.
+
+So, only solution is k=5.
+
+But let's check:
+
+d=5, b=6.
+
+k ranges from ceiling(sqrt(6))=3 to5.
+
+k=3:9-3=6. 6 mod5=1≠0.
+
+k=4:16-4=12 mod5=2≠0.
+
+k=5:25-5=20 mod5=0. a=20/5=4.
+
+c=5-4=1.
+
+n=4*6 +1=25=5^2. 4+1=5. So, works. So, count=1.
+
+So, for d=5, count=1.
+
+Another prime, d=7:
+
+k ranges from ceiling(sqrt(8))=3 to7.
+
+Check for k=3:9-3=6 mod7=6≠0.
+
+k=4:16-4=12 mod7=5≠0.
+
+k=5:25-5=20 mod7=6≠0.
+
+k=6:36-6=30 mod7=2≠0.
+
+k=7:49-7=42 mod7=0. a=42/7=6.
+
+c=7-6=1.
+
+n=6*8 +1=49=7^2. 6+1=7. So, works. So, count=1.
+
+So, for primes, only k=d is a solution.
+
+So, the number of solutions for prime d is 1.
+
+Similarly, for d being a prime power, say d=9=3^2.
+
+Check d=9, b=10.
+
+k ranges from ceiling(sqrt(10))=4 to9.
+
+Check for k=4:16-4=12 mod9=3≠0.
+
+k=5:25-5=20 mod9=2≠0.
+
+k=6:36-6=30 mod9=3≠0.
+
+k=7:49-7=42 mod9=6≠0.
+
+k=8:64-8=56 mod9=2≠0.
+
+k=9:81-9=72 mod9=0. a=72/9=8.
+
+c=9-8=1.
+
+n=8*10 +1=81=9^2. 8+1=9. So, works. So, count=1.
+
+So, for d=9, which is a prime power, count=1.
+
+Wait, but d=25=5^2.
+
+b=26.
+
+k ranges from ceiling(sqrt(26))=6 to25.
+
+Check for k=6:36-6=30. 30 mod25=5≠0.
+
+k=5:25-5=20 mod25=20≠0.
+
+Wait, but k must be ≥6.
+
+So, for k=6:30 mod25=5≠0.
+
+k=7:49-7=42 mod25=17≠0.
+
+k=8:64-8=56 mod25=6≠0.
+
+k=9:81-9=72 mod25=22≠0.
+
+k=10:100-10=90 mod25=15≠0.
+
+k=11:121-11=110 mod25=10≠0.
+
+k=12:144-12=132 mod25=7≠0.
+
+k=13:169-13=156 mod25=6≠0.
+
+k=14:196-14=182 mod25=7≠0.
+
+k=15:225-15=210 mod25=10≠0.
+
+k=16:256-16=240 mod25=15≠0.
+
+k=17:289-17=272 mod25=22≠0.
+
+k=18:324-18=306 mod25=6≠0.
+
+k=19:361-19=342 mod25=17≠0.
+
+k=20:400-20=380 mod25=5≠0.
+
+k=21:441-21=420 mod25=20≠0.
+
+k=22:484-22=462 mod25=12≠0.
+
+k=23:529-23=506 mod25=6≠0.
+
+k=24:576-24=552 mod25=2≠0.
+
+k=25:625-25=600 mod25=0. a=600/25=24.
+
+c=25-24=1.
+
+n=24*26 +1=624 +1=625=25^2. 24+1=25. So, works.
+
+So, only k=25 is a solution.
+
+So, for d=25, count=1.
+
+Therefore, it seems that for d being a prime, prime power, or other composite numbers, the number of solutions can be 1 or more.
+
+From the earlier examples, when d is a multiple of 6 (like6,12,24), the number of solutions is3.
+
+Wait, but for d=30, which is 2*3*5.
+
+Let me check d=30, b=31.
+
+k ranges from ceiling(sqrt(31))=6 to30.
+
+We need to find k in [6,30] such that 30 divides k(k-1).
+
+Since 30=2*3*5.
+
+To have 30 divide k(k-1), since k and k-1 are coprime, one must be divisible by2, another by3 and5.
+
+So, either:
+
+Case1: k divisible by2, and k-1 divisible by3 and5. So, k≡1 mod15 and k even.
+
+Or,
+
+Case2: k divisible by3 and5, and k-1 divisible by2.
+
+So, let's solve for both cases.
+
+Case1: k≡1 mod15 and k even.
+
+Find k in [6,30].
+
+Numbers ≡1 mod15:1,16,31,...
+
+So, within [6,30], k=16.
+
+Check if 16 is even: yes.
+
+So, k=16.
+
+Compute a=(16^2 -16)/30=(256-16)/30=240/30=8.
+
+c=16 -8=8.
+
+n=8*31 +8=248 +8=256=16^2. 8+8=16. Yes, works.
+
+Case2: k divisible by15, and k-1 even.
+
+k divisible by15:15,30.
+
+Check k=15:
+
+k=15:15 divisible by15, k-1=14 even.
+
+So, compute a=(225 -15)/30=210/30=7.
+
+c=15 -7=8.
+
+n=7*31 +8=217 +8=225=15^2. 7+8=15. Yes.
+
+k=30:
+
+a=(900 -30)/30=870/30=29.
+
+c=30 -29=1.
+
+n=29*31 +1=899 +1=900=30^2. 29+1=30. Yes.
+
+Additionally, k=30 is a solution because k=d.
+
+So, we have solutions at k=15,16,30.
+
+Wait, but when I checked case2, k=15 and30.
+
+But when I checked case1, k=16.
+
+Additionally, k=30 is a solution because k=d.
+
+So, total solutions:15,16,30. So, three solutions.
+
+So, for d=30, count=3.
+
+So, seems like for d divisible by 2,3,5, we get three solutions.
+
+Wait, but earlier for d=6,12,24,30, which are all multiples of6, we have three solutions.
+
+But for d=18, let's check.
+
+d=18, b=19.
+
+k ranges from ceiling(sqrt(19))=5 to18.
+
+We need k such that 18 divides k(k -1).
+
+Since 18=2*3^2.
+
+So, k and k-1 must be divisible by2 and3^2, or other combinations.
+
+But since k and k-1 are coprime, one must be divisible by2 and the other by9, or one divisible by18 and the other by1.
+
+But let's see.
+
+Case1: k divisible by2, k-1 divisible by9.
+
+So, k≡1 mod9, and k even.
+
+Numbers in [5,18] ≡1 mod9:10,19>18.
+
+So, k=10.
+
+Check if 10 is even: yes.
+
+Compute a=(100 -10)/18=90/18=5.
+
+c=10 -5=5.
+
+n=5*19 +5=95 +5=100=10^2. 5+5=10. Yes.
+
+Case2: k divisible by9, k-1 divisible by2.
+
+So, k≡0 mod9, and k≡1 mod2.
+
+Numbers in [5,18] divisible by9:9,18.
+
+Check if k=9:
+
+k=9. 9-1=8, which is even. So, yes.
+
+Compute a=(81 -9)/18=72/18=4.
+
+c=9 -4=5.
+
+n=4*19 +5=76 +5=81=9^2. 4+5=9. Yes.
+
+k=18:
+
+a=(324 -18)/18=306/18=17.
+
+c=18-17=1.
+
+n=17*19 +1=323 +1=324=18^2. 17+1=18. Yes.
+
+Additionally, k=18 is a solution.
+
+So, solutions are k=9,10,18. So, three solutions.
+
+So, for d=18, count=3.
+
+So, seems like for d divisible by6, we get three solutions.
+
+Wait, but let's check d=30, which is divisible by6, and we had three solutions.
+
+Wait, but earlier for d=4, which is not divisible by6, we had one solution.
+
+So, perhaps the number of solutions increases when d has more prime factors.
+
+But in the cases where d is divisible by6, we get three solutions.
+
+Wait, but for d=6,12,18,24,30, which are multiples of6, we have three solutions each.
+
+So, perhaps, the number of solutions is three for d divisible by6, and one otherwise.
+
+But wait, for d=24, which is divisible by6, we had three solutions.
+
+Similarly, for d=30, three solutions.
+
+But what about d=36?
+
+Let me check d=36, b=37.
+
+k ranges from ceiling(sqrt(37))=7 to36.
+
+We need to find k in [7,36] such that 36 divides k(k -1).
+
+Since 36=4*9.
+
+So, k and k-1 must be divisible by4 and9, or other combinations.
+
+But since k and k-1 are coprime, one must be divisible by4 and the other by9.
+
+So, cases:
+
+Case1: k divisible by4, k-1 divisible by9.
+
+So, k≡1 mod9, and k≡0 mod4.
+
+Find k in [7,36] that satisfies these.
+
+Solve k ≡1 mod9 and k≡0 mod4.
+
+Let’s find numbers ≡1 mod9:1,10,19,28,37.
+
+Check which are divisible by4:10 mod4=2,19 mod4=3,28 mod4=0. So, k=28.
+
+Check if 28 is in [7,36]: yes.
+
+Compute a=(784 -28)/36=756/36=21.
+
+c=28 -21=7.
+
+n=21*37 +7=777 +7=784=28^2. 21+7=28. Yes.
+
+Case2: k divisible by9, k-1 divisible by4.
+
+So, k≡0 mod9, and k≡1 mod4.
+
+Numbers in [7,36] divisible by9:9,18,27,36.
+
+Check if k-1 is divisible by4:
+
+k=9:8 divisible by4? Yes. So, k=9.
+
+Compute a=(81 -9)/36=72/36=2.
+
+c=9 -2=7.
+
+n=2*37 +7=74 +7=81=9^2. 2+7=9. Yes.
+
+k=18:17 divisible by4? 17 mod4=1≠0.
+
+k=27:26 mod4=2≠0.
+
+k=36:35 mod4=3≠0.
+
+So, only k=9 and28.
+
+Additionally, k=36:
+
+a=(1296 -36)/36=1260/36=35.
+
+c=36-35=1.
+
+n=35*37 +1=1295 +1=1296=36^2. 35+1=36. Yes.
+
+So, solutions are k=9,28,36. So, three solutions.
+
+So, for d=36, count=3.
+
+So, seems that for d divisible by6, we get three solutions.
+
+But wait, if I take d=12, which is divisible by6, we had three solutions.
+
+Similarly, for d=18,24,30,36, which are all divisible by6, we have three solutions.
+
+So, perhaps the number of solutions is three for d divisible by6, and one otherwise.
+
+But wait, earlier for d=12, which is divisible by6, we had three solutions. For d=24, same.
+
+But for d=6, which is divisible by6, we had three solutions.
+
+So, perhaps the number of solutions is three when d is divisible by6, and one when d is not.
+
+But let me check d=8, which is not divisible by6.
+
+d=8, b=9.
+
+k ranges from ceiling(sqrt(9))=3 to8.
+
+We need k in [3,8] such that 8 divides k(k -1).
+
+So, since 8=8*1, and k and k-1 are coprime, either k divisible by8 or k-1 divisible by8.
+
+So:
+
+Case1: k divisible by8: k=8.
+
+Case2: k-1 divisible by8: k=9>8.
+
+So, only k=8.
+
+Compute a=(64 -8)/8=56/8=7.
+
+c=8 -7=1.
+
+n=7*9 +1=63 +1=64=8^2. 7+1=8. Yes.
+
+So, count=1.
+
+So, for d=8, which is not divisible by6, count=1.
+
+Similarly, for d=10, which is not divisible by6.
+
+d=10, b=11.
+
+k ranges from ceiling(sqrt(11))=4 to10.
+
+Check for k=4:16-4=12 mod10=2≠0.
+
+k=5:25-5=20 mod10=0. a=20/10=2.
+
+c=5-2=3.
+
+n=2*11 +3=22 +3=25=5^2. 2+3=5. Yes.
+
+k=10:100-10=90 mod10=0. a=90/10=9.
+
+c=10-9=1.
+
+n=9*11 +1=99 +1=100=10^2. 9+1=10. Yes.
+
+Wait, so for d=10, which is not divisible by6, we have two solutions: k=5 and10.
+
+But earlier, I thought only k=10 would be a solution. Wait, but k=5 also worked.
+
+Wait, so for d=10, count=2.
+
+Hmm, that contradicts my earlier assumption.
+
+Wait, so for d=10, which is not divisible by6, we have two solutions.
+
+So, my earlier assumption that non-6 multiples have only one solution is incorrect.
+
+So, perhaps I need to think differently.
+
+Wait, for d=10:
+
+We have (k^2 -k) divisible by10.
+
+So, 10 divides k(k-1).
+
+Since 10=2*5, and k and k-1 are coprime, either:
+
+Case1: k divisible by2 and5, so k divisible by10.
+
+But k can't be 10 in d=10, because k must be ≤10. So, k=10.
+
+Case2: k divisible by2, and k-1 divisible by5.
+
+So, k≡1 mod5 and k even.
+
+Numbers in [4,10]: k=6.
+
+Check:6 is even, 6 mod5=1.
+
+Compute a=(36 -6)/10=30/10=3.
+
+c=6-3=3.
+
+n=3*11 +3=33 +3=36=6^2. 3+3=6. Yes.
+
+Similarly, case3: k divisible by5, and k-1 divisible by2.
+
+So, k≡0 mod5 and k≡1 mod2.
+
+Numbers in [4,10]:5,10.
+
+k=5:
+
+Compute a=(25 -5)/10=20/10=2.
+
+c=5-2=3.
+
+n=2*11 +3=22 +3=25=5^2. 2+3=5. Yes.
+
+k=10: as above.
+
+So, solutions are k=5,6,10. So, count=3.
+
+Wait, so for d=10, count=3.
+
+Hmm, that's interesting. So, for d=10, which is not divisible by6, we have three solutions.
+
+So, my earlier assumption was wrong.
+
+Therefore, the number of solutions isn't directly tied to whether d is divisible by6 or not.
+
+So, perhaps the number of solutions depends on the number of ways to express d as a product of coprime factors, which in turn depends on the number of prime factors of d.
+
+Wait, d=10=2*5.
+
+Coprime pairs:
+
+(1,10):k=1,11>10. No.
+
+(2,5):k≡0 mod2 and k≡1 mod5.
+
+Solutions: k=6.
+
+(5,2):k≡0 mod5 and k≡1 mod2.
+
+Solutions: k=5.
+
+(10,1):k=10.
+
+So, three solutions.
+
+Similarly, for d=15=3*5.
+
+Check d=15, b=16.
+
+k ranges from ceiling(sqrt(16))=4 to15.
+
+We need k such that 15 divides k(k -1).
+
+Since15=3*5, and k and k-1 are coprime, one must be divisible by3, and the other by5.
+
+So:
+
+Case1: k divisible by3, k-1 divisible by5.
+
+k≡0 mod3 and k≡1 mod5.
+
+Solve:
+
+k= 3m.
+
+3m ≡1 mod5 → 3m ≡1 → m≡2 mod5 (since 3*2=6≡1 mod5).
+
+So, m=5t +2.
+
+Thus, k=3*(5t +2)=15t +6.
+
+Looking for k in [4,15]:
+
+t=0: k=6.
+
+t=1:21>15.
+
+So, k=6.
+
+Compute a=(36-6)/15=30/15=2.
+
+c=6-2=4.
+
+n=2*16 +4=32 +4=36=6^2. 2+4=6. Yes.
+
+Case2: k divisible by5, k-1 divisible by3.
+
+k≡0 mod5 and k≡1 mod3.
+
+k=5m.
+
+5m ≡1 mod3 →5≡2 mod3 →2m≡1 mod3 →m≡2 mod3.
+
+So, m=3t +2.
+
+Thus, k=5*(3t +2)=15t +10.
+
+Looking for k in [4,15]:
+
+t=0: k=10.
+
+t=1:25>15.
+
+So, k=10.
+
+Compute a=(100 -10)/15=90/15=6.
+
+c=10 -6=4.
+
+n=6*16 +4=96 +4=100=10^2. 6+4=10. Yes.
+
+Additionally, k=15:
+
+a=(225 -15)/15=210/15=14.
+
+c=15 -14=1.
+
+n=14*16 +1=224 +1=225=15^2. 14+1=15. Yes.
+
+So, solutions:6,10,15. So, three solutions.
+
+So, for d=15, count=3.
+
+Similarly, for d=10, count=3.
+
+So, for d=10 and15, which are not multiples of6, but are products of two distinct primes, we have three solutions.
+
+So, perhaps the number of solutions is three when d is a product of two distinct primes, and three when d is a multiple of6.
+
+But wait, d=6=2*3, which is a product of two primes, and we had three solutions.
+
+Similarly, d=10=2*5, d=15=3*5, d=21=3*7, etc., all have three solutions.
+
+So, perhaps for d being a product of two distinct primes, the number of solutions is three.
+
+But earlier, for d=4=2^2, which is not a product of two distinct primes, the count was1.
+
+Similarly, for d=9=3^2, count=1.
+
+So, seems that when d is a product of two distinct primes, we get three solutions.
+
+When d is a prime power, we get one solution.
+
+When d is a multiple of6, but with more prime factors, we still get three solutions.
+
+Wait, d=12=2^2 *3.
+
+Which is not a product of two distinct primes, but a multiple of6.
+
+But for d=12, count=3.
+
+Similarly, d=18=2*3^2, which is a multiple of6, count=3.
+
+So, perhaps the number of solutions is three when d has at least two distinct prime factors, regardless of their exponents, and one solution when d is a prime power.
+
+So, for d=6=2*3: three solutions.
+
+d=10=2*5: three solutions.
+
+d=12=2^2*3: three solutions.
+
+d=14=2*7: three solutions.
+
+d=15=3*5: three solutions.
+
+d=16=2^4: one solution.
+
+d=18=2*3^2: three solutions.
+
+d=20=2^2*5: three solutions.
+
+d=21=3*7: three solutions.
+
+d=22=2*11: three solutions.
+
+d=24=2^3*3: three solutions.
+
+d=25=5^2: one solution.
+
+d=26=2*13: three solutions.
+
+d=27=3^3: one solution.
+
+d=28=2^2*7: three solutions.
+
+d=30=2*3*5: three solutions.
+
+So, seems like when d has at least two distinct prime factors, regardless of exponents, we get three solutions.
+
+When d is a prime power (single prime factor), we get one solution.
+
+So, to find the least b where the number of b-eautiful numbers is more than ten, we need to find the smallest d such that the number of solutions is more than ten.
+
+But in our earlier examples, for d being composite with at least two distinct primes, we get three solutions.
+
+So, to get more than ten solutions, we need d such that the number of solutions is more than ten.
+
+But wait, in our earlier analysis, for each d, the number of solutions is three when d has at least two distinct primes, and one otherwise.
+
+But that would mean that for each such d, we get three solutions.
+
+So, how can we get more than ten solutions?
+
+Wait, perhaps I'm misunderstanding. Maybe for each d, the number of solutions is three when d has two distinct prime factors, but for d with more prime factors, the number of solutions increases.
+
+Wait, let's think about d=30=2*3*5.
+
+We saw earlier that for d=30, the number of solutions is three.
+
+But perhaps for d with more prime factors, like d=2*3*5*7=210, the number of solutions increases.
+
+Wait, let's check.
+
+d=210, b=211.
+
+But that's a big number. Maybe for d=210, which has four distinct prime factors, how many solutions would we have?
+
+Wait, but I think for each d, regardless of the number of prime factors, the number of solutions is three when d is composite with at least two distinct primes.
+
+But that can't be, because in the earlier case of d=6, which is 2*3, we have three solutions.
+
+Similarly, for d=30=2*3*5, we also have three solutions.
+
+So, perhaps the number of solutions is always three for composite d with at least two distinct primes, regardless of the number of prime factors.
+
+But that seems inconsistent with the idea that more factors would lead to more solutions.
+
+Wait, perhaps my initial assumption is wrong.
+
+Wait, for d=30, which has prime factors 2,3,5, we had three solutions:15,16,30.
+
+Wait, perhaps the number of solutions is related to the number of coprime pairs, which is 2^(number of distinct prime factors -1).
+
+Wait, for d=6=2*3, number of distinct prime factors=2. So, 2^(2-1)=2. But we had three solutions.
+
+Hmm, not matching.
+
+Alternatively, perhaps the number of solutions is equal to the number of ways to partition the set of prime factors into two non-empty subsets, which is 2^(m) -2 where m is the number of distinct primes, divided by something.
+
+Wait, for d=6=2*3, m=2. So, 2^2 -2=2. But we have three solutions.
+
+Hmm, not matching.
+
+Alternatively, perhaps the number of solutions is equal to the number of divisors d1 of d such that d1 and d/d1 are coprime, and d1 < sqrt(d).
+
+But for d=6, the coprime pairs are (2,3), (3,2), (1,6), (6,1). But only three solutions.
+
+Wait, I'm getting stuck here.
+
+Alternatively, perhaps the number of solutions for a given d is three when d has at least two distinct prime factors, and one otherwise.
+
+If that's the case, then for each composite d with at least two distinct prime factors, we get three solutions.
+
+So, to get more than ten solutions, we need a d such that the number of solutions is more than ten.
+
+But if each d gives at most three solutions, then to have more than ten, we need multiple d's contributing multiple solutions.
+
+Wait, but the question is asking for the least b where there are more than ten b-eautiful numbers. So, for a fixed b, how many n's are b-eautiful.
+
+Each n corresponds to a different k, which in turn corresponds to a different d=b-1.
+
+Wait, no. For a fixed b, d=b-1 is fixed.
+
+So, for each b, we have a fixed d, and the number of solutions is the number of k's that satisfy the conditions for that d.
+
+So, for a given b, the number of b-eautiful numbers is the number of solutions for d=b-1.
+
+So, for example, for b=7 (d=6), we have three solutions.
+
+Similarly, for b=13 (d=12), three solutions.
+
+For b=10 (d=9), one solution.
+
+So, to have more than ten b-eautiful numbers, we need d=b-1 to have more than ten solutions.
+
+But earlier, we saw that for d being composite with at least two distinct primes, the number of solutions is three.
+
+So, unless d is such that the number of solutions is more than ten, which would require d to be highly composite, with many coprime pairs.
+
+Wait, but from our earlier analysis, for d=6,12,18,24, etc., which are multiples of6, the number of solutions is three.
+
+So, unless d is a factorial or something with many factors, but even so, perhaps the number of solutions per d is limited.
+
+Wait, but wait, perhaps for some d, the number of solutions is more than three.
+
+Let me check d=24:
+
+Earlier, for d=24, we had three solutions:9,16,24.
+
+But what about d=60=2^2*3*5.
+
+Let me check how many solutions d=60 has.
+
+d=60, b=61.
+
+k ranges from ceiling(sqrt(61))=8 to60.
+
+We need k such that 60 divides k(k-1).
+
+Since60=4*3*5.
+
+So, k and k-1 must be divisible by4,3,5.
+
+But since k and k-1 are coprime, one must be divisible by4, another by3 and5.
+
+So, two cases:
+
+Case1: k divisible by4, and k-1 divisible by15.
+
+So, k≡1 mod15 and k≡0 mod4.
+
+Solve:
+
+k ≡1 mod15
+
+k ≡0 mod4
+
+Using Chinese Remainder Theorem.
+
+Let’s set k=15m +1.
+
+We need 15m +1 ≡0 mod4.
+
+15 mod4=3, so 3m +1 ≡0 mod4 →3m ≡-1 mod4 →3m≡3 mod4 →m≡1 mod4.
+
+So, m=4t +1.
+
+Thus, k=15*(4t +1) +1=60t +16.
+
+Looking for k in [8,60]:
+
+t=0: k=16.
+
+t=1:76>60.
+
+So, k=16.
+
+Compute a=(256 -16)/60=240/60=4.
+
+c=16 -4=12.
+
+n=4*61 +12=244 +12=256=16^2. 4+12=16. Yes.
+
+Case2: k divisible by15, and k-1 divisible by4.
+
+So, k≡0 mod15 and k≡1 mod4.
+
+Solve:
+
+k=15m.
+
+15m ≡1 mod4 →15≡3 mod4 →3m≡1 mod4 →m≡3 mod4.
+
+So, m=4t +3.
+
+Thus, k=15*(4t +3)=60t +45.
+
+Looking for k in [8,60]:
+
+t=0: k=45.
+
+t=1:105>60.
+
+So, k=45.
+
+Compute a=(2025 -45)/60=1980/60=33.
+
+c=45 -33=12.
+
+n=33*61 +12=2013 +12=2025=45^2. 33+12=45. Yes.
+
+Additionally, k=60:
+
+a=(3600 -60)/60=3540/60=59.
+
+c=60 -59=1.
+
+n=59*61 +1=3599 +1=3600=60^2. 59+1=60. Yes.
+
+So, solutions are k=16,45,60. So, three solutions.
+
+So, for d=60, count=3.
+
+So, it seems that regardless of how many prime factors d has, as long as it's composite with at least two distinct primes, the number of solutions is three.
+
+Thus, for each d, number of solutions is three when d is composite with at least two distinct prime factors, and one when d is a prime power.
+
+Thus, to find the least b where there are more than ten b-eautiful numbers, we need to find the smallest d such that the number of solutions is more than ten. But from our analysis, each d can contribute at most three solutions.
+
+Wait, that can't be right because the problem states "more than ten" b-eautiful numbers, implying that for some b, there are multiple n's, which seems possible only if multiple d's contribute.
+
+Wait, but for a given b, d is fixed as b-1. So, the number of b-eautiful numbers is equal to the number of solutions for d=b-1.
+
+So, for a given b, the number of b-eautiful numbers is either one or three.
+
+So, to have more than ten, we need to have a d where the number of solutions is more than ten.
+
+But from our analysis, each d can contribute at most three solutions.
+
+So, that suggests that the problem as stated might have a typo, or perhaps my analysis is incomplete.
+
+Wait, but perhaps I've missed something.
+
+Wait, the problem says "more than ten b-eautiful integers." So, for a given b, how many n's are b-eautiful?
+
+From our earlier analysis, for d=b-1, the number of solutions is three when d is composite with at least two distinct primes, and one otherwise.
+
+Thus, for any b, the number of b-eautiful numbers is at most three.
+
+But the problem says "more than ten," which implies that the number is greater than ten.
+
+This suggests that perhaps my analysis is incorrect, and the number of solutions can be more than three for some d.
+
+Alternatively, perhaps I'm miscounting.
+
+Wait, let's think again.
+
+For d=6, we had three solutions:3,4,6.
+
+Wait, but in the case of d=6, b=7.
+
+Wait, n=3^2=9: a=1, c=2.
+
+n=4^2=16: a=2, c=2.
+
+n=6^2=36: a=5, c=1.
+
+So, three solutions.
+
+Similarly, for d=12, three solutions.
+
+So, for each d, maximum of three solutions.
+
+Thus, for a given b, maximum of three b-eautiful numbers.
+
+But the problem asks for b where there are more than ten.
+
+So, perhaps I misread the problem.
+
+Wait, going back.
+
+Problem statement:
+
+Call a positive integer n b-eautiful if it has exactly two digits when expressed in base b, and these two digits sum to sqrt(n). For example, 81 is 13-eautiful because 81=63_{13} and 6+3=9=sqrt(81). Find the least integer b ≥2 for which there are more than ten b-eautiful integers.
+
+Wait, perhaps the initial assumption was wrong. Maybe n can have two digits in base b, but n can be expressed in multiple bases, but for each base, n is considered as a separate b-eautiful number.
+
+Wait, no. The problem defines n as b-eautiful for a specific b. So, for each b, how many n's are b-eautiful.
+
+So, the confusion is that for each b, the number of b-eautiful numbers is the number of n's that satisfy the conditions for that b.
+
+From our analysis, for each b, the number is either one or three, depending on whether d=b-1 is composite with at least two distinct primes.
+
+So, for b=7, d=6, which is composite with two primes, count=3.
+
+Similarly, for b=13, d=12, count=3.
+
+For b=10, d=9, which is a prime power, count=1.
+
+Wait, but the problem says "more than ten." So, perhaps the count is not three per b, but more.
+
+Wait, perhaps I've made a mistake in counting.
+
+Wait, for d=6, we have three solutions: k=3,4,6.
+
+But in base7, these correspond to n=9,16,36.
+
+So, three numbers.
+
+Similarly, for d=12, three numbers.
+
+So, for a given b, the number of b-eautiful numbers is three when d is composite with at least two primes, and one otherwise.
+
+Thus, to have more than ten, we need to have a b where the number is more than ten, which is impossible if per b it's at most three.
+
+So, perhaps the problem is intended to have more than ten b-eautiful numbers across all bases, but that's not what the question says.
+
+Wait, the problem says: "the least integer b ≥2 for which there are more than ten b-eautiful integers."
+
+So, for each b, count the number of n's that are b-eautiful, and find the smallest b where this count exceeds ten.
+
+But according to our analysis, for each b, the count is at most three.
+
+Therefore, perhaps the problem has a different interpretation.
+
+Wait, perhaps the problem allows n to have two digits in base b, but n can be written in multiple bases, but for each base, the count is per base.
+
+Wait, no, the problem defines n as b-eautiful for a specific b.
+
+Alternatively, perhaps the problem is considering all possible bases, and for each n, it's b-eautiful for some b, and the total across all bases is more than ten.
+
+But the problem says: "the least integer b ≥2 for which there are more than ten b-eautiful integers."
+
+So, it's about a specific b, not across all bases.
+
+Wait, unless the problem is asking for the number of n's that are b-eautiful for some base b, but that's not how it's phrased.
+
+Alternatively, perhaps I made a mistake in the initial analysis.
+
+Wait, perhaps for some d, the number of solutions is more than three.
+
+For example, let's check d=30 again.
+
+d=30, b=31.
+
+We found three solutions:15,16,30.
+
+But let's check other k's.
+
+k=2:4-2=2 mod30=2≠0.
+
+k=3:9-3=6 mod30=6≠0.
+
+k=4:16-4=12 mod30=12≠0.
+
+k=5:25-5=20 mod30=20≠0.
+
+k=6:36-6=30 mod30=0. a=30/30=1.
+
+c=6-1=5.
+
+n=1*31 +5=36=6^2. 1+5=6. Yes.
+
+Wait, so for k=6, we have another solution.
+
+Similarly, k=10:100-10=90 mod30=0. a=90/30=3.
+
+c=10-3=7.
+
+n=3*31 +7=93 +7=100=10^2. 3+7=10. Yes.
+
+Similarly, k=15:225-15=210 mod30=0. a=210/30=7.
+
+c=15-7=8.
+
+n=7*31 +8=217 +8=225=15^2. 7+8=15. Yes.
+
+k=20:400-20=380 mod30=20≠0.
+
+k=21:441-21=420 mod30=0. a=420/30=14.
+
+c=21-14=7.
+
+n=14*31 +7=434 +7=441=21^2. 14+7=21. Yes.
+
+k=25:625-25=600 mod30=0. a=600/30=20.
+
+c=25-20=5.
+
+n=20*31 +5=620 +5=625=25^2. 20+5=25. Yes.
+
+k=30:900-30=870 mod30=0. a=870/30=29.
+
+c=30-29=1.
+
+n=29*31 +1=899 +1=900=30^2. 29+1=30. Yes.
+
+So, for d=30, the solutions are k=6,10,15,16,21,25,30.
+
+So, seven solutions.
+
+Wait, that's more than three.
+
+So, earlier, I missed some solutions.
+
+So, perhaps for d=30, the number of solutions is seven.
+
+So, my earlier approach was incomplete.
+
+Thus, perhaps the number of solutions can be more than three.
+
+So, to accurately count the number of solutions for each d, we need to consider all possible k's in [ceiling(sqrt(d+1)), d] such that (k^2 -k) is divisible by d.
+
+In the case of d=30, we found seven solutions.
+
+So, how did that happen?
+
+Because d=30 has more factors, leading to more k's satisfying the condition.
+
+So, perhaps the number of solutions depends on the number of divisors of d.
+
+Wait, for d=30, which has divisors:1,2,3,5,6,10,15,30.
+
+Thus, eight divisors.
+
+For each divisor t of d, where t divides k and (d/t) divides (k-1), we can solve for k.
+
+Thus, for each t in the divisors of d where t ≤ sqrt(d), we can find k.
+
+Wait, for d=30, the divisors t are 1,2,3,5,6,10,15,30.
+
+For each t, we can set up k ≡0 mod t and k≡1 mod (d/t).
+
+But t must be ≤ sqrt(d)=sqrt(30)=5.477, so t=1,2,3,5.
+
+So, for each t in {1,2,3,5}, compute k.
+
+Case1: t=1.
+
+Then, d/t=30.
+
+k≡0 mod1 (always true), k≡1 mod30.
+
+So, k=30m +1.
+
+Within [6,30], m=0: k=1 (too small), m=1: k=31>30. So, no solution.
+
+Case2: t=2.
+
+d/t=15.
+
+k≡0 mod2, k≡1 mod15.
+
+Solve:
+
+k=15m +1.
+
+15m +1 ≡0 mod2 →15m ≡1 mod2 →m≡1 mod2.
+
+So, m=2n +1.
+
+Thus, k=15*(2n +1) +1=30n +16.
+
+Within [6,30]: n=0: k=16.
+
+n=1: k=46>30. So, k=16.
+
+Compute a=(256 -16)/30=240/30=8.
+
+c=16 -8=8.
+
+n=8*31 +8=256=16^2. 8+8=16. Yes.
+
+Case3: t=3.
+
+d/t=10.
+
+k≡0 mod3, k≡1 mod10.
+
+Solve:
+
+k=10m +1.
+
+10m +1 ≡0 mod3 →10m ≡2 mod3 →1m ≡2 mod3 →m≡2 mod3.
+
+So, m=3n +2.
+
+Thus, k=10*(3n +2)+1=30n +21.
+
+Within [6,30]: n=0: k=21.
+
+n=1:51>30.
+
+So, k=21.
+
+Compute a=(441 -21)/30=420/30=14.
+
+c=21 -14=7.
+
+n=14*31 +7=441=21^2. 14+7=21. Yes.
+
+Case4: t=5.
+
+d/t=6.
+
+k≡0 mod5, k≡1 mod6.
+
+Solve:
+
+k=6m +1.
+
+6m +1 ≡0 mod5 →6m ≡4 mod5 →m ≡4 mod5 (since 6≡1 mod5 →1m≡4 →m≡4).
+
+So, m=5n +4.
+
+Thus, k=6*(5n +4)+1=30n +25.
+
+Within [6,30]: n=0: k=25.
+
+n=1:55>30.
+
+So, k=25.
+
+Compute a=(625 -25)/30=600/30=20.
+
+c=25 -20=5.
+
+n=20*31 +5=620 +5=625=25^2. 20+5=25. Yes.
+
+Additionally, t=6:
+
+But t=6>sqrt(30)=5.477, but let's check.
+
+t=6:
+
+d/t=5.
+
+k≡0 mod6, k≡1 mod5.
+
+Solve:
+
+k=5m +1.
+
+5m +1 ≡0 mod6 →5m ≡5 mod6 →m≡1 mod6.
+
+So, m=6n +1.
+
+Thus, k=5*(6n +1)+1=30n +6.
+
+Within [6,30]: n=0: k=6.
+
+n=1:36>30.
+
+So, k=6.
+
+Compute a=(36 -6)/30=30/30=1.
+
+c=6 -1=5.
+
+n=1*31 +5=36=6^2. 1+5=6. Yes.
+
+Similarly, t=10:
+
+But t=10>sqrt(30). But let's see.
+
+t=10:
+
+d/t=3.
+
+k≡0 mod10, k≡1 mod3.
+
+Solve:
+
+k=3m +1.
+
+3m +1 ≡0 mod10 →3m ≡9 mod10 →m≡3 mod10.
+
+So, m=10n +3.
+
+Thus, k=3*(10n +3)+1=30n +10.
+
+Within [6,30]: n=0: k=10.
+
+n=1:40>30.
+
+So, k=10.
+
+Compute a=(100 -10)/30=90/30=3.
+
+c=10 -3=7.
+
+n=3*31 +7=93 +7=100=10^2. 3+7=10. Yes.
+
+t=15:
+
+t=15>sqrt(30). But let's proceed.
+
+t=15:
+
+d/t=2.
+
+k≡0 mod15, k≡1 mod2.
+
+So, k=15m.
+
+15m ≡1 mod2 →15≡1 mod2 →m≡1 mod2.
+
+So, m=2n +1.
+
+Thus, k=15*(2n +1)=30n +15.
+
+Within [6,30]: n=0: k=15.
+
+n=1:45>30.
+
+So, k=15.
+
+Compute a=(225 -15)/30=210/30=7.
+
+c=15 -7=8.
+
+n=7*31 +8=217 +8=225=15^2. 7+8=15. Yes.
+
+t=30:
+
+k=30.
+
+Compute a=(900 -30)/30=870/30=29.
+
+c=30 -29=1.
+
+n=29*31 +1=899 +1=900=30^2. 29+1=30. Yes.
+
+So, in total, for d=30, the solutions are k=6,10,15,16,21,25,30. So, seven solutions.
+
+Thus, for d=30, count=7.
+
+So, the number of solutions can be more than three when d has more divisors.
+
+So, the number of solutions depends on the number of divisors t of d such that t ≤ sqrt(d), and the corresponding k's are within [ceiling(sqrt(d+1)), d].
+
+Thus, to find the least b where the number of b-eautiful numbers is more than ten, we need to find the smallest d such that the number of solutions is more than ten.
+
+But how?
+
+Well, perhaps the number of solutions is equal to the number of divisors t of d where t ≤ sqrt(d), and for each such t, there's a solution k in the range.
+
+But how many such t's can we have?
+
+Alternatively, perhaps the number of solutions is equal to the number of ways to write d as t*s where t and s are positive integers, t ≤ s, and t divides k, s divides (k-1), and k is in the range.
+
+But this is getting too vague.
+
+Alternatively, perhaps the number of solutions for d is equal to the number of divisors of d that are less than or equal to sqrt(d).
+
+But for d=30, the number of divisors ≤sqrt(30) is t=1,2,3,5. So, four t's, but we had seven solutions.
+
+Wait, that doesn't match.
+
+Alternatively, perhaps for each divisor t of d, regardless of size, if t and d/t are coprime, then there is a solution.
+
+But for d=30, with t=1,2,3,5,6,10,15,30, but only some t's lead to solutions.
+
+Wait, in the case of d=30, we had seven solutions, which is more than the number of coprime pairs.
+
+So, perhaps the number of solutions increases as d has more small factors.
+
+So, perhaps the more divisors d has, the more solutions.
+
+Thus, to find the smallest d with more than ten solutions, we need to find the smallest d with enough divisors.
+
+But how?
+
+Alternatively, perhaps the number of solutions is equal to the number of divisors of d, since for each divisor t, we can have a solution.
+
+But for d=30, which has eight divisors, we had seven solutions.
+
+Wait, because t=1 didn't give a solution.
+
+So, perhaps the number of solutions is equal to the number of divisors t of d where t >1 and t ≤ sqrt(d).
+
+But for d=30, the number of such t's is 2,3,5. So, three t's. But we had seven solutions.
+
+Hmm, not matching.
+
+Alternatively, perhaps the number of solutions is equal to the number of divisors of d.
+
+But for d=30, eight divisors, seven solutions.
+
+So, perhaps it's equal to the number of divisors minus one.
+
+But not sure.
+
+Alternatively, perhaps the number of solutions is equal to the number of pairs (t, s) where t*s=d, t <s, and t and s are coprime.
+
+For d=6, which has three such pairs: (1,6), (2,3), (3,2), (6,1). But only three solutions.
+
+Wait, but earlier for d=30, we had seven solutions, which is more than the number of coprime pairs.
+
+So, perhaps the number of solutions is equal to the number of divisors of d, which is τ(d).
+
+But for d=6, τ(d)=4, but we had three solutions.
+
+For d=30, τ(d)=8, but we had seven solutions.
+
+So, perhaps the number of solutions is τ(d) -1, where τ(d) is the number of positive divisors of d.
+
+But for d=6, 4-1=3, which matches.
+
+For d=30, 8-1=7, which matches.
+
+For d=12, τ(d)=6, so number of solutions=5? Wait, no, for d=12, we had three solutions.
+
+Wait, that doesn't match.
+
+So, perhaps my earlier assumption is incorrect.
+
+Alternatively, perhaps the number of solutions is equal to the number of divisors t of d where t is less than d.
+
+But for d=6, τ(d)=4, solutions=3, which is τ(d)-1.
+
+For d=30, τ(d)=8, solutions=7=τ(d)-1.
+
+But for d=12, τ(d)=6, but solutions=3≠5.
+
+So, perhaps it only works for square-free d.
+
+Wait, d=30 is square-free, its solutions=7=τ(d)-1.
+
+d=6 is square-free, solutions=3=τ(d)-1.
+
+d=10 is square-free, τ(d)=4, solutions=3=τ(d)-1.
+
+d=15 is square-free, τ(d)=4, solutions=3=τ(d)-1.
+
+So, for square-free d, number of solutions=τ(d)-1.
+
+But for d=12, which is not square-free, τ(d)=6, but solutions=3≠5.
+
+So, perhaps for square-free d, the number of solutions is τ(d)-1.
+
+But for non-square-free d, it's less.
+
+So, to have more than ten solutions, we need a square-free d where τ(d)-1>10.
+
+So, τ(d) >11.
+
+Thus, τ(d) ≥12.
+
+The smallest square-free d with τ(d)=12.
+
+Since d is square-free, τ(d)=2^k, where k is the number of distinct prime factors.
+
+So, 2^k=12→k=log2(12)=3.58. Not integer.
+
+Wait, τ(d)=number of divisors=2^k, where k is the number of distinct prime factors.
+
+So, for τ(d)=12, which is not a power of two, it's impossible.
+
+Thus, the next higher τ(d)=16=2^4, which would require four distinct prime factors.
+
+So, the smallest square-free d with four distinct prime factors is d=2*3*5*7=210.
+
+Thus, τ(d)=16, number of solutions=15.
+
+So, for d=210, number of solutions=15.
+
+Thus, b=d+1=211.
+
+But wait, let's confirm.
+
+d=210, b=211.
+
+k ranges from ceiling(sqrt(211))=15 to210.
+
+We need to find k in [15,210] such that 210 divides k(k-1).
+
+Since210=2*3*5*7.
+
+So, for k and k-1 coprime, one must be divisible by2, another by3, another by5, another by7.
+
+Wait, no, because k and k-1 are coprime, so one must be divisible by2, another by3, another by5, another by7.
+
+But since k and k-1 are consecutive, one must be even, and one must be divisible by3, one by5, and one by7.
+
+But since 210=2*3*5*7, the product of four distinct primes, we need k to be divisible by some combination of these primes, and k-1 to be divisible by the remaining.
+
+But since k and k-1 are consecutive, they are coprime, so the factors must be distributed between them.
+
+So, to have 210 divides k(k-1), one of them must be divisible by2, another by3, another by5, and another by7.
+
+But since they are consecutive, one must be divisible by2, another by3, another by5, and another by7. However, since one number can only be divisible by multiple primes, this requires that one of them is divisible by the product of some subset of these primes, and the other by the complementary subset.
+
+Thus, for each subset S of {2,3,5,7}, we can set k ≡0 mod (product of S) and k ≡1 mod (product of complement of S).
+
+But since S and its complement are non-empty, we have 2^4 -2=14 subsets.
+
+But each such subset may or may not lead to a solution.
+
+Wait, but for each subset S, we have a congruence system:
+
+k ≡0 mod (product S)
+
+k ≡1 mod (product complement S)
+
+If the product S and product complement S are coprime, then by Chinese Remainder Theorem, there's a unique solution modulo (product S * product complement S)=210.
+
+Thus, for each such subset S, there's a solution k in [1,210].
+
+But we need k in [15,210].
+
+So, for each of the 14 subsets, we may get a solution.
+
+But some solutions may fall outside the range.
+
+So, let's compute.
+
+The number of subsets S of {2,3,5,7} where S is non-empty and not the entire set is 14.
+
+Each such subset defines a unique solution modulo210.
+
+Thus, for each subset, we can compute k in [1,210], and check if it's in [15,210].
+
+Since the solutions are unique modulo210, each solution is in [1,210], so only some may be below15.
+
+So, for each subset S, the solution k is in [1,210], and for those where k ≥15, it's counted.
+
+Thus, number of solutions=14 - number of solutions where k <15.
+
+But how many solutions are below15?
+
+Let's find.
+
+Each subset S defines a solution k.
+
+Compute k for each subset S:
+
+But this is tedious, but perhaps manageable.
+
+The subsets S are:
+
+1. {2}: product=2.
+
+Complement={3,5,7}, product=105.
+
+Solve:
+
+k≡0 mod2
+
+k≡1 mod105.
+
+Solution: k=105m +1.
+
+Find m such that k≡0 mod2.
+
+105m +1 ≡0 mod2 →105m ≡1 mod2 →m≡1 mod2.
+
+So, m=2t +1.
+
+Thus, k=105*(2t +1) +1=210t +106.
+
+Within [1,210], t=0: k=106.
+
+t=1:316>210.
+
+So, k=106.
+
+But 106 ≥15. Counted.
+
+2. {3}: product=3.
+
+Complement={2,5,7}, product=70.
+
+Solve:
+
+k≡0 mod3
+
+k≡1 mod70.
+
+Solution:
+
+k=70m +1.
+
+70m +1 ≡0 mod3 →70≡1 mod3 →m +1 ≡0 mod3 →m≡2 mod3.
+
+So, m=3t +2.
+
+Thus, k=70*(3t +2) +1=210t +141.
+
+Within [1,210], t=0: k=141.
+
+t=1:351>210.
+
+So, k=141.
+
+≥15. Counted.
+
+3. {5}: product=5.
+
+Complement={2,3,7}, product=42.
+
+Solve:
+
+k≡0 mod5
+
+k≡1 mod42.
+
+Solution:
+
+k=42m +1.
+
+42m +1 ≡0 mod5 →42≡2 mod5 →2m +1 ≡0 mod5 →2m≡4 mod5 →m≡2 mod5.
+
+So, m=5t +2.
+
+Thus, k=42*(5t +2) +1=210t +85.
+
+Within [1,210], t=0: k=85.
+
+t=1:295>210.
+
+So, k=85.
+
+≥15. Counted.
+
+4. {7}: product=7.
+
+Complement={2,3,5}, product=30.
+
+Solve:
+
+k≡0 mod7
+
+k≡1 mod30.
+
+Solution:
+
+k=30m +1.
+
+30m +1 ≡0 mod7 →30≡2 mod7 →2m +1 ≡0 mod7 →2m≡6 mod7 →m≡3 mod7.
+
+So, m=7t +3.
+
+Thus, k=30*(7t +3) +1=210t +91.
+
+Within [1,210], t=0: k=91.
+
+t=1:301>210.
+
+So, k=91.
+
+≥15. Counted.
+
+5. {2,3}: product=6.
+
+Complement={5,7}, product=35.
+
+Solve:
+
+k≡0 mod6
+
+k≡1 mod35.
+
+Solution:
+
+k=35m +1.
+
+35m +1 ≡0 mod6 →35≡5 mod6 →5m +1 ≡0 mod6 →5m≡5 mod6 →m≡1 mod6.
+
+So, m=6t +1.
+
+Thus, k=35*(6t +1) +1=210t +36.
+
+Within [1,210], t=0: k=36.
+
+t=1:246>210.
+
+So, k=36.
+
+≥15. Counted.
+
+6. {2,5}: product=10.
+
+Complement={3,7}, product=21.
+
+Solve:
+
+k≡0 mod10
+
+k≡1 mod21.
+
+Solution:
+
+k=21m +1.
+
+21m +1 ≡0 mod10 →21≡1 mod10 →m +1 ≡0 mod10 →m≡9 mod10.
+
+So, m=10t +9.
+
+Thus, k=21*(10t +9) +1=210t +190.
+
+Within [1,210], t=0: k=190.
+
+t=1:400>210.
+
+So, k=190.
+
+≥15. Counted.
+
+7. {2,7}: product=14.
+
+Complement={3,5}, product=15.
+
+Solve:
+
+k≡0 mod14
+
+k≡1 mod15.
+
+Solution:
+
+k=15m +1.
+
+15m +1 ≡0 mod14 →15≡1 mod14 →m +1 ≡0 mod14 →m≡13 mod14.
+
+So, m=14t +13.
+
+Thus, k=15*(14t +13) +1=210t +196.
+
+Within [1,210], t=0: k=196.
+
+t=1:406>210.
+
+So, k=196.
+
+≥15. Counted.
+
+8. {3,5}: product=15.
+
+Complement={2,7}, product=14.
+
+Solve:
+
+k≡0 mod15
+
+k≡1 mod14.
+
+Solution:
+
+k=14m +1.
+
+14m +1 ≡0 mod15 →14≡-1 mod15 →-m +1 ≡0 mod15 →-m≡-1 mod15 →m≡1 mod15.
+
+So, m=15t +1.
+
+Thus, k=14*(15t +1) +1=210t +15.
+
+Within [1,210], t=0: k=15.
+
+t=1:225>210.
+
+So, k=15.
+
+≥15. Counted.
+
+9. {3,7}: product=21.
+
+Complement={2,5}, product=10.
+
+Solve:
+
+k≡0 mod21
+
+k≡1 mod10.
+
+Solution:
+
+k=10m +1.
+
+10m +1 ≡0 mod21 →10m ≡20 mod21 →m≡2 mod21.
+
+So, m=21t +2.
+
+Thus, k=10*(21t +2) +1=210t +21.
+
+Within [1,210], t=0: k=21.
+
+t=1:231>210.
+
+So, k=21.
+
+≥15. Counted.
+
+10. {5,7}: product=35.
+
+Complement={2,3}, product=6.
+
+Solve:
+
+k≡0 mod35
+
+k≡1 mod6.
+
+Solution:
+
+k=6m +1.
+
+6m +1 ≡0 mod35 →6m ≡34 mod35 →6m≡34 mod35.
+
+Find m:
+
+6m ≡34 mod35.
+
+Multiply both sides by inverse of6 mod35. Since 6*6=36≡1 mod35, inverse is6.
+
+So, m≡34*6 mod35=204 mod35=204-5*35=204-175=29.
+
+Thus, m=35t +29.
+
+Thus, k=6*(35t +29)+1=210t +175.
+
+Within [1,210], t=0: k=175.
+
+t=1:385>210.
+
+So, k=175.
+
+≥15. Counted.
+
+11. {2,3,5}: product=30.
+
+Complement={7}, product=7.
+
+Solve:
+
+k≡0 mod30
+
+k≡1 mod7.
+
+Solution:
+
+k=7m +1.
+
+7m +1 ≡0 mod30 →7m≡29 mod30.
+
+Find m:
+
+7m ≡2Okay, so I've got this math problem here, and I need to figure out the least integer base b (where b is at least 2) for which there are more than ten b-eautiful integers. Hmm, okay, let's break this down.
+
+First, let me make sure I understand what a b-eautiful number is. The problem says that a positive integer n is called b-eautiful if it has exactly two digits when expressed in base b, and the sum of these two digits equals the square root of n. Oh, right, the example given is 81 being 13-eautiful because 81 is 63 in base 13, and 6 + 3 equals 9, which is the square root of 81. Got it.
+
+So, to rephrase, for a number n, when written in base b, it should have two digits. That means n is between b^1 and b^2 - 1, right? Because in base b, the two-digit numbers range from 10_b (which is b in decimal) up to (b-1)(b-1)_b, which is (b-1)*b + (b-1) = b^2 - 1.
+
+So, n is a two-digit number in base b, meaning n is in [b, b^2 - 1]. Now, the two digits, let's call them d1 and d2, each must be less than b because in any base, each digit has to be less than the base. So, d1 is between 1 and b-1 (since it's the first digit, it can't be zero), and d2 is between 0 and b-1.
+
+The condition is that d1 + d2 = sqrt(n). Since sqrt(n) has to be an integer because d1 and d2 are integers. So, n must be a perfect square. Therefore, n = k^2, where k is some integer, and k = d1 + d2.
+
+So, putting it all together, n is a two-digit number in base b, n is a perfect square, and the sum of its digits equals its square root.
+
+So, the approach is to find, for each base b, how many two-digit numbers in base b are perfect squares and whose digits sum to their square roots. We need to find the smallest b where the count of such numbers exceeds ten.
+
+Wait, but since we're looking for the minimal b where more than ten such numbers exist, maybe I can model this problem algebraically.
+
+Let me denote n as a two-digit number in base b: n = d1 * b + d2, where d1 is from 1 to b-1, and d2 is from 0 to b-1.
+
+Given that n = k^2, and k = d1 + d2.
+
+So, we have:
+
+n = k^2 = d1 * b + d2
+
+and
+
+k = d1 + d2.
+
+So, substituting k into the first equation:
+
+k^2 = d1 * b + d2.
+
+But since d2 = k - d1, substituting that in:
+
+k^2 = d1 * b + (k - d1)
+
+Simplifying:
+
+k^2 = d1 * b + k - d1
+
+Bring all terms to one side:
+
+k^2 - k = d1 * (b - 1)
+
+So,
+
+d1 = (k^2 - k) / (b - 1)
+
+Hmm, interesting. Since d1 must be an integer between 1 and b-1, (k^2 - k) must be divisible by (b - 1), and the result must be within [1, b-1].
+
+So, for each base b, I can consider possible values of k, compute d1, and check if d1 is valid (i.e., integer and within the required range). Then, for each valid d1, d2 would be k - d1, which must also be within [0, b-1].
+
+Wait, but k is sqrt(n), and n is a two-digit number in base b, which is between b and b^2 - 1. So, sqrt(n) is between sqrt(b) and sqrt(b^2 - 1), which is just less than b. So, k must be an integer in [2, b-1]. Because sqrt(b) is at least sqrt(2) ≈ 1.414, but since k must be integer, the smallest k is 2. The largest k is floor(sqrt(b^2 - 1)) = b - 1, since sqrt(b^2 -1 ) is less than b.
+
+So, k ranges from 2 to b-1.
+
+Therefore, for a given b, k can be 2,3,...,b-1.
+
+For each k in that range, we can compute d1 = (k^2 - k)/(b - 1). If (k^2 -k) is divisible by (b -1), then d1 is integer. Also, d1 must be between 1 and b-1, inclusive.
+
+Additionally, d2 must be between 0 and b-1, and since d2 = k - d1, that imposes another condition.
+
+So, for each b, let's consider k from 2 to b-1:
+
+Compute (k^2 -k) divided by (b-1). If this is integer, and if the resulting d1 is in [1, b-1], and d2 = k - d1 is in [0, b-1], then n = d1*b + d2 is a b-eautiful number.
+
+So, for each base b, the number of b-eautiful numbers is equal to the number of k in [2, b-1] for which (k^2 -k) is divisible by (b-1), and the resulting d1 and d2 are valid digits.
+
+Alternatively, perhaps we can express b in terms of k and d1. Let's rearrange the equation:
+
+k^2 = d1*b + d2.
+
+But d2 = k - d1, so:
+
+k^2 = d1*b + (k - d1)
+
+Which gives:
+
+k^2 - k = d1*(b -1)
+
+So,
+
+b = (k^2 -k)/d1 + 1.
+
+Since b must be an integer, (k^2 -k) must be divisible by d1. And d1 must be a positive integer such that 1 <= d1 <= k - 0 (since d2 = k - d1 >=0, so d1 <=k). But d1 is also <= b-1, which is >=1 because b >=2.
+
+Wait, but for each k, d1 can vary, as long as d1 divides (k^2 -k), and 1 <= d1 <= min(k, b-1). Hmm, but this seems a bit circular.
+
+Alternatively, perhaps we can think of this as for each k, possible d1 are the divisors of (k^2 -k) that satisfy 1 <= d1 <=k and d1 <= b-1.
+
+But since b is expressed in terms of d1 and k, perhaps I can consider for each k, the possible values of d1 that divide (k^2 -k), and then b is computed as (k^2 -k)/d1 +1.
+
+But since b must be an integer greater than or equal to 2, and for each such b, we can count how many k's and d1's lead to it.
+
+Wait, perhaps this is getting too abstract. Maybe I should approach this by considering for each base b, iterate over k from 2 to b-1, compute if (k^2 -k) is divisible by (b-1), and if so, see if d1 is within the required range.
+
+But since my goal is to find the smallest b where the number of such n (i.e., two-digit b numbers that are perfect squares with digit sums equal to their roots) exceeds ten, maybe I can compute the number of such n for each b starting from 2 upwards, and find when this count first exceeds ten.
+
+So, let's define a function f(b) which counts the number of b-eautiful numbers. We need to find the smallest b such that f(b) > 10.
+
+So, how to compute f(b)?
+
+For a given b, f(b) is the number of integers k in [2, b-1] such that:
+
+1. (k^2 -k) is divisible by (b -1), i.e., (b -1) divides (k^2 -k).
+
+2. d1 = (k^2 -k)/(b -1) is an integer in [1, b-1].
+
+3. d2 = k - d1 is in [0, b-1].
+
+So, for each b, I can compute for each k from 2 to b-1:
+
+Check if (k^2 -k) mod (b -1) == 0.
+
+If yes, compute d1 = (k^2 -k)/(b -1).
+
+Check if d1 is in [1, b-1], and d2 = k - d1 is in [0, b-1].
+
+If all conditions met, then count this as a valid b-eautiful number.
+
+So, perhaps I can write a table for small b to compute f(b), and see when it exceeds 10.
+
+But since I don't have a computer, I need to find a mathematical way to compute f(b).
+
+Alternatively, maybe I can find a formula or pattern that allows me to compute f(b) without checking each k.
+
+Wait, let's think about the equation:
+
+k^2 -k = d1*(b -1)
+
+We can write this as:
+
+k(k - 1) = d1*(b -1)
+
+So, the product of two consecutive integers, k and k-1, is equal to d1*(b -1). Since k and k-1 are consecutive, they are coprime. So, the factors d1 and (b-1) must multiply to k(k-1).
+
+But since d1 is a divisor of k(k -1), and d1 <= b-1, and k <= b-1.
+
+Wait, but since d1*(b -1) = k(k -1), and d1 <= b -1, perhaps d1 must be a factor of k(k -1) that is less than or equal to b -1.
+
+Alternatively, maybe we can think of (b -1) as a factor of k(k -1). So, (b -1) divides k(k -1).
+
+So, for each b, the number of valid k's is the number of integers k in [2, b-1] such that (b -1) divides k(k -1).
+
+Moreover, once (b -1) divides k(k -1), then d1 is equal to k(k -1)/(b -1), which must be an integer. Then, we need to check if d1 is within [1, b-1], and d2 = k - d1 is within [0, b-1].
+
+Wait, so for each b, the number of valid k's is the number of integers k in [2, b-1] such that (b -1) divides k(k -1). But since k and k-1 are consecutive, they are coprime, so (b -1) must divide either k or k-1.
+
+Wait, no, that's not necessarily true. Because (b - 1) could have factors that are shared with both k and k-1, but given that k and k-1 are coprime, the factors of (b -1) can only divide either k or k-1, but not both.
+
+So, in other words, for (b -1) to divide k(k -1), it's necessary that (b -1) is a product of two coprime factors, one dividing k and the other dividing k -1.
+
+Wait, that might not always be the case. Hmm.
+
+But perhaps, given that k and k-1 are coprime, the factors of (b -1) must be distributed between k and k-1.
+
+So, if we let (b -1) = m * n, where m and n are coprime, then m divides k and n divides k -1.
+
+Alternatively, it's getting a bit too abstract. Maybe a better approach is to note that (b -1) divides k(k -1), so k ≡ 0 or 1 mod (b -1).
+
+Wait, no, that's not right. Because if (b -1) divides k(k -1), then k ≡ 0 or 1 mod (b -1) only if (b -1) is prime. But since (b -1) could be composite, it's possible for k to be congruent to 0 or 1 modulo some divisor of (b -1), but not necessarily modulo (b -1) itself.
+
+Wait, perhaps I can think in terms of the divisors of (b -1). Let’s denote d = gcd(k, b -1). Since k and k-1 are coprime, d must divide (b -1) and k.
+
+Similarly, (b -1) divides k(k -1), so (b -1) must divide the product k(k -1). Since gcd(k, k-1) =1, (b -1) must be a product of two coprime factors, one dividing k and the other dividing k-1.
+
+So, for each divisor m of (b -1), we can set m divides k and (b -1)/m divides (k -1). So, k ≡ 0 mod m and k ≡ 1 mod ( (b -1)/m ).
+
+By the Chinese Remainder Theorem, since m and (b -1)/m are coprime (because (b -1) is factored into two coprime factors), there exists a unique solution modulo (b -1).
+
+So, for each divisor m of (b -1), where m and (b -1)/m are coprime, we can find a k in the range [2, b-1] such that k ≡ 0 mod m and k ≡ 1 mod ( (b -1)/m ).
+
+Each such m gives us a possible k. Hence, the number of such k's is equal to the number of ways to factor (b -1) into two coprime divisors m and n, such that m*n = (b -1).
+
+Wait, but each such factorization would give a unique solution for k modulo (b -1). Since k is in [2, b-1], each such solution gives exactly one k in that range.
+
+Therefore, the number of valid k's for a given b is equal to the number of ways to factor (b -1) into two coprime positive integers m and n, where m >1 and n>1, but I think not necessarily, because m could be 1.
+
+Wait, no, m and n can be any positive integers as long as m divides (b -1) and n = (b -1)/m, and m and n are coprime.
+
+But since m and n are coprime and m*n = (b -1), each such pair (m, n) corresponds to a unique solution for k modulo (b -1). So, the number of such k's is equal to the number of such pairs (m, n).
+
+But the number of such pairs is equal to 2^{d-1}, where d is the number of distinct prime factors of (b -1). Wait, because each prime factor can go to m or n, but since m and n must be coprime, the factors have to be split among m and n.
+
+Wait, for example, if (b -1) has prime factorization p1^a1 * p2^a2 * ... * pn^an, then the number of ways to split the prime factors into m and n (where m and n are coprime) is 2^d, because for each prime, you decide whether it goes to m or n. However, since m and n are positive integers, and we're considering unordered pairs, it's actually 2^{d-1}.
+
+Wait, but in our case, since m and n are ordered (m divides k, n divides k-1), each split corresponds to a unique ordered pair. So, the number of such ordered pairs is 2^d, where d is the number of distinct prime factors of (b -1). Because for each prime, you can assign it to m or to n.
+
+Wait, for example, if (b -1) is a prime power, say p^k, then the only coprime pairs (m, n) are (1, p^k) and (p^k, 1). So, number of such pairs is 2.
+
+If (b -1) is a product of two distinct primes, say p*q, then the number of pairs is 4: (1, pq), (p, q), (q, p), (pq, 1). But in our situation, since m and n have to be such that m divides k and n divides k-1, but m and n are positive integers with m*n = (b -1), and each prime can be assigned to m or n, so the number of possible such pairs is indeed 2^d, where d is the number of distinct prime factors of (b -1).
+
+But wait, each pair (m, n) gives a unique solution for k modulo (b -1). So, the number of solutions k in [2, b-1] is equal to the number of such pairs, which is 2^{d}.
+
+Wait, but in our case, each pair (m, n) gives a unique k modulo (b -1). So, for each such pair, there is exactly one k in [1, (b -1)] that satisfies the congruence. So, the number of solutions is exactly equal to the number of such pairs, which is 2^{d}, where d is the number of distinct prime factors of (b -1).
+
+But wait, for example, when (b -1) is prime, say p, then the number of pairs is 2: (1, p) and (p, 1). So, the number of solutions is 2. But wait, for (b -1) = p, we have k ≡0 mod p or k≡1 mod p.
+
+But in that case, since k is in [2, p], because b = p +1, so k can be from 2 to p.
+
+So, for k ≡0 mod p: the only k is p.
+
+For k ≡1 mod p: the only k is 1, but since k >=2, this is not allowed. So, only one solution.
+
+Wait, but according to earlier logic, the number of solutions is 2, but in reality, only 1 solution exists.
+
+Hmm, so maybe my earlier reasoning is wrong.
+
+Wait, perhaps I made a mistake in considering the number of solutions. Because when you have (b -1) = p, a prime, the two possible solutions are k ≡0 mod p and k≡1 mod p. But in the range [2, p], only k = p satisfies k ≡0 mod p, and k=1 is below our range. So, only one solution exists.
+
+Similarly, if (b -1) = p^2, a square of a prime, then the number of pairs (m, n) where m and n are coprime and m*n = p^2 is 2: (1, p^2) and (p^2, 1). So, for each pair, we can have a k solution.
+
+But for m=1, n=p^2: k ≡0 mod 1 (which is always true) and k ≡1 mod p^2. So, k=1 mod p^2. But since k is in [2, p^2], the only solution is k=1 + p^2, which is p^2 +1, but since k must be <= p^2, this doesn't give a solution.
+
+For m=p^2, n=1: k ≡0 mod p^2 and k ≡1 mod 1. So, k=0 mod p^2, which in [2, p^2] gives k=p^2.
+
+So, again, only one solution.
+
+Wait, so perhaps the number of solutions is equal to the number of divisors of (b -1) that are greater than 1. Because, for each divisor m of (b -1), we can have a solution k ≡0 mod m and k≡1 mod ( (b -1)/m ), but only those m where the resulting k is in [2, b-1].
+
+Wait, but that's getting complicated. Maybe I should think differently.
+
+Alternatively, perhaps for each b, the number of k is equal to the number of divisors m of (b -1) such that m <= k <= b-1 and k ≡0 mod m and k≡1 mod ((b -1)/m).
+
+But I'm not sure. Maybe this is leading me nowhere.
+
+Wait, perhaps I can consider that for each base b, the number of b-eautiful numbers is equal to the number of divisors of (b -1) that are greater than 1 and less than or equal to (b -1)/2.
+
+Wait, no, that might not be correct.
+
+Alternatively, perhaps I can think about the equation again:
+
+k(k -1) = d1*(b -1)
+
+So, (b -1) must divide k(k -1), and since k and k-1 are coprime, (b -1) must be a product of two coprime numbers, one dividing k and the other dividing k-1.
+
+Therefore, the number of solutions is equal to the number of ways to write (b -1) as a product of two coprime factors, m and n, where m divides k and n divides k-1.
+
+Each such factorization gives a unique solution for k modulo (b -1), and since k is in [2, b-1], each factorization corresponds to exactly one k.
+
+But the number of such factorizations is equal to 2^{d}, where d is the number of distinct prime factors of (b -1). Because each prime factor can be assigned to m or n.
+
+Wait, but in the case where (b -1) is a prime, say p, then d=1, so 2^1=2 factorizations: m=1, n=p and m=p, n=1. But as we saw earlier, only one of these leads to a valid k in [2, p].
+
+So, perhaps the number of solutions is equal to the number of such factorizations minus the cases where k=1, which is invalid.
+
+Wait, but this seems tricky to figure out without more analysis.
+
+Alternatively, perhaps I can look for a pattern by computing f(b) for small values of b.
+
+Let me try to compute f(b) for small b:
+
+Starting with b=2:
+
+But in base 2, two-digit numbers go from 10_2 (2) to 11_2 (3). So n can be 2 or 3.
+
+Check if they are perfect squares:
+
+2 is not a perfect square. 3 is not a perfect square. So f(2)=0.
+
+b=3:
+
+Two-digit numbers in base 3: 3 (10_3) to 8 (22_3).
+
+Check which are perfect squares: 4 (2^2), 9 is 100_3, which is three digits, so not in range. So only n=4.
+
+Express 4 in base 3: 4 is 11_3 (1*3 +1). Sum of digits: 1+1=2. sqrt(4)=2. So yes, 4 is 3-eautiful.
+
+So f(3)=1.
+
+b=4:
+
+Two-digit numbers: 4 (10_4) to 15 (33_4).
+
+Perfect squares in this range: 4,9,16 is 100_4, so no.
+
+4: 10_4, digits sum 1+0=1, sqrt(4)=2. Not equal.
+
+9: 21_4, 2+1=3, sqrt(9)=3. So yes, 9 is 4-eautiful.
+
+16 is beyond two digits.
+
+So f(4)=1.
+
+Wait, but 4 is 10_4, digits sum to 1, which is not equal to 2. So only 9 is valid. So f(4)=1.
+
+b=5:
+
+Two-digit numbers: 5 (10_5) to 24 (44_5).
+
+Perfect squares: 9, 16, 25 is 100_5, so no.
+
+9: 14_5 (1*5 +4=9). Sum:1+4=5. sqrt(9)=3. Not equal.
+
+16: 31_5 (3*5 +1=16). Sum:3+1=4. sqrt(16)=4. So yes, 16 is 5-eautiful.
+
+25 is three-digit.
+
+So f(5)=1.
+
+b=6:
+
+Two-digit numbers: 6 (10_6) to 35 (55_6).
+
+Perfect squares: 9, 16, 25, 36 is 100_6.
+
+Check each:
+
+9: 13_6 (1+3=4, sqrt(9)=3. Not equal.
+
+16: 24_6 (2+4=6, sqrt(16)=4. Not equal.
+
+25: 41_6 (4+1=5, sqrt(25)=5. Yes, 25 is 6-eautiful.
+
+36 is three-digit.
+
+So f(6)=1.
+
+b=7:
+
+Two-digit numbers:7 to 48.
+
+Perfect squares: 9, 16, 25, 36, 49 (which is 100_7).
+
+Check each:
+
+9: 12_7 (1+2=3, sqrt=3. 3=3. So yes, 9 is 7-eautiful.
+
+16: 22_7 (2+2=4, sqrt=4. Yes.
+
+25: 34_7 (3+4=7, sqrt=5. No.
+
+36: 51_7 (5+1=6, sqrt=6. Yes.
+
+49 is three-digit.
+
+So, f(7)=3.
+
+Because 9,16,36 are valid. So f(7)=3.
+
+Wait:
+
+9 in base7 is 12: 1+2=3= sqrt(9)=3.
+
+16 in base7 is 22: 2+2=4= sqrt(16)=4.
+
+36 in base7 is 51:5+1=6= sqrt(36)=6.
+
+So, yes, that's 3 numbers.
+
+b=8:
+
+Two-digit numbers:8 to 63.
+
+Perfect squares:9,16,25,36,49,64 is 100_8.
+
+Check each:
+
+9:11_8 (1+1=2, sqrt=3. No.
+
+16:20_8 (2+0=2, sqrt=4. No.
+
+25:31_8 (3+1=4, sqrt=5. No.
+
+36:44_8 (4+4=8, sqrt=6. No.
+
+49:61_8 (6+1=7, sqrt=7. Yes.
+
+64 is three-digit.
+
+So, only 49 is valid. So f(8)=1.
+
+Wait:
+
+49 in base8 is 61:6+1=7. sqrt(49)=7. So yes.
+
+b=9:
+
+Two-digit numbers:9 to 80.
+
+Perfect squares:16,25,36,49,64,81 is 100_9.
+
+Check each:
+
+16:17_9 (1+7=8, sqrt=4. No.
+
+25:27_9 (2+7=9, sqrt=5. No.
+
+36:40_9 (4+0=4, sqrt=6. No.
+
+49:54_9 (5+4=9, sqrt=7. No.
+
+64:71_9 (7+1=8, sqrt=8. No.
+
+81 is three-digit.
+
+Hmm, none of these work. So f(9)=0.
+
+Wait, maybe I missed something.
+
+Wait, n=36 in base9 is 40:4+0=4, sqrt(36)=6. Doesn't match.
+
+n=64 in base9 is 71:7+1=8, sqrt(64)=8. So 7+1=8, which is correct. So 64 is 9-eautiful.
+
+Wait, earlier I thought 71_9 is 64, which is correct. So 7+1=8, which is sqrt(64)=8. So yes, 64 is valid.
+
+So, f(9)=1.
+
+Wait, so why did I think none worked earlier? I think I made a mistake.
+
+So, in base9, n=64 is 71_9, sum digits=8, sqrt(64)=8. So yes, f(9)=1.
+
+b=10:
+
+Two-digit numbers:10 to99.
+
+Perfect squares:16,25,36,49,64,81.
+
+Check each:
+
+16:16_10 (1+6=7, sqrt=4. No.
+
+25:25_10 (2+5=7, sqrt=5. No.
+
+36:36_10 (3+6=9, sqrt=6. No.
+
+49:49_10 (4+9=13, sqrt=7. No.
+
+64:64_10 (6+4=10, sqrt=8. No.
+
+81:81_10 (8+1=9, sqrt=9. Yes.
+
+So, only 81 is valid. So f(10)=1.
+
+Wait, but let's check:
+
+n=81 in base10 is 81: digits sum 8+1=9, which is sqrt(81)=9. So yes.
+
+b=11:
+
+Two-digit numbers:11 to 120.
+
+Perfect squares:16,25,36,49,64,81,100,121.
+
+Check each:
+
+16:15_11 (1+5=6, sqrt=4. No.
+
+25:23_11 (2+3=5, sqrt=5. Yes.
+
+36:33_11 (3+3=6, sqrt=6. Yes.
+
+49:45_11 (4+5=9, sqrt=7. No.
+
+64:59_11 (5+9=14, sqrt=8. No.
+
+81:74_11 (7+4=11, sqrt=9. No.
+
+100:91_11 (9+1=10, sqrt=10. Yes.
+
+121 is three-digit.
+
+So, n=25,36,100 are valid.
+
+Therefore, f(11)=3.
+
+b=12:
+
+Two-digit numbers:12 to 143.
+
+Perfect squares:16,25,36,49,64,81,100,121,144.
+
+Check each:
+
+16:15_12 (1+5=6, sqrt=4. No.
+
+25:21_12 (2+1=3, sqrt=5. No.
+
+36:30_12 (3+0=3, sqrt=6. No.
+
+49:41_12 (4+1=5, sqrt=7. No.
+
+64:54_12 (5+4=9, sqrt=8. No.
+
+81:69_12 (6+9=15, sqrt=9. No.
+
+100:84_12 (8+4=12, sqrt=10. No.
+
+121:101_12 (1+0+1=2, but it's a three-digit number. So invalid.
+
+144 is three-digit.
+
+Wait, maybe I missed some.
+
+Wait, let's check each:
+
+n=25: base12 is 21 (2+1=3 !=5)
+
+n=36: 30 (3+0=3 !=6)
+
+n=49:41 (4+1=5 !=7)
+
+n=64:54 (5+4=9 !=8)
+
+n=81:69 (6+9=15 !=9)
+
+n=100:84 (8+4=12 !=10)
+
+n=121: 101 (sum=2 !=11)
+
+Hmm, none of these work. So, f(12)=0?
+
+Wait, but wait, n=100 in base12 is 84: sum 8+4=12. sqrt(100)=10. 12≠10. So no.
+
+Wait, did I miss any?
+
+Wait, perhaps n= 144: which is 100_12, but that's three digits, so not considered.
+
+Alternatively, maybe n= 121 is 101_12, which is three digits, so not considered. So, f(12)=0.
+
+Wait, that can't be right, because maybe I missed some.
+
+Wait, let me check n= 64:54_12. 5+4=9, which is sqrt(64)=8. Not equal.
+
+n= 81:69_12. 6+9=15. sqrt(81)=9. Not equal.
+
+n=100:84_12. 8+4=12. sqrt(100)=10. Not equal.
+
+n=121:101_12. 1+0+1=2. sqrt(121)=11. Not equal.
+
+So, no valid numbers in base12. So f(12)=0.
+
+Hmm, seems like a low count.
+
+Wait, maybe I should check n= 144, but it's a three-digit number, so it's out.
+
+b=13:
+
+Two-digit numbers:13 to 168.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169.
+
+Check each:
+
+n=16:13_13 (1+3=4, sqrt=4. Yes.
+
+n=25:121_13? Wait, no, 25 in base13 is 1*13 + 12=25, which is 1C_13. Sum digits:1+12=13, sqrt(25)=5. 13≠5. No.
+
+Wait, but 25 in base13 is 1C_13, but since we're only considering digits up to b-1=12, it's allowed, but the sum is 1+12=13, which is larger than sqrt(25)=5.
+
+Wait, perhaps I should check each n:
+
+n=16:13_13 (1+3=4, sqrt=4. Yes.
+
+n=25:1C_13 (1+12=13, sqrt=5. No.
+
+n=36:2A_13 (2+10=12, sqrt=6. No.
+
+n=49:310_13? No, wait, 49 in base13 is 3*13 +10=49, which is 3A_13. Sum:3+10=13, sqrt=7. No.
+
+n=64:4C_13 (4+12=16, sqrt=8. No.
+
+n=81:63_13 (6+3=9, sqrt=9. Yes.
+
+n=100:79_13 (7+9=16, sqrt=10. No.
+
+n=121:94_13 (9+4=13, sqrt=11. No.
+
+n=144: B9_13 (11+9=20, sqrt=12. No.
+
+n=169:100_13, which is three-digit.
+
+So, n=16 and n=81 are valid. So, f(13)=2.
+
+Wait, n=16 is 13_13, sum digits 1+3=4= sqrt(16)=4. Correct.
+
+n=81 is 63_13, sum 6+3=9= sqrt(81)=9. Correct.
+
+So, f(13)=2.
+
+b=14:
+
+Two-digit numbers:14 to 195.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196.
+
+Check each:
+
+n=16:12_14 (1+2=3, sqrt=4. No.
+
+n=25:111_14? Wait, no. 25 in base14: 1*14 +11=25, which is 1B_14. Sum=1+11=12, sqrt=5. No.
+
+n=36:28_14 (2+8=10, sqrt=6. No.
+
+n=49:37_14 (3+7=10, sqrt=7. No.
+
+n=64:48_14 (4+8=12, sqrt=8. No.
+
+n=81:56_14 (5+6=11, sqrt=9. No.
+
+n=100:72_14 (7+2=9, sqrt=10. No.
+
+n=121:89_14 (8+9=17, sqrt=11. No.
+
+n=144:A4_14 (10+4=14, sqrt=12. No.
+
+n=169:118_14 (1+1+8=10, but it's three-digit, so invalid.
+
+n=196:100_14, which is three-digit.
+
+So, f(14)=0.
+
+Wait, perhaps I made a mistake.
+
+Wait, n=100 in base14 is 72_14 (7+2=9, sqrt=10. Not equal.
+
+n=121 is 89_14 (8+9=17, sqrt=11. No.
+
+n=144 is A4_14:10+4=14, sqrt=12. No.
+
+So, f(14)=0.
+
+b=15:
+
+Two-digit numbers:15 to 224.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225.
+
+Check each:
+
+n=16:11_15 (1+1=2, sqrt=4. No.
+
+n=25:1A_15 (1+10=11, sqrt=5. No.
+
+n=36:26_15 (2+6=8, sqrt=6. No.
+
+n=49:34_15 (3+4=7, sqrt=7. Yes.
+
+n=64:44_15 (4+4=8, sqrt=8. Yes.
+
+n=81:56_15 (5+6=11, sqrt=9. No.
+
+n=100:64_15 (6+4=10, sqrt=10. Yes.
+
+n=121:81_15 (8+1=9, sqrt=11. No.
+
+n=144:99_15 (9+9=18, sqrt=12. No.
+
+n=169:114_15 (1+1+4=6, but it's three-digit.
+
+n=196:131_15 (1+3+1=5, three-digit.
+
+n=225:100_15, three-digit.
+
+So, n=49,64,100 are valid.
+
+Thus, f(15)=3.
+
+b=16:
+
+Two-digit numbers:16 to 255.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256.
+
+Check each:
+
+n=16:10_16 (1+0=1, sqrt=4. No.
+
+n=25:19_16 (1+9=10, sqrt=5. No.
+
+n=36:24_16 (2+4=6, sqrt=6. Yes.
+
+n=49:31_16 (3+1=4, sqrt=7. No.
+
+n=64:40_16 (4+0=4, sqrt=8. No.
+
+n=81:51_16 (5+1=6, sqrt=9. No.
+
+n=100:64_16 (6+4=10, sqrt=10. Yes.
+
+n=121:79_16 (7+9=16, sqrt=11. No.
+
+n=144:90_16 (9+0=9, sqrt=12. No.
+
+n=169:109_16 (1+0+9=10, three-digit.
+
+n=196:132_16 (1+3+2=6, three-digit.
+
+n=225:139_16 (1+3+9=13, three-digit.
+
+n=256:100_16, three-digit.
+
+So, n=36 and n=100 are valid. So f(16)=2.
+
+Wait, n=36:24_16:2+4=6= sqrt(36)=6. Correct.
+
+n=100:64_16:6+4=10= sqrt(100)=10. Correct.
+
+So, f(16)=2.
+
+b=17:
+
+Two-digit numbers:17 to 288.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289.
+
+Check each:
+
+n=16:10_17 (1+0=1, sqrt=4. No.
+
+n=25:18_17 (1+8=9, sqrt=5. No.
+
+n=36:22_17 (2+2=4, sqrt=6. No.
+
+n=49:213_17? Wait, no. 49 in base17: 2*17 + 15=49, which is 2F_17. Sum=2+15=17, sqrt=7. No.
+
+n=64:3D_17 (3+13=16, sqrt=8. No.
+
+n=81:4H_17 (4+16=20, but H is beyond 17. Wait, base17 digits go up to 16, so 4H is valid? Wait, no, H is 16, but in base17, the digits are 0-16, represented as 0-9 and then letters. So, 81 in base17 is indeed 4*17 + 13=81, which is 4D_17. Sum=4+13=17, sqrt=9. No.
+
+n=100:5F_17 (5+15=20, sqrt=10. No.
+
+n=121:72_17 (7+2=9, sqrt=11. No.
+
+n=144:88_17 (8+8=16, sqrt=12. No.
+
+n=169:100_17, three-digit.
+
+n=196:122_17 (1+2+2=5, three-digit.
+
+n=225:136_17 (1+3+6=10, three-digit.
+
+n=256:151_17 (1+5+1=7, three-digit.
+
+n=289:172_17 (1+7+2=10, three-digit.
+
+So, f(17)=0.
+
+Hmm, no valid numbers.
+
+b=18:
+
+Two-digit numbers:18 to 323.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289,324.
+
+Check each:
+
+n=16:10_18 (1+0=1, sqrt=4. No.
+
+n=25:17_18 (1+7=8, sqrt=5. No.
+
+n=36:20_18 (2+0=2, sqrt=6. No.
+
+n=49:2D_18 (2+13=15, sqrt=7. No.
+
+n=64:3C_18 (3+12=15, sqrt=8. No.
+
+n=81:49_18 (4+9=13, sqrt=9. No.
+
+n=100:5B_18 (5+11=16, sqrt=10. No.
+
+n=121:6H_18 (6+16=22, sqrt=11. No.
+
+n=144:80_18 (8+0=8, sqrt=12. No.
+
+n=169:97_18 (9+7=16, sqrt=13. No.
+
+n=196:11C_18 (1+1+12=14, three-digit.
+
+n=225:129_18 (1+2+9=12, three-digit.
+
+n=256:14A_18 (1+4+10=15, three-digit.
+
+n=289:161_18 (1+6+1=8, three-digit.
+
+n=324:100_18, three-digit.
+
+So, f(18)=0.
+
+b=19:
+
+Two-digit numbers:19 to 360.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289,324,361.
+
+Check each:
+
+n=16:10_19 (1+0=1, sqrt=4. No.
+
+n=25:16_19 (1+6=7, sqrt=5. No.
+
+n=36:1H_19 (1+17=18, sqrt=6. No.
+
+n=49:2D_19 (2+13=15, sqrt=7. No.
+
+n=64:37_19 (3+7=10, sqrt=8. No.
+
+n=81:49_19 (4+9=13, sqrt=9. No.
+
+n=100:55_19 (5+5=10, sqrt=10. Yes.
+
+n=121:67_19 (6+7=13, sqrt=11. No.
+
+n=144:7B_19 (7+11=18, sqrt=12. No.
+
+n=169:8D_19 (8+13=21, sqrt=13. No.
+
+n=196:10C_19 (1+0+12=13, three-digit.
+
+n=225:126_19 (1+2+6=9, three-digit.
+
+n=256:139_19 (1+3+9=13, three-digit.
+
+n=289:154_19 (1+5+4=10, three-digit.
+
+n=324:172_19 (1+7+2=10, three-digit.
+
+n=361:100_19, three-digit.
+
+So, n=100 is valid. So f(19)=1.
+
+b=20:
+
+Two-digit numbers:20 to 399.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289,324,361.
+
+Check each:
+
+n=16:10_20 (1+0=1, sqrt=4. No.
+
+n=25:15_20 (1+5=6, sqrt=5. No.
+
+n=36:1A_20 (1+10=11, sqrt=6. No.
+
+n=49:29_20 (2+9=11, sqrt=7. No.
+
+n=64:34_20 (3+4=7, sqrt=8. No.
+
+n=81:41_20 (4+1=5, sqrt=9. No.
+
+n=100:50_20 (5+0=5, sqrt=10. No.
+
+n=121:61_20 (6+1=7, sqrt=11. No.
+
+n=144:72_20 (7+2=9, sqrt=12. No.
+
+n=169:89_20 (8+9=17, sqrt=13. No.
+
+n=196:9C_20 (9+12=21, sqrt=14. No.
+
+n=225:BA_20 (11+10=21, sqrt=15. No.
+
+n=256:CC_20 (12+12=24, sqrt=16. No.
+
+n=289:EB_20 (14+11=25, sqrt=17. No.
+
+n=324:G4_20 (16+4=20, sqrt=18. No.
+
+n=361:100_20, three-digit.
+
+So, f(20)=0.
+
+Wait, that's a lot of zeros. Maybe I should check if I'm missing something.
+
+Wait, n=256 in base20 is CC_20 (12+12=24, sqrt(256)=16. 24≠16. No.
+
+n=289 in base20: 14*20 + 9=289. So, 14 is E, 9 is 9. So E9_20. E is 14, 9 is 9. Sum=14+9=23, sqrt(289)=17. No.
+
+n=324: 16*20 + 4=324. So, 16 is G, 4 is 4. G4_20. Sum=16+4=20, sqrt(324)=18. No.
+
+So, f(20)=0.
+
+b=21:
+
+Two-digit numbers:21 to 440.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289,324,361,400,441.
+
+Check each:
+
+n=16:10_21 (1+0=1, sqrt=4. No.
+
+n=25:14_21 (1+4=5, sqrt=5. Yes.
+
+n=36:1C_21 (1+12=13, sqrt=6. No.
+
+n=49:27_21 (2+7=9, sqrt=7. Yes.
+
+n=64:31_21 (3+1=4, sqrt=8. No.
+
+n=81:3I_21 (3+18=21, sqrt=9. No.
+
+n=100:4C_21 (4+12=16, sqrt=10. No.
+
+n=121:5G_21 (5+16=21, sqrt=11. No.
+
+n=144:6I_21 (6+18=24, sqrt=12. No.
+
+n=169:716_21? Wait, 169 in base21: 7*21 + 22=169. But 22 is beyond base21 digits. Wait, 21*8=168, so 169 is 8*21 +1=169, which is 81_21. Sum=8+1=9, sqrt=13. No.
+
+n=196:91_21 (9+1=10, sqrt=14. No.
+
+n=225:A0_21 (10+0=10, sqrt=15. No.
+
+n=256:B1_21 (11+1=12, sqrt=16. No.
+
+n=289:C4_21 (12+4=16, sqrt=17. No.
+
+n=324:D0_21 (13+0=13, sqrt=18. No.
+
+n=361:E0_21 (14+0=14, sqrt=19. No.
+
+n=400:F4_21 (15+4=19, sqrt=20. No.
+
+n=441:200_21, three-digit.
+
+So, n=25 and n=49 are valid. So f(21)=2.
+
+Wait, n=25 in base21 is 14_21:1+4=5= sqrt(25)=5. Correct.
+
+n=49 in base21 is 27_21:2+7=9= sqrt(49)=7. Wait, no, sqrt(49)=7. 2+7=9≠7. Wait, so that's incorrect.
+
+Wait, that's a mistake. 49 in base21 is 2*21 +7=49, which is 27_21. Sum=2+7=9, which is not equal to sqrt(49)=7. So, n=49 is not valid.
+
+Wait, so n=25 is valid, but n=49 is not. So, only n=25 is valid. So, f(21)=1.
+
+Wait, but I thought 2+7=9≠7. So, f(21)=1.
+
+b=22:
+
+Two-digit numbers:22 to 483.
+
+Perfect squares:16,25,36,49,64,81,100,121,144,169,196,225,256,289,324,361,400,441,484.
+
+Check each:
+
+n=16:10_22 (1+0=1, sqrt=4. No.
+
+n=25:13_22 (1+3=4, sqrt=5. No.
+
+n=36:1C_22 (1+12=13, sqrt=6. No.
+
+n=49:21_22 (2+1=3, sqrt=7. No.
+
+n=64:2I_22 (2+18=20, sqrt=8. No.
+
+n=81:39_22 (3+9=12, sqrt=9. No.
+
+n=100:4C_22 (4+12=16, sqrt=10. No.
+
+n=121:5G_22 (5+16=21, sqrt=11. No.
+
+n=144:6I_22 (6+18=24, sqrt=12. No.
+
+n=169:7B_22 (7+11=18, sqrt=13. No.
+
+n=196:8D_22 (8+13=21, sqrt=14. No.
+
+n=225:9G_22 (9+16=25, sqrt=15. No.
+
+n=256:BA_22 (11+10=21, sqrt=16. No.
+
+n=289:CB_22 (12+11=23, sqrt=17. No.
+
+n=324:DC_22 (13+12=25, sqrt=18. No.
+
+n=361:154_22 (1+5+4=10, three-digit.
+
+n=400:176_22 (1+7+6=14, three-digit.
+
+n=441:201_22 (2+0+1=3, three-digit.
+
+n=484:220_22, three-digit.
+
+So, f(22)=0.
+
+Hmm, seems like the counts are not increasing as expected. Maybe I need to find a pattern.
+
+Wait, perhaps I should think about the equation again:
+
+k^2 -k = d1*(b -1)
+
+Which can be rewritten as:
+
+k^2 -k -d1*(b -1) =0
+
+This is a quadratic in k:
+
+k^2 -k -d1*(b -1) =0
+
+The solutions are:
+
+k = [1 ± sqrt(1 + 4*d1*(b -1))]/2
+
+Since k must be positive integer, discriminant must be a perfect square, say m^2.
+
+So,
+
+1 + 4*d1*(b -1) = m^2
+
+Thus,
+
+4*d1*(b -1) = m^2 -1 = (m -1)(m +1)
+
+So,
+
+d1*(b -1) = (m -1)(m +1)/4
+
+Since d1 and (b -1) are integers, the right side must be integer.
+
+Therefore, (m -1)(m +1) must be divisible by 4.
+
+Which occurs when m is odd, because then both (m -1) and (m +1) are even, so their product is divisible by 4.
+
+Let m = 2t +1, where t is integer.
+
+Then,
+
+(m -1)(m +1) = (2t)(2t +2) =4t(t +1)
+
+So,
+
+d1*(b -1) =4t(t +1)/4 =t(t +1)
+
+So,
+
+d1*(b -1)=t(t +1)
+
+Which is,
+
+b -1= t(t +1)/d1
+
+Since b -1 must be integer, d1 must divide t(t +1).
+
+But since t and t+1 are coprime, d1 must be a product of factors from t and t+1.
+
+Wait, but since d1 and (b -1) are positive integers, and d1 is between 1 and b -1.
+
+So, for each t, d1 can be any divisor of t(t +1), and then (b -1)= t(t +1)/d1.
+
+So, for each t, and for each divisor d1 of t(t +1), we can compute b= [t(t +1)/d1] +1.
+
+Each such b will have a corresponding k given by:
+
+k = [1 + m]/2 = [1 + (2t +1)]/2 = (2t +2)/2 = t +1.
+
+So, k = t +1.
+
+But k must be in [2, b -1].
+
+So, t +1 >=2 => t >=1.
+
+And t +1 <= b -1.
+
+But b= [t(t +1)/d1] +1.
+
+So,
+
+t +1 <= [t(t +1)/d1].
+
+Which implies,
+
+d1 <= t.
+
+Because,
+
+t(t +1)/d1 >= t +1
+
+=> t(t +1) >= d1*(t +1)
+
+=> t >= d1.
+
+So, d1 <=t.
+
+So, for each t >=1, and each divisor d1 of t(t +1) with d1 <=t, we can compute b= [t(t +1)/d1] +1, and for each such b, we have a valid k =t +1, which is in [2, b -1].
+
+Thus, for each t, the number of valid d1's is equal to the number of divisors of t(t +1) that are <=t.
+
+Each such d1 gives a distinct b.
+
+But since t and t+1 are coprime, the number of divisors of t(t +1) is equal to the product of the number of divisors of t and t+1.
+
+But since t and t+1 are coprime, any divisor d of t(t +1) is of the form d1*d2, where d1 divides t and d2 divides t+1.
+
+But we are considering d1 <=t, which is automatically true because d1 divides t(t +1), and t+1 >t, so d1 can be up to t(t +1), but since d1 must be <=t, it restricts d1 to divisors of t(t +1) that are <=t.
+
+But since t and t+1 are coprime, a divisor d1 of t(t +1) that is <=t must divide t.
+
+Because any divisor of t(t +1) that is <=t must divide t, since t+1 is coprime to t.
+
+Wait, let me think.
+
+Suppose d1 is a divisor of t(t +1) and d1 <=t.
+
+Since t and t+1 are coprime, d1 must divide t or d1 must divide t+1.
+
+But if d1 divides t+1 and d1 <=t, then d1 could be 1 or any other divisor of t+1 that is <=t.
+
+Similarly, d1 could be a divisor of t, but since d1 <=t, that's allowed.
+
+Wait, perhaps it's better to separate into two cases:
+
+Case 1: d1 divides t.
+
+Case 2: d1 divides t+1.
+
+But in case 2, since d1 divides t+1 and d1 <=t, then d1 can be any divisor of t+1 that is <=t.
+
+But since t+1 >t, the only divisors of t+1 that are <=t are the divisors of t+1 that are less than or equal to t.
+
+Which includes all divisors except possibly t+1 itself.
+
+But t+1 is greater than t, so in case 2, d1 can be any divisor of t+1 except t+1.
+
+So, the number of d1's is equal to the number of divisors of t plus the number of divisors of t+1 that are <=t.
+
+But since t and t+1 are coprime, the total number of d1's is equal to (number of divisors of t) + (number of divisors of t+1 except t+1 itself).
+
+But this might complicate things.
+
+Alternatively, perhaps for each t, the number of possible b's is equal to the number of divisors of t(t +1) that are <=t.
+
+But perhaps this is getting too abstract.
+
+Wait, but the key point is that for each t, each divisor d1 of t(t +1) with d1 <=t gives a valid b. And for each such b, there is a corresponding k = t +1, which is a valid solution.
+
+So, for each t, the number of b's is equal to the number of such d1's.
+
+But since each b is determined by t and d1, and each b can be generated from multiple t's, this might not directly help in counting f(b) for each b.
+
+But perhaps if I can find the number of t's for which a given b is generated, that would give me f(b).
+
+Alternatively, perhaps I can model this as for each t, and d1, compute b, and count how many times each b is generated.
+
+But this seems time-consuming.
+
+Alternatively, perhaps I can note that for each b, the number of b-eautiful numbers is equal to the number of ways to write (b -1) as t(t +1)/d1, where d1 divides t(t +1) and d1 <=t.
+
+But I'm not sure.
+
+Wait, perhaps I can take some examples to see.
+
+Let's take t=1:
+
+t=1, t+1=2.
+
+t(t+1)=2.
+
+Divisors d1 of 2 that are <=1: only d1=1.
+
+So, b=2/1 +1=3.
+
+So, b=3 has one solution.
+
+Which matches our earlier calculation where f(3)=1.
+
+t=2:
+
+t=2, t+1=3.
+
+t(t+1)=6.
+
+Divisors d1 of 6 that are <=2: d1=1,2.
+
+So, for d1=1: b=6/1 +1=7.
+
+For d1=2: b=6/2 +1=4.
+
+So, b=7 and b=4.
+
+Each would have one solution.
+
+Which matches our earlier computation where f(4)=1 and f(7)=3 (wait, no, f(7)=3. Hmm, but according to this, each t=2 would contribute one solution for each b=4 and b=7.
+
+But in our earlier count, f(4)=1 and f(7)=3.
+
+So, perhaps each t can contribute multiple solutions to different b's.
+
+Wait, perhaps each t corresponds to one solution per b.
+
+Wait, maybe not.
+
+Wait, for t=3:
+
+t=3, t+1=4.
+
+t(t+1)=12.
+
+Divisors d1 of 12 that are <=3: d1=1,2,3,4 (but 4>3, so only 1,2,3).
+
+Wait, no, wait: 12's divisors are 1,2,3,4,6,12.
+
+Among these, d1 <=3: 1,2,3.
+
+So,
+
+For d1=1: b=12/1 +1=13.
+
+d1=2: b=12/2 +1=7.
+
+d1=3: b=12/3 +1=5.
+
+So, t=3 contributes solutions for b=13,7,5.
+
+Each of these b's would have one solution each.
+
+From earlier counts:
+
+f(5)=1: correct.
+
+f(7)=3: but t=3 contributes only one solution for b=7, but f(7)=3 because of other t's.
+
+Wait, perhaps multiple t's can contribute solutions for the same b.
+
+So, to compute f(b), I need to count how many t's and d1's result in that b.
+
+But this seems complicated.
+
+Alternatively, perhaps there's another approach.
+
+Wait, earlier I thought that for each b, the number of solutions is equal to the number of divisors of (b -1) that are greater than 1 and less than or equal to (b -1)/2.
+
+But I'm not sure.
+
+Alternatively, perhaps I can think about the equation:
+
+k = t +1
+
+And,
+
+b -1 = t(t +1)/d1
+
+So,
+
+d1 = t(t +1)/(b -1)
+
+Which must be integer.
+
+So, for each k = t +1, d1 must be t(t +1)/(b -1).
+
+But d1 must be integer and between 1 and b -1.
+
+So, for each b, the number of valid k's is equal to the number of integers t such that:
+
+1. t(t +1) is divisible by (b -1).
+
+2. d1 = t(t +1)/(b -1) is between 1 and t.
+
+Since d1 <=t, and d1 >=1.
+
+So,
+
+t(t +1)/(b -1) <=t
+
+=> t +1 <= b -1
+
+=> t <= b -2
+
+So, t can range from 1 to b -2.
+
+But for each t, we need t(t +1) divisible by (b -1).
+
+So, the number of valid t's is equal to the number of t in [1, b -2] such that (b -1) divides t(t +1).
+
+But t and t+1 are coprime, so (b -1) must divide either t or t+1.
+
+Wait, because since t and t+1 are coprime, (b -1) must divide t or t+1.
+
+So, for each b, the number of valid t's is equal to the number of t in [1, b -2] such that either t ≡0 mod (b -1) or t+1≡0 mod (b -1).
+
+But since t <= b -2,
+
+t ≡0 mod (b -1) implies t= b -1, but t <=b -2, so no solution.
+
+t +1 ≡0 mod (b -1) implies t= b -2.
+
+So, only t= b -2 satisfies t +1 ≡0 mod (b -1).
+
+So, for each b, there's exactly one t: t= b -2.
+
+Thus, for each b, there's at most one t that satisfies the condition.
+
+Wait, but this contradicts our earlier counts where for b=7, f(b)=3.
+
+So, perhaps my reasoning is flawed.
+
+Wait, but according to this, for each b, there's only one t= b -2, which would give one solution, implying f(b)=1 for all b >=2.
+
+But our earlier counts show that for b=7, f(b)=3. So, this suggests that this approach is incorrect.
+
+Wait, perhaps I made a mistake in assuming that (b -1) divides t(t +1) only when it divides t or t+1.
+
+But that's only true if (b -1) is square-free, right? Because if (b -1) has square factors, then t and t+1 could share factors with (b -1).
+
+Wait, for example, if (b -1) is 4, then t(t +1) could be divisible by 4 if either t or t+1 is divisible by 4, or if one is divisible by 2 and the other is even.
+
+Wait, but t and t+1 are consecutive, so only one of them is even. So, for (b -1)=4, t(t +1) is divisible by 4 only if the even one is divisible by 4.
+
+So, in that case, t or t+1 must be divisible by 4.
+
+Similarly, for higher powers.
+
+So, in general, if (b -1) = 2^k * m, where m is odd, then t(t +1) must be divisible by 2^k and by m.
+
+Since t and t+1 are consecutive, one of them is even, so 2^k divides either t or t+1.
+
+Similarly, m divides either t or t+1.
+
+So, the number of t's in [1, b -2] such that t ≡0 or -1 mod (b -1).
+
+But since t <= b -2, t= b -2 is the only t where t +1= b -1.
+
+So, perhaps only one solution.
+
+But earlier counts show more.
+
+So, perhaps my earlier reasoning is incomplete.
+
+Alternatively, perhaps I should accept that manually computing f(b) for each b is time-consuming, and I need a smarter approach.
+
+Wait, perhaps I can consider that for each b, the number of b-eautiful numbers is equal to the number of divisors of (b -1) that are less than or equal to sqrt(b -1).
+
+Wait, but I'm not sure.
+
+Alternatively, perhaps I can think about the equation:
+
+k(k -1) = d1*(b -1)
+
+So, for each b, the number of solutions is equal to the number of ways to write k(k -1) as d1*(b -1), where d1 is a positive integer.
+
+But I'm stuck.
+
+Alternatively, perhaps I can think about the equation:
+
+k^2 -k -d1*(b -1)=0
+
+Which is a quadratic in k.
+
+For this to have integer solutions, discriminant must be a perfect square.
+
+So,
+
+1 +4*d1*(b -1) = m^2.
+
+So,
+
+4*d1*(b -1) = m^2 -1 = (m -1)(m +1)
+
+As earlier.
+
+So, 4*d1*(b -1) must be one less than a perfect square.
+
+Thus, m must be odd, as before.
+
+So, m=2t+1.
+
+Then,
+
+4*d1*(b -1)=4t(t +1)
+
+So,
+
+d1*(b -1)=t(t +1)
+
+As before.
+
+Thus,
+
+b -1= t(t +1)/d1
+
+So, for each t, and each divisor d1 of t(t +1), b= [t(t +1)/d1] +1.
+
+Each such b corresponds to a solution.
+
+So, for each t, the number of possible b's is equal to the number of divisors d1 of t(t +1).
+
+But each b will have multiple t's contributing to it.
+
+Wait, perhaps I can note that for each t, and each divisor d1 of t(t +1), we can compute b, and for each such b, the number of solutions is equal to the number of t and d1 combinations that result in that b.
+
+But this seems difficult.
+
+Alternatively, perhaps I can note that for each t, the corresponding b's are given by [t(t +1)/d1] +1, where d1 divides t(t +1).
+
+So, for each t, the number of b's is equal to the number of divisors of t(t +1).
+
+But since t and t+1 are coprime, the number of divisors is (number of divisors of t) * (number of divisors of t+1).
+
+But each such divisor d1 gives a unique b.
+
+But our goal is to find the minimal b where the number of such b's exceeds ten.
+
+So, perhaps I can iterate over t and count the number of b's generated, and find the minimal b that is generated more than ten times.
+
+But this is getting too abstract.
+
+Alternatively, perhaps I can consider that for each t, the number of b's is equal to the number of divisors of t(t +1), and as t increases, the number of b's increases.
+
+But perhaps I can find the minimal t such that the number of generated b's exceeds ten.
+
+But I'm not sure.
+
+Wait, maybe I can think of it differently.
+
+Each b is generated for some t and d1, such that b = [t(t +1)/d1] +1.
+
+So, for a given b, the number of t's such that t(t +1) is divisible by (b -1), and d1= t(t +1)/(b -1) is an integer.
+
+But I'm not making progress.
+
+Perhaps I should think about the problem differently.
+
+Given that for a number to be b-eautiful, it must be a two-digit number in base b, a perfect square, and the sum of its digits equals its square root.
+
+So, perhaps the number of such numbers is related to the number of representations of k^2 as d1*b +d2, with d1 +d2=k.
+
+So, n=k^2 =d1*b +d2, and d1 +d2 =k.
+
+So, n =d1*b + (k -d1) =k^2.
+
+So,
+
+d1*(b -1) =k^2 -k.
+
+Thus,
+
+d1 = (k^2 -k)/(b -1).
+
+So, for each b, the number of valid k's is equal to the number of integers k in [2, b-1] such that (k^2 -k) is divisible by (b -1), and d1 is in [1, b-1].
+
+So, for each b, f(b)= number of k in [2, b-1] where (k^2 -k) mod (b -1)=0 and 1<=d1=(k^2 -k)/(b -1)<=b-1.
+
+But how can we compute this for each b?
+
+Alternatively, perhaps I can note that (k^2 -k) must be a multiple of (b -1).
+
+So, (b -1) divides k(k -1).
+
+Since k and k-1 are coprime, (b -1) must divide either k or k-1.
+
+Wait, wait a minute. Since k and k-1 are coprime, any divisor of their product must divide either k or k-1.
+
+So, (b -1) divides k or (b -1) divides k-1.
+
+Wait, but (b -1) can be written as product of factors, but since k and k-1 are coprime, (b -1) must be a divisor of either k or k-1.
+
+Wait, but (b -1) is fixed for each base. So, for a given b, (b -1) is fixed, and for each k in [2, b-1], if (b -1) divides k or (b -1) divides k-1, then it's a solution.
+
+But since k <= b-1, (b -1) cannot divide k unless k= b-1.
+
+Similarly, (b -1) can divide k-1 only if k-1= b-1, so k= b.
+
+But k is in [2, b-1], so k cannot be equal to b.
+
+Wait, so the only possible k where (b -1) divides k or k-1 is when k= b-1, which is allowed.
+
+So, for each b, the only possible k is k= b-1.
+
+But in that case,
+
+d1 = (k^2 -k)/(b -1) = ((b-1)^2 - (b-1))/(b-1) = (b^2 -2b +1 -b +1)/(b-1) = (b^2 -3b +2)/(b-1) = (b-1)(b-2)/(b-1) )= b-2.
+
+So, d1= b-2.
+
+Then, d2= k - d1= (b-1) - (b-2)=1.
+
+So, the number is n= d1*b +d2= (b-2)*b +1= b^2 -2b +1= (b-1)^2.
+
+Which is a perfect square, as expected.
+
+The digits are d1= b-2 and d2=1, which sum to b-1, which is sqrt(n)=b-1.
+
+So, for each b, there is exactly one such number: (b-1)^2, which is written in base b as (b-2)1.
+
+Thus, for each b, f(b) is at least 1.
+
+But in our earlier examples, we saw that for b=7, f(b)=3, which contradicts this conclusion.
+
+So, my reasoning must be wrong.
+
+Wait, perhaps (b -1) can divide k(k -1) in other ways. For example, if (b -1) is composite, it can have factors that divide both k and k-1.
+
+Wait, no, because k and k-1 are coprime, so any common divisor must be 1.
+
+Wait, unless (b -1) is 1, which is not possible since b>=2.
+
+So, if (b -1) is greater than 1, and composite, it can have factors that divide k and k-1 separately.
+
+But since k and k-1 are coprime, (b -1) must be a product of two coprime factors, one dividing k and the other dividing k-1.
+
+But for that to happen, (b -1) must have at least two coprime factors.
+
+So, for example, (b -1)=6=2*3.
+
+Then, possible factorizations are (2,3), (3,2), (1,6), (6,1).
+
+Each such factorization would correspond to a solution.
+
+So, for each such factorization, there is a solution for k.
+
+Thus, the number of solutions for each b is equal to the number of ways to factor (b -1) into two coprime factors m and n, where m divides k and n divides k-1.
+
+Each such factorization gives a unique solution for k modulo (b -1).
+
+But since k is in [2, b -1], each such factorization may give a solution.
+
+Thus, the number of solutions is equal to the number of such factorizations.
+
+But the number of such factorizations is 2^{d}, where d is the number of distinct prime factors of (b -1).
+
+Because each prime factor can be assigned to m or n.
+
+But in our earlier example with b=7, (b -1)=6=2*3.
+
+So, the number of factorizations is 2^{2}=4.
+
+But in our earlier calculation, f(7)=3.
+
+Hmm, discrepancy.
+
+Wait, perhaps because some factorizations lead to k=1, which is invalid.
+
+Because in the case of m=1 and n=6, the solution is k=1, which is below our range.
+
+Similarly, for m=6 and n=1, the solution is k=6, which is within the range.
+
+So, for each factorization, we have to check if the resulting k is within [2, b -1].
+
+So, for each factorization, one solution may be invalid (k=1) and others valid.
+
+Thus, the number of valid solutions is equal to the number of factorizations minus the number of factorizations that lead to k=1.
+
+In the case of (b -1)=6, which has 4 factorizations:
+
+1. m=1, n=6: leads to k=1 (invalid).
+
+2. m=2, n=3: leads to k=2.
+
+3. m=3, n=2: leads to k=3.
+
+4. m=6, n=1: leads to k=6.
+
+So, out of 4, one is invalid, leaving 3 valid solutions. Hence, f(7)=3.
+
+Ah, that makes sense.
+
+So, in general, for each b, the number of valid solutions is equal to the number of factorizations of (b -1) into two coprime factors m and n, minus the number of factorizations that lead to k=1.
+
+Each factorization corresponds to a unique k modulo (b -1).
+
+So, the number of solutions is equal to the number of factorizations minus the number of factorizations where k=1.
+
+Which is equal to the number of factorizations where m=1 or n=1, leading to k=1 or k= b -1.
+
+Wait, no.
+
+Wait, for each factorization (m,n), we have:
+
+k ≡0 mod m,
+
+k ≡1 mod n.
+
+The solution is unique modulo (b -1).
+
+If m=1, then k ≡0 mod 1 (always true),
+
+and k ≡1 mod n.
+
+So, the solution is k=1 mod n.
+
+The smallest positive solution is k=1, which is invalid if k must be >=2.
+
+Similarly, if n=1, then k ≡0 mod m,
+
+and k ≡1 mod 1 (always true).
+
+So, the solution is k=0 mod m.
+
+The smallest positive solution is k=m.
+
+Which is valid if m <= b -1.
+
+But m is a factor of (b -1), so m <=b -1.
+
+Thus, for each factorization where m=1 or n=1, we get a solution k=1 or k=m.
+
+But k=1 is invalid, while k=m is valid if m <=b -1.
+
+But since m is a factor of (b -1), m <=b -1.
+
+Thus, for each factorization where m=1, we get k=1 (invalid).
+
+For each factorization where n=1, we get k=m (valid).
+
+Similarly, for other factorizations where m>1 and n>1, we get k in [2, b -1].
+
+Thus, the total number of valid solutions is equal to the number of factorizations where m>1 and n>1, plus the number of factorizations where n=1 (since m>1 in those cases, leading to valid k=m).
+
+But wait, when n=1, m can be any factor of (b -1), which may be greater than 1 or equal to 1.
+
+Wait, perhaps a better approach is:
+
+Total number of factorizations: 2^{d}, where d is the number of distinct prime factors of (b -1).
+
+Each factorization is (m,n), where m*n = (b -1), m and n coprime.
+
+For each such factorization:
+
+- If m=1 and n>1: solution k=1 (invalid).
+
+- If n=1 and m>1: solution k=m (valid if m <=b -1, which it is).
+
+- If m>1 and n>1: solution k is in [2, b -1].
+
+Thus, the number of valid solutions is equal to (number of factorizations where m>1 and n>1) + (number of factorizations where n=1 and m>1).
+
+Which is equal to:
+
+(number of factorizations where m>1 and n>1) + (number of factorizations where n=1 and m>1).
+
+But the number of factorizations where n=1 is equal to the number of factorizations where m=(b -1), n=1.
+
+Which is one.
+
+Similarly, the number of factorizations where m=1 is one.
+
+Thus, the number of valid solutions is equal to (total factorizations -2) +1 = total factorizations -1.
+
+Wait, because:
+
+Total factorizations: 2^{d}.
+
+Subtract the two factorizations where m=1 or n=1 (leading to k=1 or k=m).
+
+But when n=1, m>1, so it's a valid solution.
+
+Wait, perhaps it's better to compute:
+
+Number of factorizations where m>1 and n>1: total factorizations - 2 (excluding m=1 and n=1).
+
+Each of these contribute a valid solution.
+
+Plus, the factorization where n=1 and m>1: which is one solution, k=m.
+
+Thus, total valid solutions: (2^{d} - 2) +1= 2^{d} -1.
+
+But in our earlier example, b=7, (b -1)=6=2*3, which has d=2.
+
+So, total factorizations=4.
+
+Thus, valid solutions=4 -1=3, which matches our earlier result.
+
+Similarly, for b=5, (b -1)=4=2^2.
+
+Number of distinct prime factors d=1.
+
+Total factorizations=2^1=2.
+
+But wait, 4 can be factored into (1,4), (2,2), (4,1). But since m and n must be coprime, (2,2) is invalid because 2 and 2 are not coprime.
+
+So, actually, the number of coprime factorizations of 4 is 2: (1,4) and (4,1).
+
+Thus, d=1, number of coprime factorizations=2.
+
+So, valid solutions=2 -1=1.
+
+Which matches f(5)=1.
+
+Similarly, for b=13, (b -1)=12=2^2*3.
+
+Number of distinct prime factors d=2.
+
+Total coprime factorizations=2^2=4.
+
+Valid solutions=4 -1=3.
+
+Which matches our earlier count f(13)=2? Wait, no.
+
+Wait, earlier for b=13, f(b)=2. Hmm, discrepancy.
+
+Wait, let's check.
+
+b=13, (b -1)=12.
+
+Factorizations into coprime pairs (m,n):
+
+(1,12), (12,1), (3,4), (4,3).
+
+Each of these gives a solution:
+
+For (1,12): k=1 (invalid).
+
+For (12,1): k=12 (valid).
+
+For (3,4): solve k≡0 mod3 and k≡1 mod4.
+
+Solution: k=9.
+
+For (4,3): solve k≡0 mod4 and k≡1 mod3.
+
+Solution: k=4.
+
+So, valid solutions: k=4,9,12.
+
+But in our earlier count, for b=13, we found n=16 and n=81 as valid, which correspond to k=4 and k=9.
+
+Wait, why isn't k=12 valid?
+
+Because for k=12, n=k^2=144.
+
+In base13, 144 is 100_13, which is a three-digit number, so it's invalid.
+
+Ah, so for k=12, n=144 is three-digit in base13, so it's excluded.
+
+Thus, only k=4 and k=9 are valid, leading to f(13)=2.
+
+But according to the formula, we should have 3 valid solutions.
+
+So, the formula overcounts because some solutions lead to n being a three-digit number.
+
+Thus, the formula counts the number of k's, but we have to exclude those k's where n=k^2 is a three-digit number in base b.
+
+Which happens when k^2 >=b^2.
+
+But since n is a two-digit number in base b, n must be <b^2.
+
+But k^2 <b^2 implies k <b.
+
+Which is always true because k is in [2, b-1].
+
+Wait, but n=k^2 must be less than b^2, which is always true because k <=b-1, so k^2 <=(b-1)^2 <b^2.
+
+Wait, no: (b-1)^2 =b^2 -2b +1 <b^2, so yes, n is always two-digit in base b.
+
+Wait, but in the case of b=13, k=12: n=144.
+
+In base13, 144 is 100_13, which is three-digit.
+
+Wait, but 13^2=169, so 144 is less than 169, but in base13, 144 is 10*13 + 4=134_13, which is three-digit.
+
+Wait, wait, 13^2=169, so 144 is less than 169.
+
+But in base13, 144 is 10*13 +4=134_13, which is three-digit.
+
+Wait, but 13^2=169 is three-digit in base13 as 100_13.
+
+So, n=144 is 134_13, which is three-digit.
+
+So, it's excluded.
+
+Thus, for k=12, n=144 is three-digit in base13, so it's invalid.
+
+Thus, our formula counts it as a solution, but it's actually invalid.
+
+So, the formula counts all k's that satisfy the congruence, but we have to exclude those k's where n=k^2 is three-digit in base b.
+
+Which is when k^2 >=b^2.
+
+But k <=b-1, so k^2 <=(b-1)^2.
+
+And (b-1)^2 is equal to b^2 - 2b +1, which is less than b^2.
+
+Wait, but in base b, n=k^2 is a two-digit number only if n <b^2.
+
+Which is true since k^2 <b^2.
+
+Wait, but 144 is less than 169, but in base13, 144 is represented as 134, which is three-digit.
+
+Wait, because in base13, two-digit numbers go up to 13^2 -1=168.
+
+So, 144 is less than 168, but in base13, 144 is 10*13 +4=134, which is three-digit because 10 is a digit.
+
+Wait, but in base13, digits go up to 12, so 10 is a single digit.
+
+Wait, no, wait. In base13, each digit must be less than 13.
+
+So, to represent 144 in base13:
+
+144 ÷13=11 with remainder 1.
+
+So, 144 is 11*13 +1= 111_13.
+
+Wait, 11*13=143, plus1 is 144.
+
+So, 144 is 111_13, which is three-digit.
+
+But in base13, each digit must be less than 13, so 11 is a valid digit.
+
+Thus, 144 is 111_13, which is three-digit, so it's excluded.
+
+Thus, for k=12, n=144 is three-digit, so it's invalid.
+
+So, in the formula, the number of solutions is 3, but one of them is invalid, leading to f(b)=2.
+
+Thus, the formula counts all k's, but we have to subtract those k's where n is three-digit.
+
+But how can we do that?
+
+We can note that n=k^2 must be less than b^2, which it is, but in base b, n must be a two-digit number, which requires that n <b^2.
+
+But in some cases, even though n <b^2, it's represented as three digits in base b if it's >=b^2 - (b -1).
+
+Wait, no, the two-digit numbers in base b go up to (b-1)*b + (b-1) =b^2 -1.
+
+So, n must be in [b, b^2 -1].
+
+Thus, for n=k^2 to be a two-digit number in base b, we must have b <=k^2 <=b^2 -1.
+
+Which is equivalent to sqrt(b) <=k <=sqrt(b^2 -1).
+
+But since k is integer, k ranges from ceil(sqrt(b)) to b -1.
+
+But earlier, we considered k from 2 to b -1.
+
+So, to ensure n is two-digit, k must satisfy sqrt(b) <=k <=b -1.
+
+Thus, for each b, the valid k's are those in [ceil(sqrt(b)), b -1].
+
+So, for each b, the number of valid k's is equal to the number of k in [ceil(sqrt(b)), b -1] such that (b -1) divides k(k -1), minus the number of k's where n=k^2 is three-digit in base b.
+
+Wait, but n=k^2 is always less than b^2, so in base b, it's either two-digit or three-digit.
+
+Wait, no, because in base b, the two-digit numbers go up to b^2 -1.
+
+Thus, n=k^2 is two-digit in base b if and only if k^2 <b^2, which is always true, but also k^2 >=b.
+
+Thus, k >=ceil(sqrt(b)).
+
+So, the valid k's are from ceil(sqrt(b)) to b -1.
+
+Thus, for each b, the number of valid k's is equal to the number of k in [ceil(sqrt(b)), b -1] such that (b -1) divides k(k -1).
+
+Which, as we saw earlier, is equal to the number of coprime factorizations of (b -1) into m and n, where m divides k and n divides k -1, and k is in [ceil(sqrt(b)), b -1].
+
+But this is getting too abstract.
+
+Perhaps, to find when f(b) >10, we need to find the smallest b such that the number of coprime factorizations of (b -1) is large enough, minus those that lead to k <ceil(sqrt(b)).
+
+But this seems complicated.
+
+Alternatively, perhaps the number of b-eautiful numbers is equal to the number of ways to factor (b -1) into two coprime factors m and n, excluding those that lead to k=1, and ensuring that k >=ceil(sqrt(b)).
+
+But I'm not sure.
+
+Alternatively, perhaps I can note that for each b, the number of solutions is equal to the number of ways to write (b -1)=m*n, where m and n are coprime, and m <=k, n <=k -1, for some k in [ceil(sqrt(b)), b -1].
+
+But this is not helpful.
+
+Alternatively, perhaps I can note that for each b, the number of solutions is equal to the number of divisors of (b -1) that are <=sqrt(b -1).
+
+But I'm not sure.
+
+Wait, perhaps I can consider that for each b, the number of solutions is equal to the number of divisors t of (b -1) such that t <= (b -1)/t.
+
+But I'm not sure.
+
+Alternatively, perhaps the number of solutions is equal to the number of ways to write (b -1)=a*b, where a and b are coprime.
+
+But I'm stuck.
+
+Given the time constraints, perhaps I can consider that for f(b) to exceed ten, (b -1) must have a large number of coprime factorizations.
+
+Which happens when (b -1) has many distinct prime factors.
+
+Because the number of coprime factorizations is 2^{d}, where d is the number of distinct prime factors.
+
+Thus, to get f(b) >10, we need 2^{d} -1 >10.
+
+So, 2^{d} >11.
+
+Thus, d >=4, since 2^4=16.
+
+So, the minimal (b -1) must have at least 4 distinct prime factors.
+
+Thus, the minimal (b -1) is the product of the first four primes: 2*3*5*7=210.
+
+Thus, b=211.
+
+But wait, let's check.
+
+If (b -1)=210=2*3*5*7, which has d=4.
+
+Thus, the number of coprime factorizations is 2^4=16.
+
+Thus, the number of valid solutions is 16 -1=15.
+
+But we have to exclude those k's where n=k^2 is three-digit in base b=211.
+
+But n=k^2 <211^2, but in base211, n is two-digit if n <211^2.
+
+Wait, no, in base211, two-digit numbers go up to 211^2 -1.
+
+Thus, all n=k^2 where k <211 are two-digit in base211.
+
+Wait, but k is in [ceil(sqrt(211)), 210].
+
+sqrt(211)=~14.52, so k ranges from 15 to210.
+
+Thus, all k's from 15 to210 will have n=k^2 as two-digit numbers in base211.
+
+Thus, f(211)=15.
+
+Which is more than ten.
+
+But is 211 the minimal such b?
+
+Wait, perhaps a smaller (b -1) with d=4.
+
+The smallest (b -1) with four distinct prime factors is 2*3*5*7=210.
+
+Thus, b=211.
+
+But wait, perhaps (b -1) can have multiple prime factors, not necessarily distinct.
+
+Wait, no, because for coprime factorizations, the number of factorizations is based on the number of distinct prime factors.
+
+Thus, for (b -1) with four distinct prime factors, the number of coprime factorizations is 2^4=16.
+
+Thus, leading to f(b)=15.
+
+But perhaps a smaller (b -1) with more exponents on its prime factors might have more factorizations.
+
+Wait, for example, (b -1)=12=2^2*3.
+
+Which has d=2.
+
+Number of coprime factorizations:4.
+
+Thus, f(b)=3.
+
+But for (b -1)=24=2^3*3.
+
+d=2.
+
+Coprime factorizations:4.
+
+f(b)=3.
+
+Wait, but if (b -1) has higher exponents, the number of coprime factorizations remains the same as long as the number of distinct prime factors is the same.
+
+Thus, to get a higher number of coprime factorizations, we need more distinct prime factors.
+
+Thus, the minimal (b -1) with four distinct prime factors is 210, leading to b=211.
+
+But is there a smaller (b -1) with four prime factors?
+
+Wait, the next possible would be 2*3*5*7=210.
+
+The next one would be 2*3*5*11=330, which is larger.
+
+Thus, 210 is the minimal.
+
+Thus, the minimal b is 211.
+
+But let me check for b=121.
+
+Wait, (b -1)=120=2^3*3*5.
+
+Which has d=3.
+
+Thus, the number of coprime factorizations=2^3=8.
+
+Thus, f(b)=7.
+
+Which is less than ten.
+
+Similarly, for (b -1)=180=2^2*3^2*5.
+
+d=3, so f(b)=7.
+
+Still less than ten.
+
+(b -1)=210=2*3*5*7.
+
+d=4.
+
+f(b)=15>10.
+
+Thus, the minimal b is 211.
+
+But let's check for b=121, which we thought had f(b)=2.
+
+Wait, no, for b=121, (b -1)=120.
+
+Which has d=3.
+
+Thus, number of coprime factorizations=8.
+
+Thus, f(b)=7.
+
+Which is less than ten.
+
+Thus, the minimal b is 211.
+
+But wait, the problem says "the least integer b≥2 for which there are more than ten b-eautiful integers."
+
+Thus, the answer is 211.
+
+
+To determine the least integer \( b \geq 2 \) for which there are more than ten \( b \)-eautiful integers, we analyze the conditions under which a number \( n \) is \( b \)-eautiful. A number \( n \) is \( b \)-eautiful if:
+
+1. \( n \) is a two-digit number in base \( b \), meaning \( b \leq n < b^2 \).
+2. \( n \) is a perfect square, i.e., \( n = k^2 \) for some integer \( k \).
+3. The sum of the digits of \( n \) in base \( b \) equals \( k \).
+
+From the problem's constraints, we derived that for each \( b \), the number of \( b \)-eautiful numbers corresponds to the number of ways to factor \( b - 1 \) into two coprime factors. The number of such factorizations is \( 2^d \), where \( d \) is the number of distinct prime factors of \( b - 1 \). Each valid factorization contributes to a solution for \( k \), except those leading to \( k = 1 \), which is invalid.
+
+To have more than ten \( b \)-eautiful numbers, \( 2^d - 1 > 10 \), implying \( d \geq 4 \). The smallest \( b - 1 \) with four distinct prime factors is \( 210 \) (since \( 210 = 2 \times 3 \times 5 \times 7 \)). Thus, the smallest \( b \) is \( 211 \).
+
+**Answer:** \boxed{211}
