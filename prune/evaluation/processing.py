@@ -258,7 +258,7 @@ async def process_question_sc_stream(
     # Perform Majority Vote on successful chains data
     # Pass tokenizer_path for tie-breaking fallback
     voted_answer, final_score, all_extracted_answers = majority_vote(
-        successful_chains_for_voting, correct_answer_letter, tokenizer_path # Pass tokenizer_path
+        successful_chains_for_voting, correct_answer_letter
     )
 
     # Save individual chain outputs - loop through ALL initial results to save outputs for every chain

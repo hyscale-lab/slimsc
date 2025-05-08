@@ -1,6 +1,7 @@
 # slimsc/prune/evaluation/voting.py
 from collections import Counter
 from typing import List, Dict, Tuple, Optional, Literal
+import random
 
 from ..utils import calculate_score_gpqa, count_tokens
 
@@ -273,18 +274,18 @@ def _tie_break_by_pruned_count(
 
 def majority_vote(
     chain_results: List[Dict],
-    correct_answer_letter: str,
-    tokenizer_path: Optional[str] = None
+    correct_answer_letter: str
 ) -> Tuple[Optional[str], int, List[str]]:
     """
-    Performs majority voting using token-based tie-breaking (fewest tokens).
-    Requires 'extracted_answer'. Optional keys for tie-breaking:
-    'completion_tokens', 'full_content'/'reasoning_text', 'chain_index'.
+    Performs majority voting. Breaks ties by selecting the final answer randomly
+    from the tied options.
+
+    Requires 'extracted_answer'.
 
     Args:
         chain_results: List of dicts for completed chains.
         correct_answer_letter: The correct answer.
-        tokenizer_path: Path to tokenizer for fallback token counting.
+        tokenizer_path: Included for compatibility with signature, but not used for tie-breaking.
 
     Returns:
         Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
@@ -298,10 +299,17 @@ def majority_vote(
         return voted_answer, score, all_extracted_answers
 
     # Status is "tie"
-    final_voted_answer = _tie_break_by_tokens(valid_chains, tied_answers, tokenizer_path)
+    # Break ties randomly
+    if tied_answers: # Ensure there are answers to choose from (should be guaranteed by _process_initial_vote)
+        final_voted_answer = random.choice(tied_answers)
+        logger.info(f"Tie broken randomly: Chose answer '{final_voted_answer}' from {tied_answers}")
+    else:
+        # This case should theoretically not be reached if status is "tie", but as a safeguard:
+        logger.error("[red]Tie status reported but no tied answers found. Returning None.[/red]")
+        final_voted_answer = None
 
-    # Calculate score based on the tie-broken answer
-    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
+    # Calculate score based on the tie-broken answer (or None if somehow no tied answers)
+    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter) if final_voted_answer else 0
     return final_voted_answer, score, all_extracted_answers
 
 
