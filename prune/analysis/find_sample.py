@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # Configuration
-FILE_PATH = '/home/users/ntu/chong032/slimsc/prune/results/R1-Distill-Qwen-14B/gpqa_diamond/sc_10_control/evaluation_summary.csv'
+FILE_PATH = '~/slimsc/prune/results/R1-Distill-Qwen-14B/gpqa_diamond/sc_10_control/evaluation_summary.csv'
 SAMPLE_SIZE = 50
 MIN_SEEDS_TO_TRY = 1000   # Minimum number of seeds to try
 MAX_SEEDS_TO_TRY = 10000  # Maximum number of seeds to try if no early stop
