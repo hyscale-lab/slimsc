@@ -278,7 +278,6 @@ def majority_vote(
     chain_results: List[Dict],
     correct_answer_letter: str,
     dataset_name: str,
-    tokenizer_path: Optional[str] = None
 ) -> Tuple[Optional[str], int, List[str]]:
     """
     Performs majority voting. Breaks ties by selecting the final answer randomly
