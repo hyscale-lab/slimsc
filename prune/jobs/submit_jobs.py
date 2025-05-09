@@ -152,6 +152,7 @@ def create_server_pbs_script(
         "vllm", "serve", f'{quoted_model_path}',
         f"--tensor-parallel-size {tensor_parallel_size}",
         "--port 8000", # Explicitly set port
+        "--seed 42"
     ]
     if gpu_memory_utilization is not None and 0 < gpu_memory_utilization <= 1:
          vllm_command_parts.append(f"--gpu-memory-utilization {gpu_memory_utilization}")
