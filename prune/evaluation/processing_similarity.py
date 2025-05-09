@@ -9,7 +9,7 @@ from typing import Dict, Optional, List, Tuple, Set, AsyncGenerator, Any
 
 # Keep necessary imports
 from ..clients import stream_vllm_request, close_aiohttp_session
-from ..utils import DatasetHandler
+from ..utils import DatasetHandler, count_tokens
 from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
