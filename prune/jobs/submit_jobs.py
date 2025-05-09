@@ -128,7 +128,7 @@ def create_server_pbs_script(
         # Assuming sc_control run_name is based on n_start
         run_name = f"sc_{n_start}_control"
 
-    model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
+    model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name if run_name else "unknown_run")
     target_kvc_file_path = os.path.join(model_dataset_dir, "kvcache_usages.csv")
     quoted_target_kvc_file_path = shlex.quote(target_kvc_file_path)
 
@@ -171,7 +171,6 @@ def create_server_pbs_script(
 
     # Full command line to execute in the script
     vllm_exec_command = f"{vllm_base_command} {vllm_redirection}"
-    # -----------------------------
 
     exports = [
         f"export CUDA_VISIBLE_DEVICES=$(seq -s , 0 {tensor_parallel_size - 1})",
@@ -429,6 +428,7 @@ def create_client_pbs_script(
         else:
             quoted_eval_args[k] = v # Keep numbers, etc., as is
 
+    eval_command_parts = []
     # Build command using quoted args
     if eval_type == "similarity":
         eval_module = "slimsc.prune.evaluation.similarity_prune_eval"
@@ -769,7 +769,6 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
      required_eval_args = ['n_start', 'model_name', 'model_identifier', 'dataset_name']
      if eval_type == 'similarity':
          required_eval_args.extend(['threshold', 'pruning_strategy', 'tokenizer_path'])
-     # Add checks for sc_control if needed, e.g., model_identifier might be optional
 
      missing_args = [arg for arg in required_eval_args if arg not in eval_cfg]
      if missing_args:

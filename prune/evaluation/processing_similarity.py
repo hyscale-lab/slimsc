@@ -4,6 +4,7 @@ import json
 import time
 import asyncio
 import numpy as np
+import random
 from typing import Dict, Optional, List, Tuple, Set, AsyncGenerator, Any
 
 # Keep necessary imports
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 # --- Constants ---
 MAX_TOKENS_PER_STREAM = 32768 # Max completion tokens per chain
 ANALYSIS_INTERVAL_SECONDS = 3 # How often to check for new thoughts/prune
+random.seed(42) # For reproducibility
 
 
 async def stream_processing_worker(
@@ -185,7 +187,7 @@ async def process_question_similarity_prune(
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
-    Prunes based on the specified strategy ('fewest_thoughts', 'most_thoughts' or 'diversity').
+    Prunes based on the specified strategy 'fewest_thoughts', 'most_thoughts', 'diversity', or 'random')..
     Pruning only occurs during the reasoning phase (before server sends non-empty 'content').
     The first two thoughts (idx 0, 1) are never pruned but their embeddings are added.
     Stops analysis loop if only one chain remains active.
@@ -204,8 +206,8 @@ async def process_question_similarity_prune(
         max_analysis_steps: Maximum number of analysis intervals
     """
     # Validate strategy
-    if pruning_strategy not in ["fewest_thoughts", "most_thoughts", "diversity"]:
-        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts', 'most_thoughts' or 'diversity'.[/red]")
+    if pruning_strategy not in ["fewest_thoughts", "most_thoughts", "diversity", "random"]:
+        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts', 'most_thoughts', 'diversity' or 'random'.[/red]")
         # You might want to raise an error or return None here depending on desired behavior
         raise ValueError(f"Invalid pruning strategy: {pruning_strategy}")
 
@@ -440,7 +442,13 @@ async def process_question_similarity_prune(
                             current_thought_count = chain_state.get('completed_thought_count', 0)
                             neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
 
-                            if pruning_strategy == "fewest_thoughts":
+                            if pruning_strategy == "random":
+                                logger.info(f"Random Pruning Choice between: Chain {chain_id} and Chain {neighbor_chain_id}")
+                                # Randomly select one of the two chains involved in the similarity match
+                                prune_target_id = random.choice([chain_id, neighbor_chain_id])
+                                logger.warning(f"--> Randomly chose to prune Chain {prune_target_id}.")
+
+                            elif pruning_strategy == "fewest_thoughts":
                                 logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
                                 if current_thought_count <= neighbor_thought_count:
                                     prune_target_id = chain_id
