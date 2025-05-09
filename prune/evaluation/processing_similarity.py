@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # --- Constants ---
 MAX_TOKENS_PER_STREAM = 32768 # Max completion tokens per chain
 ANALYSIS_INTERVAL_SECONDS = 3 # How often to check for new thoughts/prune
+random.seed(42) # For reproducibility
 
 
 async def stream_processing_worker(
