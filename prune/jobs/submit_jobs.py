@@ -405,7 +405,7 @@ def create_client_pbs_script(
 
     # --- Determine Resource Request ---
     # (Resource request logic remains the same)
-    if eval_type == "sc_control" or eval_type == "sample_profiling":
+    if eval_type == "sc_control":
         resource_select = "select=1:ncpus=2"
         mem_request = client_mem if client_mem else "8gb"
         resource_mem = f":mem={mem_request}"
