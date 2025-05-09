@@ -201,7 +201,7 @@ async def process_question_similarity_prune(
         model_name: Name/identifier of the model to use
         tokenizer_path: Path to the tokenizer
         similarity_threshold: Threshold for pruning (0.0-1.0)
-        pruning_strategy: Strategy for pruning ("fewest_thoughts", "most_thoughts", or "diversity")
+        pruning_strategy: Strategy for pruning ("fewest_thoughts", "most_thoughts", "diversity", or "random")
         dataset_name: Name of the dataset ("gpqa_diamond", "aime", "math500")
         max_analysis_steps: Maximum number of analysis intervals
     """
@@ -216,30 +216,47 @@ async def process_question_similarity_prune(
     start_process_time = time.time()
 
     # --- Setup ---
+    prompt_text: str = ""
+    correct_answer_for_scoring: Any = None # Will hold correct letter for GPQA, or answer string for AIME/MATH
+
     try:
-        # Initialize dataset handler with provided dataset name
         dataset_handler = DatasetHandler(dataset_name=dataset_name)
-        prompt, choices_or_answer = dataset_handler.create_prompt(example)
-        correct_answer_letter = choices_or_answer[0] if isinstance(choices_or_answer, list) else choices_or_answer
+        # dataset_handler.create_prompt returns (prompt_string, details)
+        # For GPQA, details is (choices_list, correct_answer_letter_string).
+        # For AIME/MATH, details is correct_answer_string.
+        _prompt_text_val, _prompt_output_details = dataset_handler.create_prompt(example)
+        prompt_text = _prompt_text_val
+
+        if dataset_name == "gpqa_diamond":
+            # _prompt_output_details is (_choices_list, _correct_letter_string)
+            # _choices_list = _prompt_output_details[0] # Available if needed
+            correct_answer_for_scoring = _prompt_output_details[1] # This is the correct_letter for GPQA
+        else: # For AIME and MATH500
+            # _prompt_output_details is the correct_answer_string
+            correct_answer_for_scoring = _prompt_output_details
+
+        if not correct_answer_for_scoring: # Basic validation
+            logger.error(f"[red]Failed to obtain correct answer reference for Q{iteration} from dataset_handler.[/red]")
+            raise ValueError("Correct answer reference not found after prompt creation.")
+
     except Exception as e:
-        logger.exception(f"[red]Error creating prompt[/red]")
-        # Save failure summary for this question
-        summary_data: Dict[str, Any] = { # Add type hint for clarity
+        logger.exception(f"[red]Error creating prompt or obtaining correct answer for Q{iteration}[/red]")
+        summary_data: Dict[str, Any] = {
            "iteration": iteration, "question_id": question_id, "status": "PROMPT_ERROR",
            "n_chains_start": n_chains_start, "error_message": str(e),
-           "processing_duration_sec": 0.0, # Mark duration as 0 or N/A
+           "processing_duration_sec": 0.0,
         }
         summary_filename = os.path.join(paths["summaries"], f"question_{iteration}_summary.json")
         try:
            with open(summary_filename, "w", encoding='utf-8') as f:
                json.dump(summary_data, f, indent=2)
         except IOError as e_save:
-           logger.exception(f"[red]Error writing prompt error summary file[/red]")
-        return None # Return None to indicate failure
+           logger.exception(f"[red]Error writing prompt error summary file: {e_save}[/red]")
+        return None
     
     pre_calculated_prompt_tokens: Optional[int] = None
     try:
-        pre_calculated_prompt_tokens = count_tokens(prompt, tokenizer_path)
+        pre_calculated_prompt_tokens = count_tokens(prompt_text, tokenizer_path)
         if pre_calculated_prompt_tokens is None:
              logger.warning(f"[yellow]Pre-calculation of prompt tokens failed for Q{iteration}. Will rely on server usage report.[/yellow]")
              pre_calculated_prompt_tokens = 0 # Default to 0 if calculation fails
@@ -292,7 +309,7 @@ async def process_question_similarity_prune(
         }
         # Create the long-running stream request
         stream_generator = stream_vllm_request(
-            prompt=prompt, vllm_url=vllm_url, model_name=model_name,
+            prompt=prompt_text, vllm_url=vllm_url, model_name=model_name,
             request_id=chain_id,
             temperature=0.6,
             max_tokens=MAX_TOKENS_PER_STREAM,
@@ -771,7 +788,7 @@ async def process_question_similarity_prune(
     else:
         voted_answer, final_score, all_extracted_answers = majority_vote_for_sim_prune(
             successful_chain_results_for_voting, 
-            correct_answer_letter,
+            correct_answer_for_scoring,
             dataset_name=dataset_name
         )
 
@@ -829,7 +846,7 @@ async def process_question_similarity_prune(
         "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
-        "correct_answer_letter": correct_answer_letter,
+        "correct_answer_reference": correct_answer_for_scoring,
         "individual_answers_final": all_extracted_answers, # Answers from chains used for voting
         "voted_answer": voted_answer,
         "final_score": final_score,
@@ -903,7 +920,7 @@ async def process_question_similarity_prune(
         "n_chains_completed_stream_for_voting": len(successful_chain_results_for_voting),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
-        "correct_answer": correct_answer_letter,
+        "correct_answer": correct_answer_for_scoring,
         "voted_answer": voted_answer,
         "final_score": final_score,
         "prompt_tokens": prompt_tokens_for_csv,
