@@ -9,6 +9,7 @@ from ..utils import DatasetHandler
 import logging
 
 logger = logging.getLogger(__name__)
+random.seed(42) # For reproducibility
 
 # --- Internal Helper Functions ---
 
