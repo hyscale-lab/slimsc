@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Tuple, Callable
 import logging
 import torch
 from transformers import AutoTokenizer
-from .gpqa_utils import count_tokens # Use the standardized counter
+from .count_tokens import count_tokens
 
 logger = logging.getLogger(__name__)
 

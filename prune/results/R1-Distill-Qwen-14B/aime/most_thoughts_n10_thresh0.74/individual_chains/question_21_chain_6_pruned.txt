@@ -1,0 +1,99 @@
+--- Chain 6 for Question 21 ---
+Status: PRUNED
+Is Active Flag: False
+Finish Reason: worker_terminated_unexpectedly
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 1377
+Completed Thoughts: 3
+Pruned at Analysis Step: 12
+Final Processed Boundaries: [0, 1263, 1751]
+
+--- Full Content ---
+Okay, let's try to figure out this problem. So, we have an integer b ≥ 2, and a positive integer n is called b-eautiful if two conditions are satisfied:
+
+1. When n is expressed in base b, it has exactly two digits.
+2. The sum of these two digits equals the square root of n.
+
+And we need to find the smallest integer b ≥ 2 such that there are more than ten b-eautiful integers.
+
+Hmm, okay. Let me break this down.
+
+First, let's understand what it means for a number n to have exactly two digits in base b. In base b, a two-digit number is written as 'ab' where a and b are digits in base b. That translates to a*b^1 + b*1 in decimal, right? So, n = a*b + c, where a and c are digits in base b, meaning 0 ≤ a, c < b. But since it's a two-digit number, a can't be zero because that would make it a single-digit number. So, a must be at least 1.
+
+So, n = a*b + c. The digits a and c must satisfy a + c = sqrt(n). Also, since a and c are digits, they must be integers between 0 and b-1, inclusive. But a is at least 1.
+
+So, to rephrase, for a given base b, n is a two-digit number in base b, so n = ab + c where 1 ≤ a < b, 0 ≤ c < b. Also, a + c must equal sqrt(n). Therefore, sqrt(n) must be an integer because a and c are integers. So, n must be a perfect square.
+
+Wait, that's a key point. So, n is a perfect square, and sqrt(n) is equal to the sum of its two digits in base b. Moreover, since a and c are digits in base b, a + c must be ≤ (b-1) + (b-1) = 2b - 2. But sqrt(n) is also equal to a + c. So, sqrt(n) ≤ 2b - 2.
+
+But n is a two-digit number in base b, so n is between b^1 and b^2 - 1. So, b ≤ n < b^2.
+
+Since n is a perfect square, sqrt(n) must be between sqrt(b) and sqrt(b^2 - 1). Which is roughly between b^{1/2} and b - something small.
+
+Wait, because n is two-digit in base b, so the smallest two-digit number is b (which is 10_b), so n must be ≥ b. The largest two-digit number is (b-1)(b) + (b-1) = b^2 -1. So, n is in [b, b^2 -1].
+
+So, sqrt(n) is in [sqrt(b), sqrt(b^2 -1)] which is approximately [sqrt(b), b - 1/b]. So, sqrt(n) is an integer, let's denote it as k. So, k must be an integer such that sqrt(b) ≤ k ≤ b -1. Because the maximum n is b^2 -1, so sqrt(n) is less than b.
+
+So, k is an integer, and n = k^2. Also, since n is a two-digit number in base b, we have:
+
+k^2 = a*b + c
+
+where 1 ≤ a < b, 0 ≤ c < b, and a + c = k.
+
+So, combining these, we have:
+
+k^2 = a*b + c
+
+and
+
+a + c = k
+
+So, substituting c = k - a into the first equation:
+
+k^2 = a*b + (k - a)
+
+Simplify this:
+
+k^2 = a*b + k - a
+
+Rearranging terms:
+
+k^2 - k = a*(b - 1)
+
+So, a = (k^2 - k)/(b - 1)
+
+But a must be an integer because it's a digit in base b. Also, a must satisfy 1 ≤ a < b.
+
+So, for each base b, we can look for integers k such that (k^2 - k) is divisible by (b - 1), and the quotient a is an integer between 1 and b-1, inclusive.
+
+Furthermore, once a is determined, c = k - a must satisfy 0 ≤ c < b.
+
+So, the steps for a given base b would be:
+
+1. Determine the possible values of k. Since n = k^2 must be a two-digit number in base b, k must satisfy sqrt(b) ≤ k ≤ b - 1.
+
+2. For each k in that range, check if (k^2 - k) is divisible by (b - 1). If it is, compute a = (k^2 -k)/(b -1).
+
+3. Check if a is an integer between 1 and b-1, and c = k - a is between 0 and b-1.
+
+4. If all conditions are met, then n = k^2 is a b-eautiful number.
+
+So, for each b, we can count how many such k's satisfy these conditions, and we need to find the smallest b where this count exceeds 10.
+
+So, the strategy is:
+
+- For each base b starting from 2 upwards, compute the number of b-eautiful integers.
+
+- We need to find the smallest b where this count is more than 10.
+
+So, let's think about how to compute this count for a given b.
+
+First, for a given b, the possible k's are from ceil(sqrt(b)) up to b -1.
+
+So, the number of k's is (b -1) - ceil(sqrt(b)) + 1 = b - ceil(sqrt(b)).
+
+But not all k's will satisfy that (k^2 -k) is divisible by (b -1). So, the number of b-eautiful numbers is the number of k's in [ceil(sqrt(b)), b -1] such that (k^2 -k) mod (b -1) = 0, and a = (k^2 -k)/(b -1) is an integer between 1 and b-1, and c = k - a is between 0 and b-1.
+
+Wait, but since a = (k^2 -k)/(b -1), and c = k - a, let's see

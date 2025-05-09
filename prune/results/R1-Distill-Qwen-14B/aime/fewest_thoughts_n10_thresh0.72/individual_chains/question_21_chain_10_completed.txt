@@ -1,0 +1,2049 @@
+--- Chain 10 for Question 21 ---
+Status: COMPLETED
+Is Active Flag: True
+Finish Reason: stop
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 19563
+Completed Thoughts: 13
+Final Mean Pairwise Similarity: 0.5522
+Final Internal Similarity: 0.0425
+Final Processed Boundaries: [0, 1354, 2182, 2272, 3966, 4354, 4476, 4544, 5611, 5922, 6144, 6325, 6803]
+
+--- Full Content ---
+Okay, so I have this problem here where I need to find the least integer base b (where b is at least 2) such that there are more than ten b-eautiful integers. Hmm, let's try to understand what a b-eautiful number is.
+
+From the problem statement, a positive integer n is called b-eautiful if two conditions are met:
+1. When n is expressed in base b, it has exactly two digits.
+2. The sum of these two digits equals the square root of n.
+
+The example given is that 81 is 13-eautiful because in base 13, 81 is written as 63 (since 6*13 + 3 = 81), and 6 + 3 = 9, which is the square root of 81.
+
+Alright, so to break this down, if a number n is represented as "d1 d0" in base b, then n = d1 * b + d0. The sum of the digits, d1 + d0, must be equal to sqrt(n). So, mathematically, we can write this as:
+
+d1 + d0 = sqrt(d1 * b + d0)
+
+Since n is a two-digit number in base b, d1 must be between 1 and b-1 (because it's the leading digit), and d0 must be between 0 and b-1.
+
+Let me square both sides of the equation to eliminate the square root:
+
+(d1 + d0)^2 = d1 * b + d0
+
+Expanding the left side:
+
+d1^2 + 2*d1*d0 + d0^2 = d1*b + d0
+
+Let's rearrange this equation to bring all terms to one side:
+
+d1^2 + 2*d1*d0 + d0^2 - d1*b - d0 = 0
+
+Hmm, that's a quadratic in terms of d1 and d0. This seems a bit complicated, maybe I can find a better way to approach this.
+
+Alternatively, since n = d1*b + d0, and the sum of digits s = d1 + d0, then s = sqrt(n). Therefore, s^2 = n. So, substituting:
+
+s^2 = d1*b + d0
+
+But s = d1 + d0, so:
+
+s^2 = d1*b + d0 = d1*b + (s - d1)
+
+Because d0 = s - d1.
+
+So, substituting, we have:
+
+s^2 = d1*(b - 1) + s
+
+Let me write that equation again:
+
+s^2 - s = d1*(b - 1)
+
+So, d1 = (s^2 - s)/(b - 1)
+
+Since d1 must be an integer between 1 and b-1, and d0 must be between 0 and b-1, we can express this as a condition on s and b.
+
+Also, since n is a two-digit number in base b, n must be at least b (since the smallest two-digit number is 10_b = b in decimal) and less than b^2 (since the largest two-digit number is (b-1)(b) + (b-1) = b^2 - 1). Thus, s = sqrt(n) must satisfy sqrt(b) ≤ s < sqrt(b^2) = b. So, s is an integer between ceiling of sqrt(b) and floor(b - 1). Wait, but s is equal to d1 + d0, which are digits, so s must also be a positive integer.
+
+Wait, let me think again. Since n = s^2, and n is between b and b^2 - 1, then s must satisfy sqrt(b) ≤ s ≤ b - 1, but s must be an integer because it's the sum of digits, which are integers.
+
+Therefore, for each base b, the possible values of s are integers from ceil(sqrt(b)) up to b - 1.
+
+But let's clarify: s must be an integer because d1 and d0 are integers. So s is an integer, and s^2 must be a two-digit number in base b.
+
+So, for each base b, the number of b-eautiful integers is equal to the number of integers s such that:
+
+1. s is an integer, 1 ≤ s ≤ b - 1
+2. s^2 is a two-digit number in base b, so s^2 >= b and s^2 < b^2
+3. d1 = (s^2 - s)/(b - 1) is an integer between 1 and b - 1
+4. d0 = s - d1 is between 0 and b - 1
+
+So, for each base b, we can iterate over possible s and check if (s^2 - s) is divisible by (b - 1), and if d1 and d0 satisfy the digit constraints.
+
+But since we need to find the smallest b where the number of such s is more than ten, we can approach this by checking each base starting from b=2 upwards, and count how many s's satisfy the conditions for each b, until we find the first b where the count exceeds ten.
+
+But this seems computationally intensive if done manually, so perhaps we can find a pattern or formula.
+
+Let me try to express d1 in terms of s and b:
+
+d1 = (s^2 - s)/(b - 1)
+
+Since d1 must be an integer, (s^2 - s) must be divisible by (b - 1). So, (b - 1) must divide (s^2 - s).
+
+So, (b - 1) | s(s - 1)
+
+Which means that (b - 1) divides the product s(s - 1). Since s and s-1 are consecutive integers, they are coprime. Therefore, (b - 1) must divide s or s-1, or more precisely, the factors of (b -1) must be distributed between s and s-1.
+
+Alternatively, (b -1) must be a divisor of s(s -1). So, for each b, we can find all s such that s(s -1) is a multiple of (b-1). Then, for each such s, we can compute d1 and check if d1 is in [1, b-1] and d0 = s - d1 is in [0, b-1].
+
+Let me think about how s and b relate.
+
+Given that s^2 must be a two-digit number in base b, so s^2 < b^2. Since s >= sqrt(b), but s must be less than b.
+
+Wait, but s can be as high as b-1, since d1 can be up to b-1 and d0 can be up to b-1, so s = d1 + d0 can be up to 2(b-1). But wait, since n = s^2 must be less than b^2, s can be up to b-1.
+
+Wait, let's clarify: n is a two-digit number in base b, so n = d1*b + d0 < b^2, so s^2 = n < b^2, so s < b. But s must also be at least sqrt(b), because n >= b, so s^2 >= b => s >= ceil(sqrt(b)).
+
+Therefore, s is in the range [ceil(sqrt(b)), b - 1]
+
+Now, for each b, the possible s are integers from ceil(sqrt(b)) to b -1.
+
+For each s in that range, check if (s^2 - s) is divisible by (b -1). If yes, then compute d1 = (s^2 - s)/(b -1). Then check if d1 is in [1, b-1] and d0 = s - d1 is in [0, b-1].
+
+If all these conditions hold, then s is valid, and n = s^2 is a b-eautiful number.
+
+So, for each b, the number of s's that satisfy these conditions is the number of b-eautiful numbers.
+
+Our goal is to find the smallest b such that the number of s's is more than ten.
+
+This seems manageable for small values of b, but since we need to go up until we find a b with more than ten s's, perhaps we can find a way to express this count as a function of b.
+
+Alternatively, perhaps we can parameterize it in terms of s and find for which b's the conditions are satisfied.
+
+Wait, let's rearrange the equation for d1:
+
+d1 = (s^2 - s)/(b -1)
+
+Since d1 must be an integer, (b -1) must divide s(s -1). So, (b -1) divides s(s -1). Let me denote k = b -1, so k divides s(s -1). Therefore, k must be a divisor of s(s -1). Since s and s -1 are coprime, k must divide s or k must divide s -1.
+
+Wait, no, that's not necessarily the case. Because k can have factors that divide s and others that divide s -1. But since s and s-1 are coprime, their gcd is 1, so the prime factors of k must be entirely in s or in s-1.
+
+Wait, no, I think that if k divides s(s -1), and s and s-1 are coprime, then k must be equal to d1*(b-1), but perhaps the factors of k must be distributed between s and s-1.
+
+Wait, perhaps another approach: for each s, the possible k = b -1 must be a divisor of s(s -1). So, for a given s, the possible k's (and hence b's) are the divisors of s(s -1). Then, for a given s, the possible b's are equal to (divisors of s(s-1)) + 1.
+
+But we're looking for b's such that for many s's, k = b -1 divides s(s -1). So, to have many s's for a given b, we need b -1 to have many divisors, each of which can divide some s(s -1) for s in the range [ceil(sqrt(b)), b -1].
+
+Alternatively, perhaps for a given b, the number of s's is equal to the number of divisors of (b -1) that are less than or equal to s_max, where s_max is b -1.
+
+Wait, maybe it's better to think of it for each b, compute how many s's satisfy the conditions.
+
+So, let's try to formalize it.
+
+Given b, compute k = b -1.
+
+We need to find the number of integers s in [ceil(sqrt(b)), b -1] such that k divides s(s -1). For each such s, compute d1 = (s^2 - s)/k.
+
+We must also ensure that d1 is between 1 and b -1, and d0 = s - d1 is between 0 and b -1.
+
+So, for each s in [ceil(sqrt(b)), b -1], check if k divides s(s -1). If yes, compute d1 and d0 and check if they are valid digits.
+
+So, the number of s's is equal to the number of divisors of k = b -1 that are in the range [something], but perhaps it's better to proceed step by step.
+
+Alternatively, since s(s -1) must be divisible by k, which is b -1, then for each s, if k divides s(s -1), then s(s -1) = m*k for some integer m. Then, d1 = m.
+
+Wait, but d1 = (s^2 - s)/k = m, so m must be an integer, and m = d1 must be in [1, b -1].
+
+Hmm.
+
+Wait, let's think about this.
+
+Given that s and s -1 are coprime, then k = b -1 must be a product of factors from s and s -1. So, for k to divide s(s -1), the prime factors of k must be a subset of the union of the prime factors of s and s -1.
+
+But since s and s -1 are coprime, the prime factors are entirely in s or in s -1. Therefore, k must be a product of factors from s and s -1, but since they're coprime, k can be written as k = d * e, where d divides s and e divides s -1, and d and e are coprime.
+
+But maybe that's complicating things.
+
+Alternatively, for each s, the possible k's are the divisors of s(s -1). So, for a given s, the possible k's are the divisors of s(s -1). Then, b = k + 1.
+
+So, for each s, we can find all possible b's that would make s a valid s for that b.
+
+But since we're looking for a fixed b where many s's are valid, perhaps it's better to iterate over b and count the number of s's.
+
+But this might take a while. Let me think of an alternative approach.
+
+Let me consider that for each s, the number of possible b's is equal to the number of divisors of s(s -1) that are less than s and satisfy b >= 2.
+
+Wait, because k = b -1 must be a divisor of s(s -1), so k must be a divisor of s(s -1), and since b >= 2, k >=1.
+
+Moreover, since s is at least ceil(sqrt(b)), but since s <= b -1, we have s <= k.
+
+Wait, because s <= b -1 = k.
+
+So, for each s, the possible k's are the divisors of s(s -1) that are >= s (because k must be >= s, since s <= k). Wait, no, because k can be smaller than s.
+
+Wait, no, because k = b -1, and s can be up to k. So, k can be any divisor of s(s -1), but since s and s -1 are coprime, the divisors of s(s -1) are products of the divisors of s and s -1.
+
+Wait, maybe another way: For a given s, the number of possible b's is equal to the number of divisors of s(s -1) that are >= s, because k must be >= s (since s <= k). Because s <= k, since s <= b -1 = k.
+
+Wait, no, because s can be up to k. So, k can be any divisor of s(s -1), as long as k >= s.
+
+Wait, no, for s in [ceil(sqrt(b)), b -1], and b = k + 1, so k = b -1 >=1.
+
+Hmm, perhaps it's better to think about for a fixed b, how many s's satisfy the conditions.
+
+Alternatively, let's consider that for each b, the number of s's is equal to the number of divisors of (b -1) that are less than or equal to b -1, and for which s = (d1 + d0) satisfies the digit constraints.
+
+Wait, perhaps another angle. Let's consider that the equation is:
+
+s^2 = d1*b + d0, where d0 = s - d1.
+
+So, s^2 = d1*b + s - d1
+
+Rearranged:
+
+s^2 - s = d1*(b - 1)
+
+So, d1 = (s^2 - s)/(b -1)
+
+But d1 must be an integer between 1 and b -1, and d0 = s - d1 must be between 0 and b -1.
+
+So, for each b, the number of s's is the number of integers s in [ceil(sqrt(b)), b -1] such that (s^2 - s) is divisible by (b -1), and the resulting d1 is in [1, b -1], and d0 = s - d1 is in [0, b -1].
+
+So, for a given b, we can compute k = b -1, and then for each s from ceil(sqrt(b)) to k, check if k divides (s^2 - s), then compute d1 and d0, and count the number of valid (s, d1, d0).
+
+Let me try to compute this for several small values of b to see if I can find a pattern.
+
+Starting with b=2:
+
+b=2, k=1.
+
+Possible s: ceil(sqrt(2))=2, but s must be <=k=1. So no s exists. So 0 numbers.
+
+b=3, k=2.
+
+s must be >=2 (since sqrt(3) ~1.732, so ceil is 2), and s <=2.
+
+s=2:
+
+Check if (2^2 - 2) = 2 is divisible by k=2. 2/2=1, which is integer. So d1=1, d0=2-1=1.
+
+Check digits: d1=1 (valid, 1<=1<=2), d0=1 (valid, 0<=1<=2). So valid.
+
+So, 1 number.
+
+b=4, k=3.
+
+s must be >=2 (since sqrt(4)=2), s <=3.
+
+s=2:
+
+s^2 - s =4-2=2. Check if 2 divisible by 3? No.
+
+s=3:
+
+s^2 - s=9-3=6. 6/3=2. So d1=2.
+
+d0=3-2=1.
+
+Check digits: d1=2 (valid, 1<=2<=3), d0=1 (valid). So valid.
+
+So, only s=3 is valid. So 1 number.
+
+b=5, k=4.
+
+s from 3 (ceil(sqrt(5))=3) to 4.
+
+s=3:
+
+s^2 - s=9-3=6. 6/4=1.5, not integer.
+
+s=4:
+
+s^2 - s=16-4=12. 12/4=3. So d1=3.
+
+d0=4-3=1.
+
+Check digits: d1=3 (valid, 1<=3<=4), d0=1 (valid). So valid.
+
+So, 1 number.
+
+b=6, k=5.
+
+s from 3 (sqrt(6)~2.45, ceil=3) to 5.
+
+s=3:
+
+s^2 - s=6. 6/5=1.2, not integer.
+
+s=4:
+
+s^2 - s=12. 12/5=2.4, not integer.
+
+s=5:
+
+s^2 - s=20. 20/5=4. So d1=4.
+
+d0=5-4=1.
+
+Check digits: d1=4 (valid), d0=1 (valid). So valid.
+
+Thus, 1 number.
+
+b=7, k=6.
+
+s from 3 (sqrt(7)~2.645, ceil=3) to 6.
+
+s=3:
+
+s^2 -s=6. 6/6=1. So d1=1.
+
+d0=3-1=2. Both digits valid.
+
+So, valid.
+
+s=4:
+
+s^2 -s=12. 12/6=2. d1=2.
+
+d0=4-2=2. Valid.
+
+s=5:
+
+s^2 -s=20. 20/6≈3.333, not integer.
+
+s=6:
+
+s^2 -s=30. 30/6=5. So d1=5.
+
+d0=6-5=1. Valid.
+
+So, s=3,4,6 are valid. That's 3 numbers.
+
+So b=7 has 3 b-eautiful numbers.
+
+b=8, k=7.
+
+s from 3 (sqrt(8)~2.828, ceil=3) to 7.
+
+s=3:
+
+s^2 -s=6. 6/7 not integer.
+
+s=4:
+
+s^2 -s=12. 12/7≈1.714, not integer.
+
+s=5:
+
+s^2 -s=20. 20/7≈2.857, not integer.
+
+s=6:
+
+s^2 -s=30. 30/7≈4.285, not integer.
+
+s=7:
+
+s^2 -s=42. 42/7=6. So d1=6.
+
+d0=7-6=1. Valid.
+
+So only s=7 is valid. 1 number.
+
+b=9, k=8.
+
+s from 3 (sqrt(9)=3) to 8.
+
+s=3:
+
+s^2 -s=6. 6/8=0.75, not integer.
+
+s=4:
+
+s^2 -s=12. 12/8=1.5, not integer.
+
+s=5:
+
+s^2 -s=20. 20/8=2.5, not integer.
+
+s=6:
+
+s^2 -s=30. 30/8=3.75, not integer.
+
+s=7:
+
+s^2 -s=42. 42/8=5.25, not integer.
+
+s=8:
+
+s^2 -s=56. 56/8=7. So d1=7.
+
+d0=8-7=1. Valid.
+
+So only s=8 is valid. 1 number.
+
+b=10, k=9.
+
+s from 4 (sqrt(10)=3.162, ceil=4) to 9.
+
+s=4:
+
+s^2 -s=12. 12/9=1.333, not integer.
+
+s=5:
+
+s^2 -s=20. 20/9≈2.222, not integer.
+
+s=6:
+
+s^2 -s=30. 30/9≈3.333, not integer.
+
+s=7:
+
+s^2 -s=42. 42/9=4.666, not integer.
+
+s=8:
+
+s^2 -s=56. 56/9≈6.222, not integer.
+
+s=9:
+
+s^2 -s=72. 72/9=8. So d1=8.
+
+d0=9-8=1. Valid.
+
+Only s=9 is valid. 1 number.
+
+b=11, k=10.
+
+s from 4 (sqrt(11)=3.316, ceil=4) to 10.
+
+s=4:
+
+s^2 -s=12. 12/10=1.2, not integer.
+
+s=5:
+
+s^2 -s=20. 20/10=2. So d1=2.
+
+d0=5-2=3. Valid.
+
+s=6:
+
+s^2 -s=30. 30/10=3. So d1=3.
+
+d0=6-3=3. Valid.
+
+s=7:
+
+s^2 -s=42. 42/10=4.2, not integer.
+
+s=8:
+
+s^2 -s=56. 56/10=5.6, not integer.
+
+s=9:
+
+s^2 -s=72. 72/10=7.2, not integer.
+
+s=10:
+
+s^2 -s=90. 90/10=9. So d1=9.
+
+d0=10-9=1. Valid.
+
+So, s=5,6,10 are valid. That's 3 numbers.
+
+Hmm, so b=11 has 3 numbers.
+
+b=12, k=11.
+
+s from 4 (sqrt(12)=3.464, ceil=4) to 11.
+
+s=4:
+
+s^2 -s=12. 12/11≈1.09, not integer.
+
+s=5:
+
+s^2 -s=20. 20/11≈1.818, not integer.
+
+s=6:
+
+s^2 -s=30. 30/11≈2.727, not integer.
+
+s=7:
+
+s^2 -s=42. 42/11≈3.818, not integer.
+
+s=8:
+
+s^2 -s=56. 56/11≈5.09, not integer.
+
+s=9:
+
+s^2 -s=72. 72/11≈6.545, not integer.
+
+s=10:
+
+s^2 -s=90. 90/11≈8.181, not integer.
+
+s=11:
+
+s^2 -s=110. 110/11=10. So d1=10.
+
+d0=11-10=1. Valid.
+
+So only s=11 is valid. 1 number.
+
+b=13, k=12.
+
+s from 4 (sqrt(13)=3.605, ceil=4) to 12.
+
+s=4:
+
+s^2 -s=12. 12/12=1. So d1=1.
+
+d0=4-1=3. Valid.
+
+s=5:
+
+s^2 -s=20. 20/12≈1.666, not integer.
+
+s=6:
+
+s^2 -s=30. 30/12=2.5, not integer.
+
+s=7:
+
+s^2 -s=42. 42/12=3.5, not integer.
+
+s=8:
+
+s^2 -s=56. 56/12≈4.666, not integer.
+
+s=9:
+
+s^2 -s=72. 72/12=6. So d1=6.
+
+d0=9-6=3. Valid.
+
+s=10:
+
+s^2 -s=90. 90/12=7.5, not integer.
+
+s=11:
+
+s^2 -s=110. 110/12≈9.166, not integer.
+
+s=12:
+
+s^2 -s=132. 132/12=11. So d1=11.
+
+d0=12-11=1. Valid.
+
+So, s=4,9,12 are valid. That's 3 numbers.
+
+b=14, k=13.
+
+s from 4 (sqrt(14)=3.741, ceil=4) to 13.
+
+s=4:
+
+s^2 -s=12. 12/13≈0.923, not integer.
+
+s=5:
+
+s^2 -s=20. 20/13≈1.538, not integer.
+
+s=6:
+
+s^2 -s=30. 30/13≈2.307, not integer.
+
+s=7:
+
+s^2 -s=42. 42/13≈3.230, not integer.
+
+s=8:
+
+s^2 -s=56. 56/13≈4.307, not integer.
+
+s=9:
+
+s^2 -s=72. 72/13≈5.538, not integer.
+
+s=10:
+
+s^2 -s=90. 90/13≈6.923, not integer.
+
+s=11:
+
+s^2 -s=110. 110/13≈8.461, not integer.
+
+s=12:
+
+s^2 -s=132. 132/13≈10.153, not integer.
+
+s=13:
+
+s^2 -s=156. 156/13=12. So d1=12.
+
+d0=13-12=1. Valid.
+
+Only s=13 is valid. 1 number.
+
+Hmm, so far, the maximum number of b-eautiful numbers for a base is 3, at b=7, 11, 13.
+
+Wait, maybe I should go higher. Let's try b=15, k=14.
+
+s from 4 (sqrt(15)=3.872, ceil=4) to 14.
+
+s=4:
+
+s^2 -s=12. 12/14≈0.857, not integer.
+
+s=5:
+
+s^2 -s=20. 20/14≈1.428, not integer.
+
+s=6:
+
+s^2 -s=30. 30/14≈2.142, not integer.
+
+s=7:
+
+s^2 -s=42. 42/14=3. So d1=3.
+
+d0=7-3=4. Valid.
+
+s=8:
+
+s^2 -s=56. 56/14=4. So d1=4.
+
+d0=8-4=4. Valid.
+
+s=9:
+
+s^2 -s=72. 72/14≈5.142, not integer.
+
+s=10:
+
+s^2 -s=90. 90/14≈6.428, not integer.
+
+s=11:
+
+s^2 -s=110. 110/14≈7.857, not integer.
+
+s=12:
+
+s^2 -s=132. 132/14=9.428, not integer.
+
+s=13:
+
+s^2 -s=156. 156/14≈11.142, not integer.
+
+s=14:
+
+s^2 -s=182. 182/14=13. So d1=13.
+
+d0=14-13=1. Valid.
+
+So, s=7,8,14 are valid. That's 3 numbers.
+
+Still 3.
+
+b=16, k=15.
+
+s from 4 (sqrt(16)=4) to 15.
+
+s=4:
+
+s^2 -s=12. 12/15=0.8, not integer.
+
+s=5:
+
+s^2 -s=20. 20/15≈1.333, not integer.
+
+s=6:
+
+s^2 -s=30. 30/15=2. So d1=2.
+
+d0=6-2=4. Valid.
+
+s=7:
+
+s^2 -s=42. 42/15=2.8, not integer.
+
+s=8:
+
+s^2 -s=56. 56/15≈3.733, not integer.
+
+s=9:
+
+s^2 -s=72. 72/15=4.8, not integer.
+
+s=10:
+
+s^2 -s=90. 90/15=6. So d1=6.
+
+d0=10-6=4. Valid.
+
+s=11:
+
+s^2 -s=110. 110/15≈7.333, not integer.
+
+s=12:
+
+s^2 -s=132. 132/15=8.8, not integer.
+
+s=13:
+
+s^2 -s=156. 156/15=10.4, not integer.
+
+s=14:
+
+s^2 -s=182. 182/15≈12.133, not integer.
+
+s=15:
+
+s^2 -s=210. 210/15=14. So d1=14.
+
+d0=15-14=1. Valid.
+
+So, s=6,10,15 are valid. That's 3 numbers.
+
+Hmm, same as before.
+
+Wait, maybe I need to go higher. Let's try b=20.
+
+k=19.
+
+s from 5 (sqrt(20)=4.472, ceil=5) to 19.
+
+We need to find s where 19 divides s(s-1).
+
+So, 19 divides s(s-1). Since 19 is prime, it must divide either s or s-1.
+
+So, s ≡0 mod 19 or s≡1 mod 19.
+
+But s is between 5 and 19.
+
+s=19: s=19, which is 0 mod19. So s=19.
+
+s=1: Not in the range.
+
+So only s=19 is valid.
+
+Compute d1=(19^2 -19)/19=(361-19)/19=342/19=18.
+
+d0=19-18=1. Valid.
+
+So, only s=19. 1 number.
+
+Not helpful.
+
+Wait, perhaps b=21.
+
+k=20.
+
+s from 5 (sqrt(21)=4.583, ceil=5) to 20.
+
+We need 20 divides s(s-1).
+
+20 factors into 4*5. So, s(s-1) must be divisible by 4 and 5.
+
+Since s and s-1 are consecutive, one is even, and one of them must be divisible by 4, and one divisible by 5.
+
+So, possible cases:
+
+Case 1: s divisible by 5, and s or s-1 divisible by 4.
+
+Case 2: s-1 divisible by 5, and s or s-1 divisible by 4.
+
+So, let's find s in 5 to 20:
+
+s divisible by 5: s=5,10,15,20.
+
+For each, check if s or s-1 divisible by 4.
+
+s=5: s-1=4, which is divisible by 4. So yes.
+
+s=10: s=10, which is divisible by 2, but not 4. s-1=9, not divisible by 4. So no.
+
+s=15: s=15 not divisible by 4. s-1=14, not divisible by 4. No.
+
+s=20: s=20, which is divisible by 4. So yes.
+
+Now, s-1 divisible by 5: s-1=5,10,15.
+
+So s=6,11,16.
+
+Check if s or s-1 divisible by 4.
+
+s=6: s=6 not divisible by 4, s-1=5 not divisible by 4. No.
+
+s=11: s=11 not divisible by 4, s-1=10 not divisible by 4. No.
+
+s=16: s=16, which is divisible by 4. Yes.
+
+So, the valid s's are s=5,20,16.
+
+Wait, let me check:
+
+s=5:
+
+d1=(25 -5)/20=20/20=1.
+
+d0=5-1=4. Valid.
+
+s=16:
+
+d1=(256 -16)/20=240/20=12.
+
+d0=16-12=4. Valid.
+
+s=20:
+
+d1=(400 -20)/20=380/20=19.
+
+d0=20-19=1. Valid.
+
+So, s=5,16,20 are valid. So 3 numbers.
+
+Still 3.
+
+Hmm, maybe I need to consider a base where b-1 has many small factors, allowing for more s's.
+
+Wait, perhaps if b-1 is a highly composite number, like 24.
+
+Let me try b=25, k=24.
+
+s from 5 (sqrt(25)=5) to 24.
+
+We need 24 divides s(s-1). Since 24=8*3=2^3*3.
+
+So s(s-1) must be divisible by 8 and 3.
+
+Since s and s-1 are consecutive, one is even, but to be divisible by 8, either s or s-1 must be divisible by 8, and the other must be even.
+
+Also, one of s or s-1 must be divisible by 3.
+
+So, let's find s in 5 to 24 where s(s-1) is divisible by 24.
+
+This happens when:
+
+Either s divisible by 8 or s-1 divisible by 8, and among s and s-1, one is divisible by 3.
+
+So, let's list s where s or s-1 is divisible by 8, and s or s-1 divisible by 3.
+
+Possible s:
+
+s divisible by 8: 8,16,24.
+
+Check if s or s-1 divisible by 3.
+
+s=8: s=8 not divisible by 3. s-1=7 not divisible by 3. So no.
+
+s=16: s=16 not divisible by 3. s-1=15, which is divisible by 3. Yes.
+
+s=24: s=24 divisible by 3. Yes.
+
+s-1=23 not divisible by 3. So s=24 is okay.
+
+s-1 divisible by 8: s=9,17, 25 (but 25>24, so s=9,17).
+
+Check if s or s-1 divisible by 3.
+
+s=9: s=9 divisible by 3. Yes.
+
+s=17: s=17 not divisible by 3. s-1=16 not divisible by 3. So no.
+
+So, the valid s's are s=16,24,9.
+
+Wait, let's check:
+
+s=9:
+
+d1=(81 -9)/24=72/24=3.
+
+d0=9-3=6. Valid.
+
+s=16:
+
+d1=(256 -16)/24=240/24=10.
+
+d0=16-10=6. Valid.
+
+s=24:
+
+d1=(576 -24)/24=552/24=23.
+
+d0=24-23=1. Valid.
+
+So, s=9,16,24: 3 numbers.
+
+Not enough.
+
+Wait, maybe I made a mistake. Let me check again.
+
+Wait, for s=8: 8 and 7.
+
+s=8: 8 not divisible by 3, 7 not divisible by 3. So no.
+
+s=16: 16 not divisible by 3, 15 is. So yes.
+
+s=24: 24 is divisible by 3. So yes.
+
+s=9: 9 is divisible by 3. So yes.
+
+s=17: 17 not, 16 not. No.
+
+So, s=9,16,24 are valid. So 3 numbers.
+
+Hmm.
+
+Wait, perhaps I should think differently. Maybe the number of s's is equal to the number of divisors of k in a certain range.
+
+Alternatively, perhaps for each k, the number of s's is equal to the number of divisors d of k such that d <= k and d >= (k +1 - something). Not sure.
+
+Wait, perhaps another approach: for a given k, the number of s's is equal to the number of divisors d of k such that d <= k and d satisfies certain conditions.
+
+Wait, but I'm not sure.
+
+Alternatively, perhaps consider that for each divisor d of k, s can be expressed as d + m*k, but within the range of s.
+
+Wait, perhaps not.
+
+Wait, perhaps I should consider that since k divides s(s-1), and s and s-1 are coprime, then k must be a product of two coprime factors, one dividing s and the other dividing s-1.
+
+So, for each divisor pair (d, e) of k, where d*e = k and gcd(d,e)=1, we can set s ≡0 mod d and s≡1 mod e.
+
+Then, by the Chinese Remainder Theorem, there exists a unique solution modulo d*e=k.
+
+So, for each such co-prime divisor pair (d,e) of k, there is a unique s modulo k that satisfies s ≡0 mod d and s≡1 mod e.
+
+Then, since s must be in the range [ceil(sqrt(b)), k], each such s corresponds to a solution.
+
+Therefore, the number of such s's is equal to the number of co-prime divisor pairs (d,e) of k.
+
+Each such pair gives one s in the range [1, k], but we need to check if s is in [ceil(sqrt(b)), k].
+
+But b = k +1, so sqrt(b) = sqrt(k +1). So, s must be >= ceil(sqrt(k +1)).
+
+Thus, the number of s's is equal to the number of co-prime divisor pairs (d,e) of k where the corresponding s is >= ceil(sqrt(k +1)).
+
+But this seems a bit abstract. Let me think about how to compute this.
+
+The number of co-prime divisor pairs (d,e) with d*e =k is 2^{number of distinct prime factors of k}.
+
+Because each prime factor can go to d or e, but since d and e must be coprime, each prime factor must entirely go to d or e.
+
+Therefore, the number of co-prime pairs (d,e) with d*e =k is 2^{ω(k)}, where ω(k) is the number of distinct prime factors of k.
+
+But each such pair gives a unique solution s modulo k.
+
+However, s must be in [ceil(sqrt(k +1)), k].
+
+So, for each co-prime pair (d,e), we get a unique s in [1, k], but only some of them will be in the desired range.
+
+Thus, the number of s's is roughly equal to the number of co-prime pairs (d,e) where the solution s is >= ceil(sqrt(k +1)).
+
+But this is getting too abstract. Maybe another way: for each co-prime pair (d,e), compute s, and check if s >= ceil(sqrt(k +1)).
+
+But perhaps a better way is to note that for each co-prime pair (d,e) of k, there's exactly one s in [1, k] that satisfies s ≡0 mod d and s≡1 mod e.
+
+So, the number of such s's is equal to the number of such pairs where the resulting s is within our desired range.
+
+But this requires actually computing s for each pair, which might be time-consuming.
+
+Alternatively, perhaps for k with many distinct prime factors, we can get more s's.
+
+For example, if k is a product of many small primes, like 2*3*5=30, then the number of co-prime pairs would be 2^3=8.
+
+Each pair would give a unique s modulo 30, so potentially 8 s's in [1,30]. But we need s >= ceil(sqrt(31))=6.
+
+So, perhaps for k=30, we can have up to 8 s's, but some might be less than 6.
+
+Wait, let's test this with k=30, b=31.
+
+Compute s's where 30 divides s(s -1).
+
+s must be between 6 and 30.
+
+For each co-prime pair (d,e) where d*e=30 and gcd(d,e)=1.
+
+The possible pairs are:
+
+(1,30), (2,15), (3,10), (5,6), (6,5), (10,3), (15,2), (30,1).
+
+Each pair (d,e) corresponds to solving s ≡0 mod d and s≡1 mod e.
+
+Let's compute s for each pair:
+
+1. (d=1,e=30): s ≡0 mod1 (always true), s≡1 mod30. So s=1,31,...
+
+But s must be <=30. So s=1. But s must be >=6. So invalid.
+
+2. (d=2,e=15): s ≡0 mod2, s≡1 mod15.
+
+Find s ≡0 mod2 and s≡1 mod15.
+
+Let me solve for s:
+
+s =15m +1.
+
+We need 15m +1 ≡0 mod2 → 15m ≡-1 mod2 → m ≡1 mod2.
+
+So m=2k+1.
+
+Thus, s=15*(2k+1)+1=30k +16.
+
+Within s <=30, k=0: s=16.
+
+So s=16.
+
+16 >=6, valid.
+
+3. (d=3,e=10): s≡0 mod3, s≡1 mod10.
+
+Solve s=10m +1.
+
+10m +1 ≡0 mod3 → 10m ≡-1 mod3 → 1m ≡2 mod3 → m≡2 mod3.
+
+So m=3k +2.
+
+s=10*(3k+2)+1=30k +21.
+
+Within s <=30: k=0→s=21.
+
+21>=6, valid.
+
+4. (d=5,e=6): s≡0 mod5, s≡1 mod6.
+
+Solve s=6m +1.
+
+6m +1≡0 mod5 → 6m≡-1 mod5 → m≡4 mod5.
+
+So m=5k +4.
+
+s=6*(5k +4)+1=30k +25.
+
+Within s <=30: k=0→s=25.
+
+25>=6, valid.
+
+5. (d=6,e=5): s≡0 mod6, s≡1 mod5.
+
+Solve s=5m +1.
+
+5m +1≡0 mod6 →5m≡-1 mod6 → 5m≡5 mod6 → m≡1 mod6.
+
+So m=6k +1.
+
+s=5*(6k +1)+1=30k +6.
+
+Within s <=30: k=0→s=6, k=1→s=36>30.
+
+So s=6.
+
+6>=6, valid.
+
+6. (d=10,e=3): s≡0 mod10, s≡1 mod3.
+
+Solve s=10m.
+
+10m ≡1 mod3 → m≡1 mod3.
+
+So m=3k +1.
+
+s=10*(3k +1)=30k +10.
+
+Within s <=30: k=0→s=10, k=1→s=40>30.
+
+s=10.
+
+10>=6, valid.
+
+7. (d=15,e=2): s≡0 mod15, s≡1 mod2.
+
+s=15m.
+
+15m ≡1 mod2 → m≡1 mod2.
+
+m=2k +1.
+
+s=15*(2k +1)=30k +15.
+
+Within s <=30: k=0→s=15, k=1→s=45>30.
+
+s=15.
+
+15>=6, valid.
+
+8. (d=30,e=1): s≡0 mod30, s≡1 mod1.
+
+s≡0 mod30 and s≡1 mod1 (always true).
+
+s=30m.
+
+Within s <=30: s=30.
+
+30>=6, valid.
+
+So, the valid s's are 16,21,25,6,10,15,30.
+
+Wait, that's 7 s's. But let me check each:
+
+From above:
+
+1. (2,15): s=16.
+
+2. (3,10): s=21.
+
+3. (5,6): s=25.
+
+4. (6,5): s=6.
+
+5. (10,3): s=10.
+
+6. (15,2): s=15.
+
+7. (30,1): s=30.
+
+So, 7 s's. Plus s=6, which is the lower bound.
+
+So total of 7 s's.
+
+But let's verify each s:
+
+s=6:
+
+d1=(36 -6)/30=30/30=1.
+
+d0=6-1=5. Valid.
+
+s=10:
+
+d1=(100 -10)/30=90/30=3.
+
+d0=10-3=7. Valid.
+
+s=15:
+
+d1=(225 -15)/30=210/30=7.
+
+d0=15-7=8. Valid.
+
+s=16:
+
+d1=(256 -16)/30=240/30=8.
+
+d0=16-8=8. Valid.
+
+s=21:
+
+d1=(441 -21)/30=420/30=14.
+
+d0=21-14=7. Valid.
+
+s=25:
+
+d1=(625 -25)/30=600/30=20.
+
+d0=25-20=5. Valid.
+
+s=30:
+
+d1=(900 -30)/30=870/30=29.
+
+d0=30-29=1. Valid.
+
+So, 7 s's for b=31.
+
+That's more than the previous counts.
+
+Wait, but the question asks for more than ten b-eautiful numbers. So, 7 is not enough.
+
+So, perhaps if we go higher.
+
+Let me try k=60, which has more factors.
+
+Wait, but let's compute step by step.
+
+Wait, for k=30, we have 7 s's. Let's try k=24.
+
+Wait, earlier when k=24, we found 3 s's. Maybe that's not better.
+
+Alternatively, let's try k=60, b=61.
+
+k=60 has prime factors 2^2,3,5. So ω(k)=3, number of co-prime pairs is 2^3=8.
+
+But wait, actually, for k=60, the number of co-prime pairs (d,e) where d*e=60 and gcd(d,e)=1.
+
+The co-prime pairs would be:
+
+(1,60), (3,20), (4,15), (5,12), (12,5), (15,4), (20,3), (60,1).
+
+So, 8 pairs.
+
+Each pair will give a unique s modulo 60.
+
+We need to find s in [ceil(sqrt(61))=8, 60].
+
+Compute each s:
+
+1. (d=1,e=60): s≡0 mod1, s≡1 mod60 → s=1. Not >=8.
+
+2. (d=3,e=20): s≡0 mod3, s≡1 mod20.
+
+Find s=20m +1 ≡0 mod3 → 20m ≡-1 mod3 → 2m ≡2 mod3 → m≡1 mod3.
+
+So m=3k+1.
+
+s=20*(3k+1)+1=60k+21.
+
+Within s <=60: k=0→s=21.
+
+21>=8, valid.
+
+3. (d=4,e=15): s≡0 mod4, s≡1 mod15.
+
+s=15m +1.
+
+15m +1 ≡0 mod4 → 15m ≡-1 mod4 → 3m ≡3 mod4 → m≡1 mod4.
+
+m=4k +1.
+
+s=15*(4k +1)+1=60k +16.
+
+Within s <=60: k=0→s=16.
+
+16>=8, valid.
+
+4. (d=5,e=12): s≡0 mod5, s≡1 mod12.
+
+s=12m +1.
+
+12m +1 ≡0 mod5 → 12m ≡-1 mod5 → 2m ≡4 mod5 → m≡2 mod5.
+
+m=5k +2.
+
+s=12*(5k +2)+1=60k +25.
+
+Within s <=60: k=0→s=25.
+
+25>=8, valid.
+
+5. (d=12,e=5): s≡0 mod12, s≡1 mod5.
+
+s=5m +1.
+
+5m +1 ≡0 mod12 →5m ≡-1 mod12 →5m ≡11 mod12.
+
+Multiply both sides by inverse of 5 mod12, which is 5, since 5*5=25≡1 mod12.
+
+So m ≡11*5=55≡7 mod12.
+
+Thus, m=12k +7.
+
+s=5*(12k +7) +1=60k +36.
+
+Within s <=60: k=0→s=36.
+
+36>=8, valid.
+
+6. (d=15,e=4): s≡0 mod15, s≡1 mod4.
+
+s=4m +1.
+
+4m +1 ≡0 mod15 →4m ≡-1 mod15 →4m ≡14 mod15.
+
+Multiply both sides by inverse of 4 mod15, which is 4, since 4*4=16≡1 mod15.
+
+Thus, m ≡14*4=56≡11 mod15.
+
+m=15k +11.
+
+s=4*(15k +11)+1=60k +45.
+
+Within s <=60: k=0→s=45.
+
+45>=8, valid.
+
+7. (d=20,e=3): s≡0 mod20, s≡1 mod3.
+
+s=3m +1.
+
+3m +1 ≡0 mod20 →3m ≡-1 mod20 →3m ≡19 mod20.
+
+Multiply both sides by inverse of 3 mod20, which is 7, since 3*7=21≡1 mod20.
+
+Thus, m ≡19*7=133≡13 mod20.
+
+m=20k +13.
+
+s=3*(20k +13)+1=60k +40.
+
+Within s <=60: k=0→s=40.
+
+40>=8, valid.
+
+8. (d=60,e=1): s≡0 mod60, s≡1 mod1.
+
+s=60m.
+
+Within s <=60: s=60.
+
+60>=8, valid.
+
+So, the valid s's are 21,16,25,36,45,40,60.
+
+That's 7 s's.
+
+Wait, same as k=30. Hmm.
+
+Wait, perhaps I need a k with more distinct prime factors. Let's try k=2*3*5*7=210, but that's probably too high, but let's see.
+
+Alternatively, perhaps k=12.
+
+Wait, let's try k=24 again.
+
+Wait, earlier with k=24, we had 3 s's. So, perhaps higher k's with more factors may not necessarily have more s's because the s's may fall below the sqrt(b) threshold.
+
+Wait, perhaps another approach: for each base b, the number of b-eautiful numbers is equal to the number of divisors of (b-1) that are less than or equal to (b-1)/2, or something like that.
+
+Alternatively, perhaps the number of solutions is equal to the number of ways to write k = b-1 as a product of two coprime numbers d and e, which is 2^{number of prime factors of k}.
+
+But earlier, for k=30, which has 3 prime factors, we had 8 co-prime pairs, but only 7 s's in the range.
+
+Wait, perhaps the number of s's is roughly equal to the number of co-prime pairs, minus those that give s below the sqrt(b) threshold.
+
+In that case, for k=30, we have 7 s's. For higher k's, we might get more.
+
+Wait, let me try k=60, b=61.
+
+As above, we have 7 s's. So, same as k=30.
+
+Wait, perhaps the number of s's is limited by the number of co-prime pairs, but when k increases, the required s increases as well.
+
+Wait, perhaps I should try k=120, which has more factors.
+
+Wait, k=120, b=121.
+
+Compute s's in [11,120].
+
+k=120=2^3*3*5.
+
+Number of co-prime pairs (d,e) with d*e=120 and gcd(d,e)=1.
+
+These pairs are:
+
+(1,120), (3,40), (5,24), (8,15), (15,8), (24,5), (40,3), (120,1).
+
+So, 8 pairs.
+
+For each pair, compute s.
+
+1. (1,120): s=1. <11, invalid.
+
+2. (3,40): s≡0 mod3, s≡1 mod40.
+
+s=40m +1.
+
+40m +1 ≡0 mod3 →40m ≡-1 mod3 →m ≡1 mod3.
+
+So m=3k +1.
+
+s=40*(3k +1)+1=120k +41.
+
+Within s <=120: k=0→s=41.
+
+41>=11, valid.
+
+3. (5,24): s≡0 mod5, s≡1 mod24.
+
+s=24m +1.
+
+24m +1 ≡0 mod5 →24m ≡-1 mod5 →4m ≡4 mod5 →m≡1 mod5.
+
+m=5k +1.
+
+s=24*(5k +1)+1=120k +25.
+
+Within s <=120: k=0→s=25.
+
+25>=11, valid.
+
+4. (8,15): s≡0 mod8, s≡1 mod15.
+
+s=15m +1.
+
+15m +1 ≡0 mod8 →15m ≡-1 mod8 →7m ≡7 mod8 →m≡1 mod8.
+
+m=8k +1.
+
+s=15*(8k +1)+1=120k +16.
+
+Within s <=120: k=0→s=16.
+
+16>=11, valid.
+
+5. (15,8): s≡0 mod15, s≡1 mod8.
+
+s=8m +1.
+
+8m +1 ≡0 mod15 →8m ≡-1 mod15 →8m ≡14 mod15.
+
+Multiply both sides by inverse of 8 mod15, which is 2, since 8*2=16≡1 mod15.
+
+Thus, m≡14*2=28≡13 mod15.
+
+m=15k +13.
+
+s=8*(15k +13)+1=120k +105.
+
+Within s <=120: k=0→s=105.
+
+105>=11, valid.
+
+6. (24,5): s≡0 mod24, s≡1 mod5.
+
+s=5m +1.
+
+5m +1 ≡0 mod24 →5m ≡-1 mod24 →5m ≡23 mod24.
+
+Multiply both sides by inverse of 5 mod24, which is 5, since 5*5=25≡1 mod24.
+
+Thus, m≡23*5=115≡115-4*24=115-96=19 mod24.
+
+m=24k +19.
+
+s=5*(24k +19)+1=120k +96.
+
+Within s <=120: k=0→s=96.
+
+96>=11, valid.
+
+7. (40,3): s≡0 mod40, s≡1 mod3.
+
+s=3m +1.
+
+3m +1 ≡0 mod40 →3m ≡-1 mod40 →3m ≡39 mod40.
+
+Multiply both sides by inverse of 3 mod40, which is 27, since 3*27=81≡1 mod40.
+
+Thus, m≡39*27 mod40.
+
+39*27=1053. 1053 mod40: 1053 -26*40=1053-1040=13.
+
+Thus, m≡13 mod40.
+
+m=40k +13.
+
+s=3*(40k +13)+1=120k +40.
+
+Within s <=120: k=0→s=40.
+
+40>=11, valid.
+
+8. (120,1): s=120.
+
+120>=11, valid.
+
+So, the valid s's are 41,25,16,105,96,40,120.
+
+That's 7 s's.
+
+Same as before.
+
+Wait, perhaps I need a different approach. Maybe the number of s's increases when k is a factorial, but that's getting too big.
+
+Alternatively, perhaps I should think of k as a multiple of many small numbers, so that more s's fall into the required range.
+
+Wait, but so far, even with k=60 and k=120, we only get 7 s's. The question asks for more than ten, so maybe I need a k with more co-prime pairs.
+
+Wait, let's try k=210, which has prime factors 2,3,5,7. So, number of co-prime pairs is 2^4=16.
+
+But this might take a while, but let's try.
+
+k=210, b=211.
+
+s from 15 (sqrt(211)=14.526, ceil=15) to 210.
+
+Number of co-prime pairs (d,e) where d*e=210, gcd(d,e)=1.
+
+The pairs are:
+
+(1,210), (2,105), (3,70), (5,42), (6,35), (7,30), (10,21), (14,15), and their reverses.
+
+Wait, actually, the co-prime pairs would be all pairs where d and e are coprime and d*e=210.
+
+Since 210=2*3*5*7.
+
+The co-prime pairs are:
+
+(1,210), (2,105), (3,70), (5,42), (6,35), (7,30), (10,21), (14,15), and their reverses, totaling 16 pairs.
+
+But let's list them:
+
+(1,210), (210,1)
+
+(2,105), (105,2)
+
+(3,70), (70,3)
+
+(5,42), (42,5)
+
+(6,35), (35,6)
+
+(7,30), (30,7)
+
+(10,21), (21,10)
+
+(14,15), (15,14)
+
+So, 16 pairs.
+
+For each pair, compute s.
+
+1. (1,210): s=1. <15, invalid.
+
+2. (210,1): s=210. >=15, valid.
+
+2. (2,105): s≡0 mod2, s≡1 mod105.
+
+s=105m +1.
+
+105m +1 ≡0 mod2 →105m ≡-1 mod2 →m≡1 mod2.
+
+m=2k +1.
+
+s=105*(2k +1)+1=210k +106.
+
+Within s <=210: k=0→s=106.
+
+106>=15, valid.
+
+3. (105,2): s≡0 mod105, s≡1 mod2.
+
+s=2m +1.
+
+2m +1 ≡0 mod105 →2m ≡-1 mod105 →m≡(104) mod105.
+
+m=105k +104.
+
+s=2*(105k +104)+1=210k +209.
+
+Within s <=210: k=0→s=209.
+
+209>=15, valid.
+
+4. (3,70): s≡0 mod3, s≡1 mod70.
+
+s=70m +1.
+
+70m +1 ≡0 mod3 →70m ≡-1 mod3 →1m ≡2 mod3 →m≡2 mod3.
+
+m=3k +2.
+
+s=70*(3k +2)+1=210k +141.
+
+Within s <=210: k=0→s=141.
+
+141>=15, valid.
+
+5. (70,3): s≡0 mod70, s≡1 mod3.
+
+s=3m +1.
+
+3m +1 ≡0 mod70 →3m ≡-1 mod70 →3m ≡69 mod70.
+
+Multiply both sides by inverse of 3 mod70, which is 47, since 3*47=141≡1 mod70.
+
+Thus, m≡69*47 mod70.
+
+Compute 69*47:
+
+70*47=3290, 69*47=3290 -47=3243.
+
+3243 mod70: 3243 /70=46*70=3220, 3243-3220=23.
+
+Thus, m≡23 mod70.
+
+m=70k +23.
+
+s=3*(70k +23)+1=210k +70.
+
+Within s <=210: k=0→s=70.
+
+70>=15, valid.
+
+6. (5,42): s≡0 mod5, s≡1 mod42.
+
+s=42m +1.
+
+42m +1 ≡0 mod5 →42m ≡-1 mod5 →2m ≡4 mod5 →m≡2 mod5.
+
+m=5k +2.
+
+s=42*(5k +2)+1=210k +85.
+
+Within s <=210: k=0→s=85.
+
+85>=15, valid.
+
+7. (42,5): s≡0 mod42, s≡1 mod5.
+
+s=5m +1.
+
+5m +1 ≡0 mod42 →5m ≡-1 mod42 →5m ≡41 mod42.
+
+Multiply both sides by inverse of 5 mod42, which is 17, since 5*17=85≡1 mod42.
+
+Thus, m≡41*17 mod42.
+
+41*17=697.
+
+697 mod42: 42*16=672, 697-672=25.
+
+Thus, m≡25 mod42.
+
+m=42k +25.
+
+s=5*(42k +25)+1=210k +126.
+
+Within s <=210: k=0→s=126.
+
+126>=15, valid.
+
+8. (6,35): s≡0 mod6, s≡1 mod35.
+
+s=35m +1.
+
+35m +1 ≡0 mod6 →35m ≡-1 mod6 →35 mod6=5, so 5m ≡5 mod6 →m≡1 mod6.
+
+m=6k +1.
+
+s=35*(6k +1)+1=210k +36.
+
+Within s <=210: k=0→s=36.
+
+36>=15, valid.
+
+9. (35,6): s≡0 mod35, s≡1 mod6.
+
+s=6m +1.
+
+6m +1 ≡0 mod35 →6m ≡-1 mod35 →6m ≡34 mod35.
+
+Multiply both sides by inverse of 6 mod35, which is 6, since 6*6=36≡1 mod35.
+
+Thus, m≡34*6=204≡204-5*35=204-175=29 mod35.
+
+m=35k +29.
+
+s=6*(35k +29)+1=210k +175.
+
+Within s <=210: k=0→s=175.
+
+175>=15, valid.
+
+10. (7,30): s≡0 mod7, s≡1 mod30.
+
+s=30m +1.
+
+30m +1 ≡0 mod7 →30m ≡-1 mod7 →30 mod7=2 →2m ≡6 mod7 →m≡3 mod7.
+
+m=7k +3.
+
+s=30*(7k +3)+1=210k +91.
+
+Within s <=210: k=0→s=91.
+
+91>=15, valid.
+
+11. (30,7): s≡0 mod30, s≡1 mod7.
+
+s=7m +1.
+
+7m +1 ≡0 mod30 →7m ≡-1 mod30 →7m ≡29 mod30.
+
+Multiply both sides by inverse of 7 mod30, which is 13, since 7*13=91≡1 mod30.
+
+Thus, m≡29*13=377≡377-12*30=377-360=17 mod30.
+
+m=30k +17.
+
+s=7*(30k +17)+1=210k +120.
+
+Within s <=210: k=0→s=120.
+
+120>=15, valid.
+
+12. (10,21): s≡0 mod10, s≡1 mod21.
+
+s=21m +1.
+
+21m +1 ≡0 mod10 →21m ≡-1 mod10 →1m ≡9 mod10 →m≡9 mod10.
+
+m=10k +9.
+
+s=21*(10k +9)+1=210k +190.
+
+Within s <=210: k=0→s=190.
+
+190>=15, valid.
+
+13. (21,10): s≡0 mod21, s≡1 mod10.
+
+s=10m +1.
+
+10m +1 ≡0 mod21 →10m ≡-1 mod21 →10m ≡20 mod21.
+
+Multiply both sides by inverse of 10 mod21, which is 19, since 10*19=190≡190-9*21=190-189=1 mod21.
+
+Thus, m≡20*19=380≡380-18*21=380-378=2 mod21.
+
+m=21k +2.
+
+s=10*(21k +2)+1=210k +21.
+
+Within s <=210: k=0→s=21.
+
+21>=15, valid.
+
+14. (14,15): s≡0 mod14, s≡1 mod15.
+
+s=15m +1.
+
+15m +1 ≡0 mod14 →15m ≡-1 mod14 →15 mod14=1 →m ≡-1 mod14 →m≡13 mod14.
+
+m=14k +13.
+
+s=15*(14k +13)+1=210k +196.
+
+Within s <=210: k=0→s=196.
+
+196>=15, valid.
+
+15. (15,14): s≡0 mod15, s≡1 mod14.
+
+s=14m +1.
+
+14m +1 ≡0 mod15 →14m ≡-1 mod15 →14m ≡14 mod15 →m≡1 mod15.
+
+m=15k +1.
+
+s=14*(15k +1)+1=210k +15.
+
+Within s <=210: k=0→s=15.
+
+15>=15, valid.
+
+16. (210,1): s=210.
+
+210>=15, valid.
+
+Wait, let's count the valid s's:
+
+From pairs:
+
+2. s=106
+
+3. s=209
+
+4. s=141
+
+5. s=70
+
+6. s=85
+
+7. s=126
+
+8. s=36
+
+9. s=175
+
+10. s=91
+
+11. s=120
+
+12. s=190
+
+13. s=21
+
+14. s=196
+
+15. s=15
+
+16. s=210
+
+Wait, did I miss some? Let's recount:
+
+1. (1,210): invalid
+
+2. (210,1): 210
+
+3. (2,105):106
+
+4. (105,2):209
+
+5. (3,70):141
+
+6. (70,3):70
+
+7. (5,42):85
+
+8. (42,5):126
+
+9. (6,35):36
+
+10. (35,6):175
+
+11. (7,30):91
+
+12. (30,7):120
+
+13. (10,21):190
+
+14. (21,10):21
+
+15. (14,15):196
+
+16. (15,14):15
+
+17. (210,1):210
+
+Wait, that's 16 pairs, but some may result in the same s.
+
+Wait, s=210 is from (210,1).
+
+s=209 from (105,2).
+
+s=196 from (14,15).
+
+s=190 from (10,21).
+
+s=175 from (35,6).
+
+s=152? Wait, no, let me list all:
+
+From above, the s's are:
+
+210, 106,209,141,70,85,126,36,175,91,120,190,21,196,15.
+
+Wait, that's 15 s's.
+
+Wait, let me list them numerically:
+
+15,21,36,70,85,91,106,120,126,141,175,190,196,209,210.
+
+That's 15 s's.
+
+So, for b=211, k=210, we have 15 b-eautiful numbers.
+
+That's more than ten. So, is 211 the least such b?
+
+Wait, but earlier for k=60, we had 7 s's. For k=210, we have 15 s's.
+
+But perhaps there's a smaller k where the number of s's exceeds ten.
+
+Wait, let's try k=60 again.
+
+Wait, earlier for k=60, we had 7 s's. Let me see if I can find a k between 60 and 210 that gives more than ten s's.
+
+Alternatively, perhaps k=120 gives more.
+
+Wait, earlier for k=120, we had 7 s's. So, perhaps k=210 is the first k that gives more than ten s's.
+
+But let's see if there's a smaller k.
+
+Wait, let's try k=30*2=60, but we saw 7 s's.
+
+What about k=420? No, that's even larger.
+
+Wait, perhaps k=360.
+
+Wait, perhaps it's better to think that the number of s's increases with the number of co-prime pairs, which is 2^{number of distinct prime factors}.
+
+So, for k=2*3*5*7=210, we have 4 prime factors, so 2^4=16 co-prime pairs, but due to the range, we get 15 s's.
+
+Wait, but maybe for k=2*3*5*7*11=2310, we'd get even more, but that's way larger.
+
+But the question is to find the smallest b, so the smallest k, such that the number of s's is more than ten.
+
+So, perhaps the earliest k where the number of co-prime pairs is sufficient to give more than ten s's in the required range is k=210, leading to b=211.
+
+But wait, let's check if there's a smaller k with more co-prime pairs.
+
+Wait, let's try k=60.
+
+Wait, k=60 has prime factors 2^2,3,5. So, ω(k)=3, so 2^3=8 co-prime pairs.
+
+Earlier, for k=60, we had 7 s's. So, to get more than ten s's, we might need a k with more prime factors.
+
+Wait, let's try k=120, which has prime factors 2^3,3,5. Same as k=60, so same number of co-prime pairs: 8.
+
+But we had 7 s's.
+
+Wait, perhaps k=180.
+
+k=180=2^2*3^2*5. So, ω(k)=3, same as 60 and 120.
+
+So, number of co-prime pairs=8.
+
+But perhaps more s's fall into the required range.
+
+Let me compute for k=180, b=181.
+
+s must be >=14 (sqrt(181)=13.45, ceil=14) to 180.
+
+Compute s's for each co-prime pair:
+
+The co-prime pairs (d,e) where d*e=180 and gcd(d,e)=1.
+
+These are:
+
+(1,180), (4,45), (5,36), (9,20), (20,9), (36,5), (45,4), (180,1).
+
+So, 8 pairs.
+
+Compute each s:
+
+1. (1,180): s=1. <14, invalid.
+
+2. (180,1): s=180. >=14, valid.
+
+3. (4,45): s≡0 mod4, s≡1 mod45.
+
+s=45m +1.
+
+45m +1 ≡0 mod4 →45m ≡-1 mod4 →1m ≡3 mod4 →m≡3 mod4.
+
+m=4k +3.
+
+s=45*(4k +3)+1=180k +136.
+
+Within s <=180: k=0→s=136.
+
+136>=14, valid.
+
+4. (45,4): s≡0 mod45, s≡1 mod4.
+
+s=4m +1.
+
+4m +1 ≡0 mod45 →4m ≡-1 mod45 →4m ≡44 mod45.
+
+Multiply both sides by inverse of 4 mod45, which is 34, since 4*34=136≡136-3*45=136-135=1 mod45.
+
+Thus, m≡44*34 mod45.
+
+44*34=1496.
+
+1496 mod45: 45*33=1485, 1496-1485=11.
+
+Thus, m≡11 mod45.
+
+m=45k +11.
+
+s=4*(45k +11)+1=180k +45.
+
+Within s <=180: k=0→s=45.
+
+45>=14, valid.
+
+5. (5,36): s≡0 mod5, s≡1 mod36.
+
+s=36m +1.
+
+36m +1 ≡0 mod5 →36m ≡-1 mod5 →1m ≡4 mod5 →m≡4 mod5.
+
+m=5k +4.
+
+s=36*(5k +4)+1=180k +145.
+
+Within s <=180: k=0→s=145.
+
+145>=14, valid.
+
+6. (36,5): s≡0 mod36, s≡1 mod5.
+
+s=5m +1.
+
+5m +1 ≡0 mod36 →5m ≡-1 mod36 →5m ≡35 mod36.
+
+Multiply both sides by inverse of 5 mod36, which is 29, since 5*29=145≡145-4*36=145-144=1 mod36.
+
+Thus, m≡35*29 mod36.
+
+35*29=1015.
+
+1015 mod36: 36*28=1008, 1015-1008=7.
+
+Thus, m≡7 mod36.
+
+m=36k +7.
+
+s=5*(36k +7)+1=180k +36.
+
+Within s <=180: k=0→s=36.
+
+36>=14, valid.
+
+7. (9,20): s≡0 mod9, s≡1 mod20.
+
+s=20m +1.
+
+20m +1 ≡0 mod9 →20m ≡-1 mod9 →2m ≡8 mod9 →m≡4 mod9.
+
+m=9k +4.
+
+s=20*(9k +4)+1=180k +81.
+
+Within s <=180: k=0→s=81.
+
+81>=14, valid.
+
+8. (20,9): s≡0 mod20, s≡1 mod9.
+
+s=9m +1.
+
+9m +1 ≡0 mod20 →9m ≡-1 mod20 →9m ≡19 mod20.
+
+Multiply both sides by inverse of 9 mod20, which is 9, since 9*9=81≡1 mod20.
+
+Thus, m≡19*9=171≡171-8*20=171-160=11 mod20.
+
+m=20k +11.
+
+s=9*(20k +11)+1=180k +100.
+
+Within s <=180: k=0→s=100.
+
+100>=14, valid.
+
+So, the valid s's are 180,136,45,145,36,81,100.
+
+That's 7 s's.
+
+Same as before.
+
+So, it seems that k=210 is the first k where the number of s's exceeds ten.
+
+Thus, the least b is 211.
+
+
+To solve the problem, we need to find the smallest base \( b \) such that there are more than ten \( b \)-eautiful numbers. A number \( n \) is \( b \)-eautiful if it has exactly two digits in base \( b \) and the sum of these digits equals \( \sqrt{n} \).
+
+### Key Steps:
+1. **Understanding \( b \)-eautiful Numbers**: A number \( n \) in base \( b \) is represented as \( d_1 d_0 \), where \( n = d_1 \cdot b + d_0 \). The sum of the digits \( d_1 + d_0 \) must equal \( \sqrt{n} \).
+
+2. **Mathematical Formulation**: Let \( s = d_1 + d_0 \). Then \( s^2 = d_1 \cdot b + d_0 \). Rearranging gives \( s^2 - s = d_1 \cdot (b - 1) \), leading to \( d_1 = \frac{s^2 - s}{b - 1} \).
+
+3. **Conditions for Validity**: \( d_1 \) must be an integer between 1 and \( b - 1 \), and \( d_0 = s - d_1 \) must be between 0 and \( b - 1 \).
+
+4. **Finding \( b \)**: For each \( b \), we check all possible \( s \) values in the range \( \lceil \sqrt{b} \rceil \) to \( b - 1 \) to see if they satisfy the conditions. The goal is to find the smallest \( b \) where more than ten such \( s \) exist.
+
+5. **Analysis**: Through detailed analysis and computation, it was determined that for \( b = 211 \), the number of valid \( s \) values exceeds ten. This is because \( b - 1 = 210 \) has numerous factors, leading to multiple valid solutions.
+
+### Conclusion:
+The least integer \( b \) for which there are more than ten \( b \)-eautiful integers is \( \boxed{211} \).

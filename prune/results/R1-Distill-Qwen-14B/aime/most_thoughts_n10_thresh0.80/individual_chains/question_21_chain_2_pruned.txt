@@ -1,0 +1,191 @@
+--- Chain 2 for Question 21 ---
+Status: PRUNED
+Is Active Flag: False
+Finish Reason: worker_terminated_unexpectedly
+Reasoning Complete Flag: True
+Error: None
+Prompt Tokens: 165
+Completion Tokens: 2022
+Completed Thoughts: 6
+Pruned at Analysis Step: 17
+Final Processed Boundaries: [0, 2915, 3800, 4339, 4515, 5400]
+
+--- Full Content ---
+Okay, so I have this problem here about b-eautiful numbers. Let me try to understand it step by step.
+
+First, the problem says that for an integer b ≥ 2, a positive integer n is called b-eautiful if two conditions are met:
+
+1. When n is expressed in base b, it has exactly two digits.
+2. The sum of these two digits equals the square root of n.
+
+An example is given: 81 is 13-eautiful because in base 13, 81 is written as 63, and 6 + 3 equals 9, which is the square root of 81. 
+
+The task is to find the least integer b ≥ 2 for which there are more than ten b-eautiful integers.
+
+Alright, so I need to find the smallest base b where there are over ten numbers n that satisfy these conditions.
+
+Let me break this down. Let me first figure out what it means for a number n to have exactly two digits in base b. In base b, the two-digit numbers range from b (which is 10_b) up to b^2 - 1 (which is (b-1)(b-1)_b). So the two-digit numbers in base b are from b to b² - 1.
+
+Each two-digit number in base b can be written as n = a * b + c, where a and c are digits in base b. Since it's a two-digit number, a can range from 1 to b-1, and c can range from 0 to b-1.
+
+The sum of the digits is a + c, and according to the problem, this sum should equal sqrt(n). So putting it all together:
+
+sqrt(n) = a + c
+n = (a + c)^2
+
+But also, n = a * b + c.
+
+So, setting them equal:
+
+a * b + c = (a + c)^2
+
+So, the equation to solve is:
+
+a * b + c = (a + c)^2
+
+We can rearrange this equation to solve for b:
+
+b = [(a + c)^2 - c] / a
+
+Simplify the numerator:
+
+[(a + c)^2 - c] = a² + 2ac + c² - c
+
+So,
+
+b = (a² + 2ac + c² - c) / a
+
+We can factor this:
+
+= (a²)/a + (2ac)/a + (c² - c)/a
+= a + 2c + (c² - c)/a
+
+Hmm, since b must be an integer, the entire expression must be an integer. Therefore, (c² - c) must be divisible by a.
+
+So, (c² - c) must be a multiple of a. Let's write that condition:
+
+a | (c² - c)  =>  a divides c(c - 1)
+
+So, for given a and c, this must hold.
+
+Now, since a and c are digits in base b, a ranges from 1 to b-1, and c ranges from 0 to b-1. But since we're expressing n as a two-digit number, a is at least 1 and at most b-1, and c is at least 0 and at most b-1.
+
+But when expressing n in base b, the two-digit number is a * b + c, which is between b and b² - 1, as we saw earlier.
+
+Given that n = (a + c)^2, n must also be a perfect square. So, for each base b, we need to find all pairs (a, c) such that:
+
+1. a is from 1 to b-1
+2. c is from 0 to b-1
+3. a divides c(c - 1)
+4. n = a * b + c = (a + c)^2
+
+So, the strategy is to express b in terms of a and c, then find for each b the number of valid (a, c) pairs that satisfy the conditions, and find the smallest b where this count exceeds 10.
+
+But since we need to find the minimal b such that there are over ten b-eautiful numbers, perhaps we can find for each b the number of (a, c) pairs satisfying the conditions and then check when this number exceeds 10.
+
+Alternatively, perhaps I can parameterize in terms of a and c, find the possible b's, and then for each b, count how many (a, c) pairs correspond to it.
+
+Let me try to express b in terms of a and c:
+
+From earlier:
+
+b = (a + c)^2 - c / a
+
+Which simplifies to:
+
+b = (a^2 + 2ac + c^2 - c)/a
+
+= a + 2c + (c² - c)/a
+
+Since b must be an integer, (c² - c) must be divisible by a. So, a must be a divisor of c(c - 1).
+
+Let me denote d = a. So, d divides c(c - 1). So, for each d, c must be such that c(c - 1) is divisible by d.
+
+Now, let's think about possible values of a and c.
+
+Since a is at least 1 and at most b-1, and c is between 0 and b-1, but also, in the equation n = a * b + c = (a + c)^2, n must be a perfect square.
+
+So, for each possible a and c, we can compute b, but we have to ensure that b is an integer, and that a and c are valid digits in base b (i.e., a < b and c < b).
+
+Wait, this seems a bit tangled. Maybe I can approach it differently.
+
+Let me think about possible values of s = a + c. Then, n = s². Also, n = a * b + c. So,
+
+s² = a * b + c.
+
+But since s = a + c, substituting c = s - a into the equation:
+
+s² = a * b + (s - a)
+s² = a * b + s - a
+s² - s = a * (b - 1)
+So,
+
+a = (s² - s) / (b - 1)
+
+But a must be a positive integer, so (s² - s) must be divisible by (b - 1). Also, since a must be at least 1 and less than b.
+
+Wait, but if I express a in terms of s and b, that might not be the easiest way.
+
+Alternatively, let's consider that b must be an integer, so from the equation:
+
+b = (s² - (s - a)) / a
+= (s² - s + a) / a
+= (s² - s)/a + 1
+
+Hmm, that might not help directly.
+
+Wait, let's go back to the initial equation:
+
+s² = a*b + c, and s = a + c.
+
+So, substituting c = s - a gives:
+
+s² = a*b + s - a
+s² - s = a*(b - 1)
+
+Thus,
+
+a = (s² - s) / (b - 1)
+
+So, for a to be integer, (s² - s) must be divisible by (b - 1).
+
+But I'm not sure if that's the easiest way.
+
+Let me think of another approach. Let's fix s and see what possible a and c can be.
+
+s = a + c, so c = s - a.
+
+Then, substituting into the equation:
+
+s² = a*b + (s - a)
+s² = a*b + s - a
+s² - s = a*b - a
+s² - s = a*(b - 1)
+
+So,
+
+a = (s² - s)/(b - 1)
+
+But since a must be a positive integer, (s² - s) must be divisible by (b - 1). Also, since a must be less than b (because in base b, the first digit a must be less than b), so:
+
+a < b
+=> (s² - s)/(b - 1) < b
+=> s² - s < b*(b - 1)
+But since b must be greater than a, which is (s² - s)/(b - 1), perhaps we can find a relationship between s and b.
+
+Alternatively, maybe I can express b in terms of s and a:
+
+From s² - s = a*(b - 1)
+=> b = (s² - s)/a + 1
+
+So, b must equal (s² - s)/a + 1.
+
+But since b must be an integer, (s² - s) must be divisible by a. So, a must be a divisor of s² - s = s(s - 1). 
+
+So, a is a positive integer that divides s(s - 1), and a must be less than b, which is (s² - s)/a + 1.
+
+So, for each s, we can find all divisors a of s(s - 1), compute b from b = (s² - s)/a + 1, and check whether c = s - a is a valid digit in base b (i.e., c < b).
+
+Moreover, since a must be at least 1 and less than b, and c must be between 0 and b-1.
+
+Wait, let's lay this out step by step
