@@ -9,7 +9,7 @@ from typing import Dict, Optional, List, Tuple, Set, AsyncGenerator, Any
 
 # Keep necessary imports
 from ..clients import stream_vllm_request, close_aiohttp_session
-from ..utils import create_prompt_gpqa, extract_answer_gpqa, count_tokens
+from ..utils import DatasetHandler
 from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
@@ -181,6 +181,7 @@ async def process_question_similarity_prune(
     tokenizer_path: str,
     similarity_threshold: float,
     pruning_strategy: str,
+    dataset_name: str,  # Add dataset_name parameter
     max_analysis_steps: int = 100 # Limit analysis intervals
 ) -> Optional[Dict]:
     """
@@ -189,6 +190,19 @@ async def process_question_similarity_prune(
     Pruning only occurs during the reasoning phase (before server sends non-empty 'content').
     The first two thoughts (idx 0, 1) are never pruned but their embeddings are added.
     Stops analysis loop if only one chain remains active.
+
+    Args:
+        example: The question example to process
+        iteration: Current iteration number (1-indexed)
+        n_chains_start: Number of chains to start with
+        paths: Dictionary of output paths
+        vllm_url: URL of the vLLM server
+        model_name: Name/identifier of the model to use
+        tokenizer_path: Path to the tokenizer
+        similarity_threshold: Threshold for pruning (0.0-1.0)
+        pruning_strategy: Strategy for pruning ("fewest_thoughts", "most_thoughts", or "diversity")
+        dataset_name: Name of the dataset ("gpqa_diamond", "aime", "math500")
+        max_analysis_steps: Maximum number of analysis intervals
     """
     # Validate strategy
     if pruning_strategy not in ["fewest_thoughts", "most_thoughts", "diversity", "random"]:
@@ -202,7 +216,10 @@ async def process_question_similarity_prune(
 
     # --- Setup ---
     try:
-        prompt, choices, correct_answer_letter = create_prompt_gpqa(example)
+        # Initialize dataset handler with provided dataset name
+        dataset_handler = DatasetHandler(dataset_name=dataset_name)
+        prompt, choices_or_answer = dataset_handler.create_prompt(example)
+        correct_answer_letter = choices_or_answer[0] if isinstance(choices_or_answer, list) else choices_or_answer
     except Exception as e:
         logger.exception(f"[red]Error creating prompt[/red]")
         # Save failure summary for this question
@@ -718,7 +735,7 @@ async def process_question_similarity_prune(
     )
 
     for chain_state in final_completed_chains_for_voting:
-        extracted_answer = extract_answer_gpqa(chain_state["full_text"])
+        extracted_answer = dataset_handler.extract_answer(chain_state["full_text"])
         if extracted_answer is None:
             logger.debug(f"Chain {chain_state['id']} completed but no answer could be extracted. Excluded from voting.")
             continue
@@ -752,7 +769,9 @@ async def process_question_similarity_prune(
         voted_answer, final_score, all_extracted_answers = None, 0, []
     else:
         voted_answer, final_score, all_extracted_answers = majority_vote_for_sim_prune(
-            successful_chain_results_for_voting, correct_answer_letter
+            successful_chain_results_for_voting, 
+            correct_answer_letter,
+            dataset_name=dataset_name
         )
 
     # --- Save Individual Chain Outputs ---

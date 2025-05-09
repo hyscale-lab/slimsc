@@ -3,7 +3,8 @@ from collections import Counter
 from typing import List, Dict, Tuple, Optional, Literal
 import random
 
-from ..utils import calculate_score_gpqa, count_tokens
+from ..utils import count_tokens
+from ..utils import DatasetHandler
 
 import logging
 
@@ -274,7 +275,9 @@ def _tie_break_by_pruned_count(
 
 def majority_vote(
     chain_results: List[Dict],
-    correct_answer_letter: str
+    correct_answer_letter: str,
+    dataset_name: str,
+    tokenizer_path: Optional[str] = None
 ) -> Tuple[Optional[str], int, List[str]]:
     """
     Performs majority voting. Breaks ties by selecting the final answer randomly
@@ -285,17 +288,20 @@ def majority_vote(
     Args:
         chain_results: List of dicts for completed chains.
         correct_answer_letter: The correct answer.
-        tokenizer_path: Included for compatibility with signature, but not used for tie-breaking.
+        dataset_name: Name of the dataset to use for scoring.
+        tokenizer_path: Path to tokenizer for fallback token counting.
 
     Returns:
         Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
     """
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+
     status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
 
     if status == "empty":
         return None, 0, []
     if status == "winner":
-        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
+        score = dataset_handler.calculate_score(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
 
     # Status is "tie"
@@ -308,16 +314,25 @@ def majority_vote(
         logger.error("[red]Tie status reported but no tied answers found. Returning None.[/red]")
         final_voted_answer = None
 
-    # Calculate score based on the tie-broken answer (or None if somehow no tied answers)
-    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter) if final_voted_answer else 0
+    # Calculate score based on the tie-broken answer
+    score = dataset_handler.calculate_score(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers
 
 
 def majority_vote_for_sim_prune(
     chain_results: List[Dict],
     correct_answer_letter: str,
+    dataset_name: str = "gpqa_diamond"  # Default to GPQA for backward compatibility
 ) -> Tuple[Optional[str], int, List[str]]:
     """
+    Specialized majority voting for similarity pruning evaluation.
+    Uses internal similarity for tie-breaking (mean_sim / num_thoughts).
+    Requires chain_results dicts to contain 'final_internal_similarity'.
+
+    Args:
+        chain_results: List of chain result dictionaries.
+        correct_answer_letter: The correct answer for scoring.
+        dataset_name: The dataset type ("gpqa_diamond", "aime", "math500").
     Performs majority voting using pruned count tie-breaking (highest count is best).
     Falls back to lowest internal similarity, then lowest chain index.
     Requires 'extracted_answer'. Optional keys for tie-breaking:
@@ -330,8 +345,10 @@ def majority_vote_for_sim_prune(
         correct_answer_letter: The correct answer.
 
     Returns:
-        Tuple[Optional[str], int, List[str]]: Voted answer, score, list of all valid extracted answers.
+        Tuple of (voted_answer, score, all_extracted_answers).
     """
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+
     # Assumes chain_results dictionaries now contain 'pruned_count' and 'final_internal_similarity'
     status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
 
@@ -344,12 +361,12 @@ def majority_vote_for_sim_prune(
         winner_sim = winner_chain.get('final_internal_similarity', 'N/A') if winner_chain else 'N/A'
         sim_str = f"{winner_sim:.4f}" if isinstance(winner_sim, (int, float)) else 'N/A'
         logger.info(f"Clear majority winner {voted_answer} had pruned_count: {winner_count}, internal_sim: {sim_str}")
-        score = calculate_score_gpqa(voted_answer, correct_answer_letter)
+        score = dataset_handler.calculate_score(voted_answer, correct_answer_letter)
         return voted_answer, score, all_extracted_answers
     
     # Status is "tie"
     final_voted_answer = _tie_break_by_pruned_count(valid_chains, tied_answers)
 
     # Calculate score based on the tie-broken answer
-    score = calculate_score_gpqa(final_voted_answer, correct_answer_letter)
+    score = dataset_handler.calculate_score(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers

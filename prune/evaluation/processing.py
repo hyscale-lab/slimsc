@@ -6,7 +6,7 @@ import asyncio
 from typing import Dict, Optional, AsyncGenerator, Any
 
 from ..clients import stream_vllm_request, process_stream_chunks
-from ..utils import create_prompt_gpqa, extract_answer_gpqa, count_tokens
+from ..utils import DatasetHandler, count_tokens
 from .kv_cache_extraction import extract_kv_cache_usage_for_question
 from .voting import majority_vote # Voting needs tokenizer path for tie-breaking
 
@@ -29,7 +29,8 @@ async def process_question_sc_stream(
     paths: Dict[str, str],
     vllm_url: str,
     model_name: str,
-    tokenizer_path: Optional[str] # Needed for token counting and tie-break fallback
+    tokenizer_path: Optional[str],
+    dataset_name: str
 ) -> Optional[Dict]:
     """
     Processes a single question using Self-Consistency by consuming parallel streams.
@@ -42,6 +43,7 @@ async def process_question_sc_stream(
         vllm_url (str): URL of the vllm server.
         model_name (str): Name of the model in vllm.
         tokenizer_path (Optional[str]): Path to tokenizer model/files.
+        dataset_name (str): Name of the dataset
 
     Returns:
         Optional[Dict]: Aggregated results for this question, or None on failure.
@@ -49,9 +51,16 @@ async def process_question_sc_stream(
     logger.info(f"--- Processing Question {iteration} (N={n_chains}, Streaming) ---")
     question_id = example.get("id", f"index_{iteration-1}")
 
+    # Initialize dataset handler
+    handler = DatasetHandler(dataset_name=dataset_name)
+    
     # Create Prompt
     try:
-        prompt, choices, correct_answer_letter = create_prompt_gpqa(example)
+        if dataset_name == "gpqa_diamond":
+            prompt, choices, correct_answer = handler.create_prompt(example)
+        else:
+            prompt, correct_answer = handler.create_prompt(example)
+            choices = None  # other datasets don't use choices
     except Exception as e:
         logger.exception(f"[red]Error creating prompt for question {iteration}[/red]")
         # Save a failure summary for this question
@@ -149,7 +158,7 @@ async def process_question_sc_stream(
 
     for chain_data in completed_streams_with_content:
          # Extract answer (assuming it's in final_answer_text, which is full_content for SC)
-         extracted_answer = extract_answer_gpqa(chain_data.get("final_answer_text", chain_data.get("full_content"))) # Use full_content as fallback
+         extracted_answer = handler.extract_answer(chain_data.get("final_answer_text", chain_data.get("full_content"))) # Use full_content as fallback
          chain_data["extracted_answer"] = extracted_answer # Add extracted answer to the chain data
 
          if extracted_answer is None:
@@ -212,7 +221,7 @@ async def process_question_sc_stream(
          # Save failure summary
          summary_data_no_vote: Dict[str, Any] = { # Add type hint for clarity
             "iteration": iteration, "question_id": question_id, "status": "NO_CHAINS_FOR_VOTING",
-            "prompt_len": len(prompt), "choices": choices, "correct_answer_letter": correct_answer_letter,
+            "prompt_len": len(prompt), "choices": choices, "correct_answer_letter": correct_answer,
             "n_chains_requested": n_chains,
             "n_chains_completed_stream_with_content": len(completed_streams_with_content), # Report how many finished streams with content
             "n_chains_completed_stream_for_voting": 0, # Report how many were used for voting (0)
@@ -240,7 +249,7 @@ async def process_question_sc_stream(
              "question_id": question_id,
              "n_chains_requested": n_chains,
              "n_chains_received": len(completed_streams_with_content), # Report how many streams finished (even if not used for voting)
-             "correct_answer": correct_answer_letter,
+             "correct_answer": correct_answer,
              "voted_answer": None,
              "final_score": 0,
              "prompt_tokens": first_prompt_tokens,
@@ -254,11 +263,10 @@ async def process_question_sc_stream(
              "individual_answers_str": json.dumps([]),
          }
 
-
     # Perform Majority Vote on successful chains data
     # Pass tokenizer_path for tie-breaking fallback
     voted_answer, final_score, all_extracted_answers = majority_vote(
-        successful_chains_for_voting, correct_answer_letter
+        successful_chains_for_voting, correct_answer, dataset_name, tokenizer_path
     )
 
     # Save individual chain outputs - loop through ALL initial results to save outputs for every chain
@@ -324,7 +332,7 @@ async def process_question_sc_stream(
         "n_chains_completed_stream_for_voting": n_chains_used_for_voting, # Chains used for voting
         "error_chains_count": len(error_chains_data), # Report how many failed/incomplete
         "prompt_len": len(prompt),
-        "correct_answer_letter": correct_answer_letter,
+        "correct_answer_letter": correct_answer,
         "individual_answers": all_extracted_answers, # Answers from chains used for voting
         "voted_answer": voted_answer,
         "final_score": final_score,
@@ -371,7 +379,7 @@ async def process_question_sc_stream(
         "n_chains_received": len(completed_streams_with_content), # Report how many streams finished (even if not used for voting)
         "n_chains_completed_stream_with_content": len(completed_streams_with_content), # New metric for CSV
         "n_chains_completed_stream_for_voting": n_chains_used_for_voting, # New metric for CSV
-        "correct_answer": correct_answer_letter,
+        "correct_answer": correct_answer,
         "voted_answer": voted_answer,
         "final_score": final_score,
         "prompt_tokens": first_prompt_tokens, # From usage, assuming uniform across chains

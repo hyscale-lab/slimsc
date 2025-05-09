@@ -11,7 +11,7 @@ from typing import List, Dict, Optional, Set
 # Ensure correct relative imports if running as part of the package
 try:
     from ..clients import close_aiohttp_session
-    from ..utils import load_data_gpqa
+    from ..utils import DatasetHandler
     from ..utils.similarity_utils import get_embedding_model # To preload model if desired
     from .processing_similarity import process_question_similarity_prune
     from .kv_cache_extraction import clear_source_kv_cache, extract_kv_cache_usage_for_question
@@ -20,7 +20,7 @@ except ImportError:
      import sys
      sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
      from slimsc.prune.clients import close_aiohttp_session
-     from slimsc.prune.utils import load_data_gpqa
+     from slimsc.prune.utils import DatasetHandler
      from slimsc.prune.utils.similarity_utils import get_embedding_model
      from slimsc.prune.evaluation.processing_similarity import process_question_similarity_prune
      from slimsc.prune.evaluation.kv_cache_extraction import clear_source_kv_cache, extract_kv_cache_usage_for_question
@@ -142,7 +142,9 @@ async def run_similarity_pruning_evaluation_async(
             results_list = []
             processed_iterations = set()
 
-    examples = load_data_gpqa(dataset_name=dataset_name)
+    # Initialize dataset handler
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+    examples = dataset_handler.load_dataset()
     total_examples = len(examples)
 
     target_iterations_set: Set[int] = set() # Set of 1-indexed iterations the user *wants* to process
@@ -185,7 +187,7 @@ async def run_similarity_pruning_evaluation_async(
     logger.info(f"Need to process {len(iterations_to_process)} iterations (excluding already processed).")
 
     pbar = tqdm(total=len(iterations_to_process),
-                desc=f"GPQA SimPrune-{pruning_strategy} N={n_chains_start} T={similarity_threshold}")
+                desc=f"{dataset_name} SimPrune-{pruning_strategy} N={n_chains_start} T={similarity_threshold}")
     
     for i in iterations_to_process:
         # Ensure the index is within bounds before accessing examples
@@ -204,7 +206,8 @@ async def run_similarity_pruning_evaluation_async(
             model_name=model_identifier,
             tokenizer_path=tokenizer_path,
             similarity_threshold=similarity_threshold,
-            pruning_strategy=pruning_strategy
+            pruning_strategy=pruning_strategy,
+            dataset_name=dataset_name
         )
         if result:
             results_list.append(result)
@@ -438,7 +441,8 @@ def main():
              return
         # Load the dataset just to get the total number of questions
         try:
-            examples = load_data_gpqa(dataset_name=args.dataset_name)
+            dataset_handler = DatasetHandler(dataset_name=args.dataset_name)
+            examples = dataset_handler.load_dataset()
             total_examples = len(examples)
         except Exception as e:
             logger.exception(f"[red]Failed to load dataset '{args.dataset_name}' to determine total examples.[/red]")
