@@ -1,4 +1,6 @@
-from typing import List, Dict, Tuple, Optional
+# slimsc/prune/utils/dataset_handler.py
+
+from typing import List, Dict, Tuple, Optional, Union, Any
 from .gpqa_utils import (
     load_data_gpqa, 
     create_prompt_gpqa, 
@@ -23,7 +25,7 @@ class DatasetHandler:
         """Initialize dataset handler with specific type.
         
         Args:
-            dataset_type (str): Type of dataset ("gpqa_diamond" or "aime")
+            dataset_type (str): Type of dataset ("gpqa_diamond", "aime", "math500")
         """
         if dataset_name not in ["gpqa_diamond", "aime", "math500"]:
             raise ValueError(f"Unknown dataset type: {dataset_name}")
@@ -39,9 +41,17 @@ class DatasetHandler:
             return load_data_aime(dataset_name=self.dataset_name, split=split)
 
     def create_prompt(self, example: Dict) -> Tuple[str, List[str] | str]:
-        """Create prompt from example."""
+        """Create prompt from example.
+        Returns:
+            A tuple: (prompt_string, prompt_output_details).
+            For GPQA, prompt_output_details is a tuple: (choices_list, correct_answer_letter_string).
+            For AIME/MATH, prompt_output_details is the correct_answer_string.
+        """
         if self.dataset_name == "gpqa_diamond":
-            return create_prompt_gpqa(example)
+            # create_prompt_gpqa returns (prompt, choices, correct_letter)
+            # We pack `choices` and `correct_letter` into the second element of the return tuple.
+            _prompt, _choices, _correct_letter = create_prompt_gpqa(example)
+            return _prompt, (_choices, _correct_letter)
         elif self.dataset_name == "math500":
             return create_prompt_math500(example)
         else:
