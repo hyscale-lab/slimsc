@@ -12,7 +12,7 @@ import re
 # Ensure correct relative imports if running as part of the package
 try:
     # Attempt relative imports for package structure
-    from ..utils import extract_answer_gpqa, load_data_gpqa, extract_final_thought
+    from ..utils import extract_final_thought
     from ..utils.similarity_utils import (
         FaissIndexManager, embed_segments, find_newly_completed_thoughts,
         get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
@@ -26,7 +26,7 @@ except (ImportError, ValueError): # ValueError added for cases like "attempted r
      if project_root not in sys.path:
          sys.path.insert(0, project_root)
      try:
-         from slimsc.prune.utils import extract_answer_gpqa, load_data_gpqa, extract_final_thought
+         from slimsc.prune.utils import extract_final_thought
          from slimsc.prune.utils.similarity_utils import (
             FaissIndexManager, embed_segments, find_newly_completed_thoughts,
             get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
