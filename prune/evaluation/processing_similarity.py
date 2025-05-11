@@ -467,24 +467,6 @@ async def process_question_similarity_prune(
                                 potential_loser_id = random.choice([chain_id, neighbor_chain_id])
                                 logger.warning(f"--> Randomly chose to prune Chain {potential_loser_id}.")
 
-                            elif pruning_strategy == "fewest_thoughts":
-                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
-                                if current_thought_count <= neighbor_thought_count:
-                                    potential_loser_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
-                                else:
-                                    potential_loser_id = neighbor_chain_id
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
-
-                            elif pruning_strategy == "most_thoughts":
-                                logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
-                                if current_thought_count >= neighbor_thought_count:
-                                    potential_loser_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
-                                else:
-                                    potential_loser_id = neighbor_chain_id
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
-
                             elif pruning_strategy == "diversity":
                                 embeddings_A = chain_state.get("embeddings", [])
                                 embeddings_B = neighbor_state.get("embeddings", [])
@@ -515,6 +497,24 @@ async def process_question_similarity_prune(
                                     else:
                                         potential_loser_id = neighbor_chain_id # Neighbor guaranteed eligible here
                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
+
+                            elif pruning_strategy == "fewest_thoughts":
+                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
+                                if current_thought_count <= neighbor_thought_count:
+                                    potential_loser_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
+                                else:
+                                    potential_loser_id = neighbor_chain_id
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
+
+                            elif pruning_strategy == "most_thoughts":
+                                logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
+                                if current_thought_count >= neighbor_thought_count:
+                                    potential_loser_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
+                                else:
+                                    potential_loser_id = neighbor_chain_id
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
 
                             if potential_loser_id: # A loser was identified by the strategy
                                 # Determine actual winner and loser for this specific pruning event
