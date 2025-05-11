@@ -41,7 +41,7 @@ def create_prompt_math500(example: Dict) -> Tuple[str, str]:
     question = example.get('question', example.get('problem', 'N/A'))
     
     # Build the prompt with clear instructions
-    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}. Your answer should be left in the most appropriate LaTeX format.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering."""
+    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}. Use only one \\boxed{{}} for your answer. If your answer is for example 1, 2 and 3 it should beleft as \\boxed{{1, 2, 3}}. Your answer should be left in the most appropriate LaTeX format.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering."""
 
     # Get the correct answer
     correct_answer = example.get('answer', 'N/A')
@@ -166,8 +166,8 @@ def normalize_latex_expression(latex_expr: str) -> str:
     # Strip whitespace and convert to lowercase for case-insensitive comparison
     normalized = latex_expr.strip().lower()
     
-    # Remove redundant spaces 
-    normalized = re.sub(r'\s+', ' ', normalized)
+    # Remove spaces 
+    normalized = re.sub(r'\s+', '', normalized)
     
     # Step 2: Unit text removal (must happen before general text command normalization)
     # ----------------------------------
@@ -187,6 +187,8 @@ def normalize_latex_expression(latex_expr: str) -> str:
         r'(\s*minutes)',
         r'(\s*hours)',
         r'(\s*degrees)',
+        r'(\s*\^\\circ)',  # Escaped caret symbol
+        r'(\s*\\\%)',      # Properly escaped percent symbol
         r'(\s*radians)',
         r'(\s*units)',
         r'(\s*items)',
@@ -268,10 +270,29 @@ def normalize_latex_expression(latex_expr: str) -> str:
     # Step 4: Mathematical notation normalization
     # -----------------------------------------
     # Normalize delimiters and brackets
-    # Remove \left and \right commands
-    normalized = re.sub(r'\\left(\S)', r'\1', normalized)
-    normalized = re.sub(r'\\right(\S)', r'\1', normalized)
+    # Replace \left and \right commands with their corresponding brackets
+    bracket_pairs = [
+        (r'\\left\(', '('),
+        (r'\\right\)', ')'),
+        (r'\\left\[', '['),
+        (r'\\right\]', ']'),
+        (r'\\left\{', '{'),
+        (r'\\right\}', '}'),
+        (r'\\left\|', '|'),
+        (r'\\right\|', '|'),
+        (r'\\left\\langle', '⟨'),
+        (r'\\right\\rangle', '⟩'),
+        (r'\\left\\lvert', '|'),
+        (r'\\right\\rvert', '|'),
+        (r'\\left\\lVert', '‖'),
+        (r'\\right\\rVert', '‖'),
+        # Generic \left and \right with any delimiter
+        (r'\\left(\S)', r'\1'),
+        (r'\\right(\S)', r'\1'),
+    ]
     
+    for pattern, replacement in bracket_pairs:
+        normalized = re.sub(pattern, replacement, normalized)
     
     # Now normalize set operations
     set_ops = ['\\cup', '\\cap', '\\setminus', '\\times']
@@ -349,6 +370,11 @@ def normalize_latex_expression(latex_expr: str) -> str:
     normalized = re.sub(r'(\w)\^(\w|\d)', r'\1^\2', normalized)
     normalized = re.sub(r'(\w)_(\w|\d)', r'\1_\2', normalized)
     
+    # Special handling for degree notation
+    normalized = re.sub(r'(\d+)\^\\circ', r'\1', normalized)  # Remove degree symbols like 90^\circ
+    normalized = re.sub(r'(\d+)\\degree', r'\1', normalized)  # Alternative degree notation
+    normalized = re.sub(r'(\d+)°', r'\1', normalized)  # Unicode degree symbol
+    
     # Step 7: Standardize spacing around operators
     # ------------------------------------------
     # List of mathematical operators to standardize spacing around
@@ -376,8 +402,15 @@ def normalize_latex_expression(latex_expr: str) -> str:
     
     # Clean up any double spaces introduced
     normalized = re.sub(r'\s+', ' ', normalized)
-    
-    # Step 8: Final clean-up
+
+    # ---------------------
+    # Step 8: Special cases
+    # ---------------------
+    # Remove "x\in" at the beginning of expressions
+    normalized = re.sub(r'^x\s*\\in\s*', '', normalized)
+
+    # ---------------------
+    # Step 9: Final clean-up
     # ---------------------
     # Normalize various non-mathematical characters
     normalized = re.sub(r'[.,;:]+$', '', normalized)  # Remove trailing punctuation
@@ -592,7 +625,7 @@ if __name__ == "__main__":
         ("(2,12)\\cup(12,102)", "(2, 12) \\cup (12, 102)"),  # No spaces vs. spaces
         
         # Optional units variations
-        ("5.4 \\text{cents}", "5.4"),  # With and without units
+        ("5.4 \\text{ cents}", "5.4"),  # With and without units
         ("3.14 \\textrm{ meters}", "3.14"),  # Different text command
         ("2.5 \\textsf{ kg}", "2.5"),  # Another text command
         ("1.618 \\mathrm{ units}", "1.618"),  # Math text command
@@ -608,6 +641,15 @@ if __name__ == "__main__":
         # Mixed cases with both units and essential text
         ("5.4 \\text{ cents} \\text{ for } x > 0", "5.4 \\text{ for } x > 0"),  # Unit + essential text
         ("3.14 \\text{ meters} \\text{ where } n \\in \\mathbb{N}", "3.14 \\text{ where } n \\in \\mathbb{N}"),  # Unit + essential text
+        
+        # Degree notation test cases
+        ("90^\\circ,90", "90,90"),  # Degrees symbol should be removed as a unit
+        
+        # Bracket normalization test cases
+        ("\\left( 3, \\frac{\\pi}{2} \\right)", "(3, \\frac{\\pi}{2})"),  # \left( and \right) should be normalized to simple parentheses
+        
+        # x\in removal special case
+        ("x \\in [0,1]", "[0, 1]"),  # x\in at the beginning should be removed
     ]
     
     print(f"Testing {len(normalization_test_pairs)} normalization test pairs...")
@@ -667,6 +709,25 @@ if __name__ == "__main__":
             print(f"⚠️ WARNING: Expressions did not match after normalization but should be equivalent!")
             
     print(f"\nNormalization tests passed: {success_count}/{len(normalization_test_pairs)}")
+    
+    # Special test for degree notation
+    print("\n=== Special Test for Degree Notation ===")
+    degree_tests = [
+        ("90^\\circ", "90"),
+        ("90^\\circ,90", "90,90"),
+        ("(90^\\circ, 180^\\circ)", "(90, 180)"),
+        ("\\boxed{(3, 90^\\circ)}", "\\boxed{(3, 90)}"),
+        ("\\text{The angle is } 90^\\circ", "\\text{The angle is } 90"),
+    ]
+    
+    for i, (expr1, expected) in enumerate(degree_tests):
+        print(f"\nDegree Test {i+1}:")
+        print(f"Original: {expr1}")
+        normalized = normalize_latex_expression(expr1)
+        print(f"Normalized: {normalized}")
+        print(f"Expected: {expected}")
+        print(f"Correct normalization: {normalized == expected}")
+    
     print("\nAll tests completed!")
 
     # Special test for the 3/2 fraction issue
