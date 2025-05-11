@@ -424,10 +424,12 @@ async def process_question_similarity_prune(
             # Iterate through thoughts that were successfully embedded
             for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
                 # Double-check eligibility (might have been pruned already in this loop by another thought)
-                if chain_id not in chains_eligible_for_pruning_check or chain_id in chains_to_prune_this_interval:
-                    continue # Skip if chain no longer eligible or already marked for pruning
-
-                chain_state = active_chains[chain_id] # Get current state
+                if chain_id not in chains_to_prune_this_interval:
+                    chain_state_for_faiss_add = active_chains.get(chain_id)
+                    if chain_state_for_faiss_add and \
+                       chain_state_for_faiss_add.get("is_active") and \
+                       not chain_state_for_faiss_add.get("finished"):
+                        index_manager.add_embedding(embedding, chain_id, thought_idx, text)
 
                 # Pruning check conditions:
                 # 1. Thought index is >= 2 (allow first two thoughts)
@@ -454,7 +456,7 @@ async def process_question_similarity_prune(
                                 embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
                                 continue
 
-                            prune_target_id = None
+                            potential_loser_id = None
                             # Get thought counts (needed for multiple strategies now)
                             current_thought_count = chain_state.get('completed_thought_count', 0)
                             neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
@@ -462,25 +464,25 @@ async def process_question_similarity_prune(
                             if pruning_strategy == "random":
                                 logger.info(f"Random Pruning Choice between: Chain {chain_id} and Chain {neighbor_chain_id}")
                                 # Randomly select one of the two chains involved in the similarity match
-                                prune_target_id = random.choice([chain_id, neighbor_chain_id])
-                                logger.warning(f"--> Randomly chose to prune Chain {prune_target_id}.")
+                                potential_loser_id = random.choice([chain_id, neighbor_chain_id])
+                                logger.warning(f"--> Randomly chose to prune Chain {potential_loser_id}.")
 
                             elif pruning_strategy == "fewest_thoughts":
                                 logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
                                 if current_thought_count <= neighbor_thought_count:
-                                    prune_target_id = chain_id
+                                    potential_loser_id = chain_id
                                     logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
                                 else:
-                                    prune_target_id = neighbor_chain_id
+                                    potential_loser_id = neighbor_chain_id
                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
 
                             elif pruning_strategy == "most_thoughts":
                                 logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
                                 if current_thought_count >= neighbor_thought_count:
-                                    prune_target_id = chain_id
+                                    potential_loser_id = chain_id
                                     logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
                                 else:
-                                    prune_target_id = neighbor_chain_id
+                                    potential_loser_id = neighbor_chain_id
                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
 
                             elif pruning_strategy == "diversity":
@@ -500,85 +502,74 @@ async def process_question_similarity_prune(
                                             f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, InternalSim={internal_sim_B:.4f})")
 
                                 if internal_sim_A > internal_sim_B:
-                                    prune_target_id = chain_id
+                                    potential_loser_id = chain_id
                                     logger.warning(f"--> Pruning Chain {chain_id} (Diversity: Higher internal_sim).")
                                 elif internal_sim_B > internal_sim_A:
-                                    prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                    potential_loser_id = neighbor_chain_id # Neighbor guaranteed eligible here
                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Diversity: Higher internal_sim).")
                                 else: # InternalSim are equal - Tie-break with fewer thoughts
                                     logger.warning("Diversity internal_sims equal. Tie-break: fewer thoughts.")
                                     if num_thoughts_A <= num_thoughts_B:
-                                        prune_target_id = chain_id
+                                        potential_loser_id = chain_id
                                         logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
                                     else:
-                                        prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                        potential_loser_id = neighbor_chain_id # Neighbor guaranteed eligible here
                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
 
-                            if prune_target_id:
-                                # Pruned Count Transfer Logic
-                                loser_id = prune_target_id
-                                # Determine the winner (the chain NOT being pruned in this comparison)
-                                winner_id = None
-                                if loser_id == chain_id:
-                                    winner_id = neighbor_chain_id
-                                elif loser_id == neighbor_chain_id:
-                                    winner_id = chain_id
-                                else:
-                                    # This case shouldn't happen if logic is correct
-                                    logger.error(f"Logic error: prune_target_id {loser_id} matched neither {chain_id} nor {neighbor_chain_id}")
-                                    winner_id = None # Cannot determine winner
+                            if potential_loser_id: # A loser was identified by the strategy
+                                # Determine actual winner and loser for this specific pruning event
+                                actual_loser_id = potential_loser_id
+                                actual_winner_id = neighbor_chain_id if actual_loser_id == chain_id else chain_id
 
-                                loser_state = active_chains.get(loser_id)
-                                winner_state = active_chains.get(winner_id) if winner_id else None
+                                proceed_with_prune = True
 
-                                # Ensure both winner and loser are valid and active before transferring count
-                                if loser_state and winner_state and loser_state['is_active'] and winner_state['is_active']:
-                                    loser_pruned_count = loser_state.get("pruned_count", 0)
-                                    count_to_transfer = 1 + loser_pruned_count # 1 for the current prune + loser's history
-
-                                    # Add count to the winner
-                                    winner_state["pruned_count"] = winner_state.get("pruned_count", 0) + count_to_transfer
-
-                                    # Optional: Track details
-                                    winner_state.setdefault("pruned_others", []).append({
-                                        "pruned_chain_id": loser_id,
-                                        "transferred_count": count_to_transfer,
-                                        "step": analysis_step
-                                    })
-                                    loser_state["pruned_by"] = winner_id
-
-                                    logger.info(f"Chain {winner_id} pruned chain {loser_id} (strategy: {pruning_strategy}). "
-                                                f"Transferring count: 1 (current) + {loser_pruned_count} (previous) = {count_to_transfer}. "
-                                                f"New count for {winner_id}: {winner_state['pruned_count']}")
-                                else:
-                                    logger.warning(f"Could not transfer pruned count from {loser_id} to {winner_id}. "
-                                                   f"Winner active: {winner_state.get('is_active', 'N/A') if winner_state else 'Not Found'}, "
-                                                   f"Loser active: {loser_state.get('is_active', 'N/A') if loser_state else 'Not Found'}")
+                                # CHECK 1: Is the designated winner already going to be pruned in this interval?
+                                if actual_winner_id in chains_to_prune_this_interval:
+                                    logger.warning(f"Chain {actual_winner_id} (intended pruner of {actual_loser_id}) "
+                                                   f"is ALREADY in chains_to_prune_this_interval. Skipping this pruning event.")
+                                    proceed_with_prune = False
                                 
-                                # Check if pruning this target is allowed (leaves >= 1 active)
-                                # Check how many chains are currently marked active
-                                num_active_before_this_prune = sum(1 for state in active_chains.values() if state['is_active'])
-                                # How many are already marked for pruning in this interval
-                                num_already_marked_this_interval = len(chains_to_prune_this_interval)
+                                # CHECK 2: Is the designated loser already going to be pruned in this interval?
+                                elif actual_loser_id in chains_to_prune_this_interval:
+                                    logger.warning(f"Chain {actual_loser_id} (intended_loser) "
+                                                   f"is ALREADY in chains_to_prune_this_interval by another chain. Skipping this new pruning event.")
+                                    proceed_with_prune = False
+                                
+                                if proceed_with_prune:
+                                    # CHECK 3: "leaves >= 1 active"
+                                    num_active_before_this_prune = sum(1 for st in active_chains.values() if st['is_active'])
+                                    # num_already_marked_this_interval considers those already in the set
+                                    num_already_marked_this_interval = len(chains_to_prune_this_interval)
+                                    # If we add actual_loser_id (who is not yet in the set), one more chain is marked.
+                                    potential_remaining_active_count = num_active_before_this_prune - num_already_marked_this_interval - 1
 
-                                # Check if this prune_target_id is already marked (can happen if compared multiple times)
-                                target_already_marked = prune_target_id in chains_to_prune_this_interval
+                                    if potential_remaining_active_count >= 1:
+                                        # All checks passed, COMMIT to this pruning action for this interval
+                                        loser_state = active_chains.get(actual_loser_id)
+                                        winner_state = active_chains.get(actual_winner_id)
 
-                                # Calculate how many would be left if we prune this target
-                                # (only decrement count if it's not already marked for pruning)
-                                potential_remaining_active = num_active_before_this_prune - num_already_marked_this_interval
-                                if not target_already_marked:
-                                     potential_remaining_active -= 1
+                                        if loser_state and winner_state and loser_state['is_active'] and winner_state['is_active']:
+                                            loser_pruned_count = loser_state.get("pruned_count", 0)
+                                            count_to_transfer = 1 + loser_pruned_count
+                                            winner_state["pruned_count"] = winner_state.get("pruned_count", 0) + count_to_transfer
+                                            winner_state.setdefault("pruned_others", []).append({
+                                                "pruned_chain_id": actual_loser_id,
+                                                "transferred_count": count_to_transfer,
+                                                "step": analysis_step
+                                            })
+                                            loser_state["pruned_by"] = actual_winner_id
+                                            logger.info(f"Chain {actual_winner_id} will prune chain {actual_loser_id} (strategy: {pruning_strategy}). "
+                                                        f"Transferring count: {count_to_transfer}.")
 
-                                # Only add to prune list if doing so leaves AT LEAST ONE active chain
-                                if potential_remaining_active >= 1:
-                                     if not target_already_marked:
-                                        chains_to_prune_this_interval.add(loser_id)
-                                        # Store winner_id here too for clarity later if needed
-                                        pruning_info_this_interval[loser_id] = (analysis_step, winner_id)
-                                        logger.warning(f"--> Marked Chain {loser_id} for pruning by {winner_id} (based on T{thought_idx} from {chain_id}). Will leave {potential_remaining_active} active.")
-                                else:
-                                     logger.warning(f"--> Skipped pruning Chain {loser_id} (by {winner_id}). Would leave {potential_remaining_active} active chain(s). Keeping >= 1 active.")
+                                            # Add loser to the set of chains to be pruned at the end of this interval
+                                            chains_to_prune_this_interval.add(actual_loser_id)
+                                            pruning_info_this_interval[actual_loser_id] = (analysis_step, actual_winner_id)
+                                        else:
+                                            logger.warning(f"Could not perform prune: "
+                                                           f"loser ({actual_loser_id}) or winner ({actual_winner_id}) state invalid/inactive at point of transfer.")
+                                    else:
+                                        logger.warning(f"--> Skipped pruning Chain {actual_loser_id} by {actual_winner_id}. "
+                                                       f"Would leave {potential_remaining_active_count} active chain(s). Keeping >= 1 active.")
                             else: # Should not happen if logic is correct, but as fallback:
                                 if chain_id not in chains_to_prune_this_interval:
                                     embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
@@ -918,6 +909,7 @@ async def process_question_similarity_prune(
         "question_id": question_id,
         "n_chains_start": n_chains_start,
         "n_chains_completed_stream_for_voting": len(successful_chain_results_for_voting),
+        "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
         "correct_answer": correct_answer_for_scoring,
