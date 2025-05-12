@@ -14,7 +14,7 @@ from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
 )
-from .voting import majority_vote_for_sim_prune
+from .voting import majority_vote_for_sim_prune, fallback_tie_break_logic
 from .kv_cache_extraction import extract_kv_cache_usage_for_question
 
 import logging
@@ -772,16 +772,150 @@ async def process_question_similarity_prune(
             "pruned_count": chain_state.get("pruned_count", 0)
         })
 
-    # Majority Vote - uses the extracted_answer field we just added.
+    voted_answer: Optional[str] = None
+    final_score: int = 0
+    all_extracted_answers_from_initial_vote: List[str] = [] # Keep track of original answers
+    llm_tie_break_performed = False
+    tie_break_prompt_tokens_additional = 0
+    tie_break_completion_tokens_additional = 0
+
     if not successful_chain_results_for_voting:
         logger.warning(f"[Q{iteration}] No chains with extracted answers completed streams for majority vote.")
-        voted_answer, final_score, all_extracted_answers = None, 0, []
+        # voted_answer remains None, final_score 0
     else:
-        voted_answer, final_score, all_extracted_answers = majority_vote_for_sim_prune(
-            successful_chain_results_for_voting, 
-            correct_answer_for_scoring,
+        # Call the modified majority vote function
+        vote_status, initial_voted_answer, initial_score, extracted_answers_temp, \
+        chains_for_llm_tiebreak, tied_answers_list = majority_vote_for_sim_prune(
+            successful_chain_results_for_voting,
+            correct_answer_for_scoring, # This is correct_answer_reference
             dataset_name=dataset_name
         )
+        all_extracted_answers_from_initial_vote = extracted_answers_temp
+
+        if vote_status == "winner":
+            voted_answer = initial_voted_answer
+            final_score = initial_score
+        elif vote_status == "empty":
+            voted_answer = None
+            final_score = 0
+        elif vote_status == "REQUIRES_LLM_TIEBREAK" and chains_for_llm_tiebreak and tied_answers_list:
+            llm_tie_break_performed = True
+            logger.info(f"Q{iteration}: Tie detected. Attempting LLM-based tie-breaking.")
+
+            # 1. Construct the tie-breaking prompt
+            # Extract the core question from the example. This might vary by dataset.
+            # Assuming 'example' has a 'Question' field for GPQA-like datasets.
+            # For MATH/AIME, the prompt_text itself is the question.
+            original_question_text = example.get("Question", "")
+            if not original_question_text and "gpqa" in dataset_name.lower(): # Fallback for GPQA
+                 original_question_text = example.get("Problem", "").split("\n\nQuestion: ")[-1].split("\n\nChoices:")[0]
+            elif not original_question_text: # General fallback
+                 original_question_text = "The original problem was previously presented."
+
+
+            tie_breaker_prompt_parts = [
+                "You will be presented with an original question and several reasoning chains that attempt to answer it."
+                "These reasoning chains have resulted in a tie for the most common final answer.",
+                "Your task is to review all the provided reasoning chains and determine which reasoning leads to the most confident and correct final answer.\n",
+                f"The original question was:\n{original_question_text}\n",
+                "Here are the reasoning chains that led to a tie:"
+            ]
+            for idx, chain_data in enumerate(chains_for_llm_tiebreak):
+                tie_breaker_prompt_parts.append(f"\n--- Reasoning Chain {idx+1} (Original Answer: {chain_data.get('extracted_answer')}) ---")
+                tie_breaker_prompt_parts.append(chain_data.get("full_content", "Content not available."))
+                tie_breaker_prompt_parts.append(f"--- End of Reasoning Chain {idx+1} ---")
+
+            tie_breaker_prompt_parts.append(
+                "\nAfter reviewing all chains, please provide your final concluded answer. "
+                "Your response should ONLY be the thought process and the final answer, "
+                "concluding with the final answer in the same format as the reasoning chains provided above."
+                "Do not add any preamble like \"Based on my analysis...\" or \"I have chosen...\". "
+                "Just provide the reasoning and the final answer.\n\nFinal Answer:"
+            )
+            tie_breaker_full_prompt = "\n".join(tie_breaker_prompt_parts)
+
+            # 2. Calculate tiebreak_prompt_tokens
+            try:
+                tie_break_prompt_tokens_additional = count_tokens(tie_breaker_full_prompt, tokenizer_path)
+                if tie_break_prompt_tokens_additional is None: tie_break_prompt_tokens_additional = 0
+            except Exception as e:
+                logger.error(f"Error counting tokens for tie-breaker prompt: {e}")
+                tie_break_prompt_tokens_additional = 0
+            
+            total_prompt_tokens_agg += tie_break_prompt_tokens_additional # Add to question's total
+
+            # 3. Make the LLM call for tie-breaking
+            tie_breaker_response_text = ""
+            tie_breaker_request_id = f"q{iteration}_tiebreaker_c{len(active_chains) + 1}" # Unique ID
+            logger.info(f"Q{iteration}: Sending tie-breaker prompt to LLM (request_id: {tie_breaker_request_id}). Tokens: {tie_break_prompt_tokens_additional}")
+            
+            try:
+                tie_breaker_stream_gen = stream_vllm_request(
+                    prompt=tie_breaker_full_prompt,
+                    vllm_url=vllm_url,
+                    model_name=model_name,
+                    request_id=tie_breaker_request_id,
+                    temperature=0.1, # Low temperature for judgment
+                    logprobs=None
+                )
+                async for chunk in tie_breaker_stream_gen:
+                    if "error" in chunk:
+                        logger.error(f"LLM tie-breaker error: {chunk['error']}")
+                        tie_breaker_response_text = "" # Mark as failed
+                        break
+                    if chunk and "choices" in chunk and chunk["choices"]:
+                        delta = chunk["choices"][0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            tie_breaker_response_text += content
+                        # Get completion tokens from usage if available in the last chunk
+                        if chunk["choices"][0].get("finish_reason") == "stop" and "usage" in chunk and chunk["usage"]:
+                            tie_break_completion_tokens_additional = chunk["usage"].get("completion_tokens", 0)
+
+
+                if not tie_breaker_response_text:
+                    logger.warning(f"Q{iteration}: LLM tie-breaker returned no text.")
+                else:
+                    logger.info(f"Q{iteration}: LLM tie-breaker response received (length {len(tie_breaker_response_text)}).")
+                    # If completion tokens weren't in usage, count them manually (less accurate)
+                    if tie_break_completion_tokens_additional == 0:
+                        try:
+                            manual_ct = count_tokens(tie_breaker_response_text, tokenizer_path)
+                            tie_break_completion_tokens_additional = manual_ct if manual_ct is not None else 0
+                        except Exception as e_ct:
+                            logger.error(f"Error counting tokens for tie-breaker response: {e_ct}")
+                            tie_break_completion_tokens_additional = 0
+                
+                total_completion_tokens_across_all_started_chains += tie_break_completion_tokens_additional # Add to question's total
+
+            except Exception as e:
+                logger.exception(f"Q{iteration}: Exception during LLM tie-breaker call.")
+                tie_breaker_response_text = "" # Ensure it's empty to trigger fallback
+
+            # 4. Extract answer from LLM tie-breaker response
+            if tie_breaker_response_text:
+                voted_answer = dataset_handler.extract_answer(tie_breaker_response_text)
+                if voted_answer:
+                    logger.info(f"Q{iteration}: LLM tie-breaker selected answer: {voted_answer}")
+                    final_score = dataset_handler.calculate_score(voted_answer, correct_answer_for_scoring)
+                else:
+                    logger.warning(f"Q{iteration}: Could not extract answer from LLM tie-breaker response. Applying fallback.")
+                    voted_answer, final_score = fallback_tie_break_logic(
+                        chains_for_llm_tiebreak,
+                        tied_answers_list,
+                        correct_answer_for_scoring,
+                        dataset_name,
+                        tokenizer_path
+                    )
+            else: # LLM call failed or returned empty
+                logger.warning(f"Q{iteration}: LLM tie-breaker failed. Applying fallback.")
+                voted_answer, final_score = fallback_tie_break_logic(
+                    chains_for_llm_tiebreak,
+                    tied_answers_list,
+                    correct_answer_for_scoring,
+                    dataset_name,
+                    tokenizer_path
+                )
 
     # --- Save Individual Chain Outputs ---
     # Save individual chain outputs for ALL chains that started
@@ -838,7 +972,7 @@ async def process_question_similarity_prune(
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
         "correct_answer_reference": correct_answer_for_scoring,
-        "individual_answers_final": all_extracted_answers, # Answers from chains used for voting
+        "individual_answers_final": all_extracted_answers_from_initial_vote, # Answers from chains used for voting
         "voted_answer": voted_answer,
         "final_score": final_score,
         "processing_duration_sec": total_duration, # Use float for JSON
@@ -884,6 +1018,12 @@ async def process_question_similarity_prune(
               } for state in error_chains_data
          ]
     }
+    if llm_tie_break_performed:
+        summary_data["llm_tie_break_performed"] = True
+        summary_data["llm_tie_break_prompt_tokens"] = tie_break_prompt_tokens_additional
+        summary_data["llm_tie_break_completion_tokens"] = tie_break_completion_tokens_additional
+        summary_data["llm_tie_break_response_text"] = tie_breaker_response_text
+
     summary_filename = os.path.join(paths["summaries"], f"question_{iteration}_summary.json")
     try:
         with open(summary_filename, "w", encoding='utf-8') as f:
@@ -902,7 +1042,6 @@ async def process_question_similarity_prune(
     # The CSV stores PER-QUESTION values, which are then used for overall aggregation.
     # `total_completion_tokens` for the CSV should be the sum across ALL chains that were started
     # and reported tokens via usage, representing the total compute cost for this question attempt.
-    prompt_tokens_for_csv = total_prompt_tokens_agg
 
     return {
         "iteration": iteration,
@@ -915,10 +1054,10 @@ async def process_question_similarity_prune(
         "correct_answer": correct_answer_for_scoring,
         "voted_answer": voted_answer,
         "final_score": final_score,
-        "prompt_tokens": prompt_tokens_for_csv,
+        "prompt_tokens": total_prompt_tokens_agg,
         "total_completion_tokens": total_completion_tokens_across_all_started_chains, # Sum across ALL started chains whose streams finished (includes pruned)
-        "total_tokens": prompt_tokens_for_csv + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
-        "individual_answers_str": json.dumps(all_extracted_answers), # Answers from chains used for voting
+        "total_tokens": total_prompt_tokens_agg + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
+        "individual_answers_str": json.dumps(all_extracted_answers_from_initial_vote), # Answers from chains used for voting
         "total_analysis_intervals": analysis_step,
         "avg_kv_cache_usage": avg_kv_usage,
         "max_kv_cache_usage": max_kv_usage,
