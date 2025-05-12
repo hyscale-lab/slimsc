@@ -168,13 +168,38 @@ def normalize_latex_expression(latex_expr: str) -> str:
     
     # Handle special number formats first, before removing spaces
     # Special handling for number formatting with commas and negative spaces
-    # First, handle the specific LaTeX negative space pattern
-    normalized = re.sub(r',\\!\s*', '', normalized)  # Remove all instances of ,\! with possible following space
-    # Then handle regular commas followed by exactly 3 digits (standard number separators)
-    normalized = re.sub(r',(\d{3})', r'\1', normalized)  # Remove commas when followed by exactly 3 digits
+    
+    # First handle the specific LaTeX negative space pattern, but only when not in intervals/sets
+    def handle_comma(match):
+        # Check if this comma is inside a set/interval notation by looking at what comes before
+        before_match = normalized[:match.start()]
+        # Look for an open bracket/parenthesis without a matching close before the comma
+        open_count = before_match.count('(') + before_match.count('[') + before_match.count('{')
+        close_count = before_match.count(')') + before_match.count(']') + before_match.count('}')
+        
+        # If we have unclosed brackets, this is likely within an interval/set
+        if open_count > close_count:
+            # In interval context, preserve the comma
+            return match.group(0) 
+        else:
+            # In numeric context, remove the comma
+            if ',\\!' in match.group(0):
+                return match.group(0).replace(',\\!', '')
+            else:
+                return match.group(0).replace(',', '')
+    
+    # Apply comma handling for LaTeX negative space
+    normalized = re.sub(r'\d+,\\!\d+', handle_comma, normalized)
+    
+    # Apply comma handling for standard numeric separators (only when followed by exactly 3 digits)
+    normalized = re.sub(r'\d+,\d{3}', handle_comma, normalized)
     
     # Remove spaces 
     normalized = re.sub(r'\s+', '', normalized)
+    
+    # Now go back and remove the marked commas (after spaces have been normalized)
+    normalized = re.sub(r',\\!', '', normalized)  # Remove LaTeX negative space commas
+    normalized = re.sub(r'(?<![(\[\{])\d+,(?=\d{3}(?:[,\d)]|$))', lambda m: m.group(0).replace(',', ''), normalized)  # Remove standard comma separators
     
     # Step 2: Unit text removal (must happen before general text command normalization)
     # ----------------------------------
@@ -413,8 +438,8 @@ def normalize_latex_expression(latex_expr: str) -> str:
     normalized = re.sub(r'^\.(\d+)', r'0.\1', normalized)  # Convert leading decimal point (.0672) to standard form (0.0672)
     
     # Special handling for currency symbols
-    normalized = re.sub(r'\\$(\d+\.\d+)', r'\1', normalized)  # Remove LaTeX escaped dollar signs like \$18.90
-    normalized = re.sub(r'\$(\d+\.\d+)', r'\1', normalized)   # Remove regular dollar signs like $18.90
+    normalized = re.sub(r'\\\$(\d+\.*)', r'\1', normalized)  # Remove LaTeX escaped dollar signs like \$18.90
+    normalized = re.sub(r'\$(\d+\.*)', r'\1', normalized)   # Remove regular dollar signs like $18.90
     
     # Step 7: Standardize spacing around operators
     # ------------------------------------------
@@ -752,6 +777,8 @@ if __name__ == "__main__":
         # currency symbol normalization
         ("\\$18.90", "18.90"),  # Remove LaTeX escaped dollar signs
         ("$18.90", "18.90"),    # Remove regular dollar signs
+
+        ("\\$32,\\!348", "32348"),  # Remove LaTeX escaped dollar signs
     ]
     
     print(f"Testing {len(normalization_test_pairs)} normalization test pairs...")
