@@ -36,7 +36,7 @@ async def stream_vllm_request(
     model_name: str,
     request_id: str, # Unique ID for logging/tracking this specific request
     temperature: float = 0.6,
-    max_tokens: int = 32768,
+    max_tokens: int = 39000,
     stop_sequences: Optional[List[str]] = None,
     logprobs: Optional[int] = None, # Logprobs might behave differently in stream
     max_retries: int = 2,

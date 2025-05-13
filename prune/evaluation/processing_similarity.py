@@ -20,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
-MAX_TOKENS_PER_STREAM = 32768 # Max completion tokens per chain
+MAX_TOKENS_PER_STREAM = 39000 # Max completion tokens per chain
 ANALYSIS_INTERVAL_SECONDS = 3 # How often to check for new thoughts/prune
 
 
