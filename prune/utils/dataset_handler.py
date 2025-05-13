@@ -20,14 +20,21 @@ from .math500_utils import (
     calculate_score_math500
 )
 
+from .aqua_rat_utils import (
+    load_data_aqua_rat,
+    create_prompt_aqua_rat,
+    extract_answer_aqua_rat,
+    calculate_score_aqua_rat
+)
+
 class DatasetHandler:
     def __init__(self, dataset_name: str):
         """Initialize dataset handler with specific type.
         
         Args:
-            dataset_type (str): Type of dataset ("gpqa_diamond", "aime", "math500")
+            dataset_type (str): Type of dataset ("gpqa_diamond", "aime", "math500", "aqua_rat")
         """
-        if dataset_name not in ["gpqa_diamond", "aime", "math500"]:
+        if dataset_name not in ["gpqa_diamond", "aime", "math500", "aqua_rat"]:
             raise ValueError(f"Unknown dataset type: {dataset_name}")
         self.dataset_name = dataset_name
 
@@ -37,8 +44,12 @@ class DatasetHandler:
             return load_data_gpqa(dataset_name=self.dataset_name, split=split)
         elif self.dataset_name == "math500":
             return load_data_math500(dataset_name=self.dataset_name, split=split)
-        else:  # aime
+        elif self.dataset_name == "aime":
             return load_data_aime(dataset_name=self.dataset_name, split=split)
+        elif self.dataset_name == "aqua_rat":
+            return load_data_aqua_rat()
+        else:
+            raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in load_dataset method.")
 
     def create_prompt(self, example: Dict) -> Tuple[str, List[str] | str]:
         """Create prompt from example.
@@ -54,8 +65,12 @@ class DatasetHandler:
             return _prompt, (_choices, _correct_letter)
         elif self.dataset_name == "math500":
             return create_prompt_math500(example)
-        else:
+        elif self.dataset_name == "aime":
             return create_prompt_aime(example)
+        elif self.dataset_name == "aqua_rat":
+            return create_prompt_aqua_rat(example)
+        else:
+            raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in create_prompt method.")
 
     def extract_answer(self, content: Optional[str]) -> Optional[str]:
         """Extract answer from model response."""
@@ -63,8 +78,12 @@ class DatasetHandler:
             return extract_answer_gpqa(content)
         elif self.dataset_name == "math500":
             return extract_answer_math500(content)
-        else:
+        elif self.dataset_name == "aime":
             return extract_answer_aime(content)
+        elif self.dataset_name == "aqua_rat":
+            return extract_answer_aqua_rat(content)
+        else:
+            raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in extract_answer method.")
 
     def calculate_score(self, extracted_answer: Optional[str], correct_answer: str) -> int:
         """Calculate score for extracted answer."""
@@ -72,5 +91,9 @@ class DatasetHandler:
             return calculate_score_gpqa(extracted_answer, correct_answer)
         elif self.dataset_name == "math500":
             return calculate_score_math500(extracted_answer, correct_answer)
-        else:
+        elif self.dataset_name == "aime":
             return calculate_score_aime(extracted_answer, correct_answer)
+        elif self.dataset_name == "aqua_rat":
+            return calculate_score_aqua_rat(extracted_answer, correct_answer)
+        else:
+            raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in calculate_score method.")
