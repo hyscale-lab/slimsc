@@ -3,7 +3,7 @@ import os
 import json
 import time
 import asyncio
-from typing import Dict, Optional, AsyncGenerator, Any
+from typing import Dict, Optional, AsyncGenerator, List, Any
 
 from ..clients import stream_vllm_request, process_stream_chunks
 from ..utils import DatasetHandler, count_tokens
@@ -53,14 +53,27 @@ async def process_question_sc_stream(
 
     # Initialize dataset handler
     handler = DatasetHandler(dataset_name=dataset_name)
+
+    prompt: str = ""
+    correct_answer: Any = None # Will hold correct letter for GPQA, or answer string for AIME/MATH
+    choices: Optional[List[str]] = None # Specific to GPQA
     
     # Create Prompt
     try:
+        # DatasetHandler.create_prompt returns (prompt_string, details)
+        # For GPQA, details is (choices_list, correct_answer_letter_string).
+        # For AIME/MATH, details is correct_answer_string.
+        _prompt_text_val, _prompt_output_details = handler.create_prompt(example)
+        prompt = _prompt_text_val
+
         if dataset_name == "gpqa_diamond":
-            prompt, choices, correct_answer = handler.create_prompt(example)
+            # _prompt_output_details is (_choices_list, _correct_letter_string)
+            choices = _prompt_output_details[0]
+            correct_answer = _prompt_output_details[1] # This is the correct_letter for GPQA        
         else:
-            prompt, correct_answer = handler.create_prompt(example)
-            choices = None  # other datasets don't use choices
+            # For AIME and MATH500, _prompt_output_details is the correct_answer_string
+            correct_answer = _prompt_output_details
+            choices = None # Not used by AIME/MATH500
     except Exception as e:
         logger.exception(f"[red]Error creating prompt for question {iteration}[/red]")
         # Save a failure summary for this question
@@ -219,9 +232,9 @@ async def process_question_sc_stream(
     if n_chains_used_for_voting == 0:
          logger.warning(f"[Q{iteration}] No chains with extracted answers completed streams and extracted answers for majority vote.")
          # Save failure summary
-         summary_data_no_vote: Dict[str, Any] = { # Add type hint for clarity
+         summary_data_no_vote: Dict[str, Any] = {
             "iteration": iteration, "question_id": question_id, "status": "NO_CHAINS_FOR_VOTING",
-            "prompt_len": len(prompt), "choices": choices, "correct_answer_letter": correct_answer,
+            "prompt_len": len(prompt), "choices": choices, "correct_answer_reference": correct_answer,
             "n_chains_requested": n_chains,
             "n_chains_completed_stream_with_content": len(completed_streams_with_content), # Report how many finished streams with content
             "n_chains_completed_stream_for_voting": 0, # Report how many were used for voting (0)
@@ -266,7 +279,7 @@ async def process_question_sc_stream(
     # Perform Majority Vote on successful chains data
     # Pass tokenizer_path for tie-breaking fallback
     voted_answer, final_score, all_extracted_answers = majority_vote(
-        successful_chains_for_voting, correct_answer, dataset_name, tokenizer_path
+        successful_chains_for_voting, correct_answer, dataset_name
     )
 
     # Save individual chain outputs - loop through ALL initial results to save outputs for every chain
@@ -332,7 +345,7 @@ async def process_question_sc_stream(
         "n_chains_completed_stream_for_voting": n_chains_used_for_voting, # Chains used for voting
         "error_chains_count": len(error_chains_data), # Report how many failed/incomplete
         "prompt_len": len(prompt),
-        "correct_answer_letter": correct_answer,
+        "correct_answer_reference": correct_answer,
         "individual_answers": all_extracted_answers, # Answers from chains used for voting
         "voted_answer": voted_answer,
         "final_score": final_score,

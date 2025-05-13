@@ -17,9 +17,14 @@ async def get_aiohttp_session() -> aiohttp.ClientSession:
     """Initializes and returns a shared aiohttp ClientSession."""
     global _aiohttp_session
     if _aiohttp_session is None or _aiohttp_session.closed:
-        timeout = aiohttp.ClientTimeout(total=600) # Increased timeout for potentially long streams
+        timeout_config = aiohttp.ClientTimeout(
+            total=None,          # No overall total timeout for the entire request life-cycle
+            connect=60,          # Timeout for establishing connection
+            sock_connect=60,     # Timeout for socket connection part
+            sock_read=2400       # Timeout for waiting for data from server AFTER connection
+        )
         connector = aiohttp.TCPConnector(limit_per_host=100)
-        _aiohttp_session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+        _aiohttp_session = aiohttp.ClientSession(timeout=timeout_config, connector=connector)
     return _aiohttp_session
 
 async def close_aiohttp_session():

@@ -1,6 +1,7 @@
 # slimsc/prune/evaluation/voting.py
 from collections import Counter
-from typing import List, Dict, Tuple, Optional, Literal
+from typing import List, Dict, Tuple, Optional, Literal, Any
+import random
 
 from ..utils import count_tokens
 from ..utils import DatasetHandler
@@ -8,6 +9,7 @@ from ..utils import DatasetHandler
 import logging
 
 logger = logging.getLogger(__name__)
+random.seed(42) # For reproducibility
 
 # --- Internal Helper Functions ---
 
@@ -276,12 +278,12 @@ def majority_vote(
     chain_results: List[Dict],
     correct_answer_letter: str,
     dataset_name: str,
-    tokenizer_path: Optional[str] = None
 ) -> Tuple[Optional[str], int, List[str]]:
     """
-    Performs majority voting using token-based tie-breaking (fewest tokens).
-    Requires 'extracted_answer'. Optional keys for tie-breaking:
-    'completion_tokens', 'full_content'/'reasoning_text', 'chain_index'.
+    Performs majority voting. Breaks ties by selecting the final answer randomly
+    from the tied options.
+
+    Requires 'extracted_answer'.
 
     Args:
         chain_results: List of dicts for completed chains.
@@ -303,61 +305,103 @@ def majority_vote(
         return voted_answer, score, all_extracted_answers
 
     # Status is "tie"
-    final_voted_answer = _tie_break_by_tokens(valid_chains, tied_answers, tokenizer_path)
+    # Break ties randomly
+    if tied_answers: # Ensure there are answers to choose from (should be guaranteed by _process_initial_vote)
+        final_voted_answer = random.choice(tied_answers)
+        logger.info(f"Tie broken randomly: Chose answer '{final_voted_answer}' from {tied_answers}")
+    else:
+        # This case should theoretically not be reached if status is "tie", but as a safeguard:
+        logger.error("[red]Tie status reported but no tied answers found. Returning None.[/red]")
+        final_voted_answer = None
 
     # Calculate score based on the tie-broken answer
     score = dataset_handler.calculate_score(final_voted_answer, correct_answer_letter)
     return final_voted_answer, score, all_extracted_answers
 
+TieBreakDecision = Literal["winner", "tie", "empty", "REQUIRES_LLM_TIEBREAK"]
 
 def majority_vote_for_sim_prune(
     chain_results: List[Dict],
-    correct_answer_letter: str,
-    dataset_name: str = "gpqa_diamond"  # Default to GPQA for backward compatibility
-) -> Tuple[Optional[str], int, List[str]]:
+    correct_answer_ref: Any,
+    dataset_name: str = "gpqa_diamond"
+) -> Tuple[TieBreakDecision, Optional[str], int, List[str], List[Dict], Optional[List[str]]]:
     """
-    Specialized majority voting for similarity pruning evaluation.
-    Uses internal similarity for tie-breaking (mean_sim / num_thoughts).
-    Requires chain_results dicts to contain 'final_internal_similarity'.
+    Performs majority voting. If a tie occurs, signals that an LLM is needed for tie-breaking.
+    The caller is responsible for invoking fallback_tie_break_logic if the LLM tie-break fails.
 
     Args:
         chain_results: List of chain result dictionaries.
-        correct_answer_letter: The correct answer for scoring.
+        correct_answer_ref: The correct answer for scoring.
         dataset_name: The dataset type ("gpqa_diamond", "aime", "math500").
-    Performs majority voting using pruned count tie-breaking (highest count is best).
-    Falls back to lowest internal similarity, then lowest chain index.
-    Requires 'extracted_answer'. Optional keys for tie-breaking:
-    'pruned_count', 'final_internal_similarity', 'chain_index'.
-
-    Args:
-        chain_results: List of dicts for completed chains. Must contain
-                       'pruned_count' and 'final_internal_similarity'
-                       if tie-breaking is needed.
-        correct_answer_letter: The correct answer.
 
     Returns:
-        Tuple of (voted_answer, score, all_extracted_answers).
+        Tuple of (
+            status: "winner", "empty", or "REQUIRES_LLM_TIEBREAK",
+            voted_answer: Final answer if "winner", else None.
+            score: Score if "winner", else 0.
+            all_extracted_answers: List of all valid answers from input.
+            valid_chains_for_tiebreak: Chains involved in the tie (if status is "REQUIRES_LLM_TIEBREAK").
+            tied_answers_list: List of answers that are tied.
+        )
     """
     dataset_handler = DatasetHandler(dataset_name=dataset_name)
 
-    # Assumes chain_results dictionaries now contain 'pruned_count' and 'final_internal_similarity'
-    status, voted_answer, all_extracted_answers, valid_chains, tied_answers = _process_initial_vote(chain_results)
+    status_initial, voted_answer_initial, all_extracted_answers, valid_chains, tied_answers_list = _process_initial_vote(chain_results)
 
-    if status == "empty":
-        return None, 0, []
-    if status == "winner":
+    if status_initial == "empty":
+        return "empty", None, 0, [], [], None
+    if status_initial == "winner":
         # Log winner details
-        winner_chain = next((c for c in valid_chains if c.get("extracted_answer") == voted_answer), None)
+        winner_chain = next((c for c in valid_chains if c.get("extracted_answer") == voted_answer_initial), None)
         winner_count = winner_chain.get('pruned_count', 'N/A') if winner_chain else 'N/A'
         winner_sim = winner_chain.get('final_internal_similarity', 'N/A') if winner_chain else 'N/A'
         sim_str = f"{winner_sim:.4f}" if isinstance(winner_sim, (int, float)) else 'N/A'
-        logger.info(f"Clear majority winner {voted_answer} had pruned_count: {winner_count}, internal_sim: {sim_str}")
-        score = dataset_handler.calculate_score(voted_answer, correct_answer_letter)
-        return voted_answer, score, all_extracted_answers
+        logger.info(f"Clear majority winner {voted_answer_initial} had pruned_count: {winner_count}, internal_sim: {sim_str}")
+        score = dataset_handler.calculate_score(voted_answer_initial, correct_answer_ref)
+        return "winner", voted_answer_initial, score, all_extracted_answers, [], None # No chains needed for tiebreak
     
     # Status is "tie"
-    final_voted_answer = _tie_break_by_pruned_count(valid_chains, tied_answers)
+    # Signal to the caller to perform LLM tie-breaking
+    logger.info(f"Tie detected among answers {tied_answers_list}. Signaling for LLM tie-breaking.")
+    # Return the chains that are part of the tie
+    chains_in_tie = [
+        chain for chain in valid_chains
+        if chain.get("extracted_answer") in tied_answers_list
+    ]
+    return "REQUIRES_LLM_TIEBREAK", None, 0, all_extracted_answers, chains_in_tie, tied_answers_list
 
-    # Calculate score based on the tie-broken answer
-    score = dataset_handler.calculate_score(final_voted_answer, correct_answer_letter)
-    return final_voted_answer, score, all_extracted_answers
+
+def fallback_tie_break_logic(
+    chains_in_tie: List[Dict],
+    tied_answers: List[str],
+    correct_answer_ref: Any,
+    dataset_name: str,
+    tokenizer_path: Optional[str]
+) -> Tuple[Optional[str], int]:
+    """
+    Performs fallback tie-breaking using fewest tokens.
+    Priority: completion_tokens (usage) -> tokenizer count -> chain_index.
+    """
+    logger.info("Applying fallback tie-breaking logic (fewest tokens).")
+    dataset_handler = DatasetHandler(dataset_name=dataset_name)
+
+    if not chains_in_tie or not tied_answers:
+        logger.warning("Fallback tie-break called with no chains or tied answers.")
+        return None, 0
+
+    # Use the _tie_break_by_tokens logic
+    # _tie_break_by_tokens expects the list of chains and the list of tied answers
+    final_voted_answer = _tie_break_by_tokens(
+        valid_chain_results=chains_in_tie,
+        tied_answers=tied_answers,
+        tokenizer_path=tokenizer_path
+    )
+
+    if final_voted_answer is None and tied_answers:
+        # This means _tie_break_by_tokens couldn't resolve it, even with index fallback.
+        # This should be rare. As an ultimate fallback, pick the first.
+        logger.error("[RED] Fallback _tie_break_by_tokens returned None. Arbitrarily picking first tied answer.")
+        final_voted_answer = tied_answers[0]
+
+    score = dataset_handler.calculate_score(final_voted_answer, correct_answer_ref)
+    return final_voted_answer, score
