@@ -109,6 +109,7 @@ def create_server_pbs_script(
     # --- Similarity specific (can be None if eval_type is sc_control) ---
     pruning_strategy: Optional[str],
     threshold: Optional[float],
+    threshold_schedule: Optional[str],
 ) -> tuple[str, str, str, str]: # Return: pbs_script_content, relative_ip_file, relative_pbs_log_file, relative_vllm_serve_log_file
     """
     Creates the PBS script content for the vLLM server job.
@@ -123,10 +124,34 @@ def create_server_pbs_script(
 
     run_name: Optional[str] = None
     if eval_type == "similarity":
-        run_name = f"{pruning_strategy}_n{n_start}_thresh{threshold:.2f}"
+        schedule_suffix = ""
+        threshold_for_naming = threshold
+
+        if threshold_schedule == 'annealing':
+            schedule_suffix = f"_{threshold_schedule}" # Adds "_annealing"
+            threshold_for_naming = 0.9 # Use fixed 0.9 for naming convention
+
+        # Ensure required values are present before formatting
+        if pruning_strategy is not None and n_start is not None and threshold_for_naming is not None:
+            run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold_for_naming:.2f}"
+            print(f"Constructed server run_name: {run_name}") # Add log for debugging
+        else:
+            print(f"Warning: Could not construct run_name for server KVC path due to missing params (strategy={pruning_strategy}, n_start={n_start}, threshold_for_naming={threshold_for_naming}). Using 'unknown_run'.")
+            run_name = "unknown_run"
+
     elif eval_type == "sc_control":
         # Assuming sc_control run_name is based on n_start
-        run_name = f"sc_{n_start}_control"
+        if n_start is not None:
+            run_name = f"sc_{n_start}_control"
+            print(f"Constructed server run_name: {run_name}") # Add log for debugging
+        else:
+            print("Warning: Missing n_start for sc_control run_name.")
+            run_name = "unknown_run"
+
+    # Fallback if run_name wasn't generated for some reason
+    if not run_name:
+        print("Error: run_name could not be determined. Defaulting to 'unknown_run'.")
+        run_name = "unknown_run"
 
     model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name if run_name else "unknown_run")
     target_kvc_file_path = os.path.join(model_dataset_dir, "kvcache_usages.csv")
@@ -176,9 +201,8 @@ def create_server_pbs_script(
         f"export CUDA_VISIBLE_DEVICES=$(seq -s , 0 {tensor_parallel_size - 1})",
         f"export KVC_USAGE_FILE={quoted_target_kvc_file_path}",
         formatted_ld_export_command,
+        "export VLLM_USE_V1=0",
     ]
-    if not vllm_use_v1:
-        exports.append("export VLLM_USE_V1=0")
     
     create_run_dir_command = f'mkdir -p {shlex.quote(os.path.dirname(target_kvc_file_path))}'
 
@@ -442,6 +466,7 @@ def create_client_pbs_script(
             f"--tokenizer_path {quoted_eval_args['tokenizer_path']}",
             "--vllm_url $VLLM_URL", # Use exported variable
             f"--dataset_name {quoted_eval_args['dataset_name']}",
+            f"--threshold_schedule {quoted_eval_args['threshold_schedule']}" if quoted_eval_args.get('threshold_schedule') else "",
         ]
     elif eval_type == "sc_control":
         eval_module = "slimsc.prune.evaluation.sc_control_eval"
@@ -913,12 +938,16 @@ def main_yaml():
         eval_dataset_name = get_config_value(eval_cfg, ['dataset_name'])
         eval_n_start = get_config_value(eval_cfg, ['n_start']) # Needed by both
 
-        # --- Conditionally extract similarity params ---
         eval_pruning_strategy = None
         eval_threshold = None
+        eval_threshold_schedule = None
+
+        # --- Conditionally extract similarity params ---
+        eval_threshold_schedule = None # Initialize
         if eval_type == 'similarity':
             eval_pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
             eval_threshold = get_config_value(eval_cfg, ['threshold'])
+            eval_threshold_schedule = get_config_value(eval_cfg, ['threshold_schedule'], 'fixed')
             if None in [eval_pruning_strategy, eval_n_start, eval_threshold]:
                  print(f"Error: Missing similarity params (pruning_strategy, n_start, threshold) in eval config for job '{job_name_prefix}'. Skipping.")
                  continue
@@ -926,6 +955,9 @@ def main_yaml():
              if eval_n_start is None:
                  print(f"Error: Missing required 'n_start' in eval config for sc_control job '{job_name_prefix}'. Skipping.")
                  continue
+
+             eval_threshold = None
+             eval_threshold_schedule = None
 
         print(f"--- Job Details ({job_name_prefix}) ---")
         print(f"  Model: {model_path}")
@@ -946,7 +978,8 @@ def main_yaml():
             dataset_name=eval_dataset_name,
             n_start=eval_n_start,
             pruning_strategy=eval_pruning_strategy,
-            threshold=eval_threshold
+            threshold=eval_threshold,
+            threshold_schedule=eval_threshold_schedule,
         )
         # Write script into the logs directory
         server_pbs_path = write_pbs_script(job_name_prefix, server_pbs_content, "server", workdir, LOGS_DIR_NAME)
