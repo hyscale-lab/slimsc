@@ -938,6 +938,10 @@ def main_yaml():
         eval_dataset_name = get_config_value(eval_cfg, ['dataset_name'])
         eval_n_start = get_config_value(eval_cfg, ['n_start']) # Needed by both
 
+        eval_pruning_strategy = None
+        eval_threshold = None
+        eval_threshold_schedule = None
+
         # --- Conditionally extract similarity params ---
         eval_threshold_schedule = None # Initialize
         if eval_type == 'similarity':
@@ -951,6 +955,9 @@ def main_yaml():
              if eval_n_start is None:
                  print(f"Error: Missing required 'n_start' in eval config for sc_control job '{job_name_prefix}'. Skipping.")
                  continue
+
+             eval_threshold = None
+             eval_threshold_schedule = None
 
         print(f"--- Job Details ({job_name_prefix}) ---")
         print(f"  Model: {model_path}")
