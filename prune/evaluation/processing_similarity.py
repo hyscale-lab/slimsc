@@ -182,6 +182,7 @@ async def process_question_similarity_prune(
     tokenizer_path: str,
     similarity_threshold: float,
     pruning_strategy: str,
+    threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
     max_analysis_steps: int = 100 # Limit analysis intervals
 ) -> Optional[Dict]:
@@ -329,6 +330,14 @@ async def process_question_similarity_prune(
         analysis_step += 1
         logger.info(f"[bold cyan][Q{iteration} Analysis Interval {analysis_step}] Checking chains...[/bold cyan]")
 
+        if threshold_schedule == "annealing":
+            current_dynamic_threshold = 0.9 * np.exp((analysis_step - 1) * -0.02197)
+            # Ensure threshold doesn't go below zero due to extreme steps/float issues
+            threshold_to_use_this_step = max(0.1, current_dynamic_threshold)
+            logger.debug(f"[Annealing Schedule] Step {analysis_step}: Using dynamic threshold {threshold_to_use_this_step:.4f}")
+        else: # Default 'fixed' schedule
+            threshold_to_use_this_step = similarity_threshold # Use the fixed threshold passed in
+
         # --- Identify chains needing analysis/pruning checks ---
         # These are chains that are still marked active AND whose worker isn't finished yet,
         # AND are still in the reasoning phase.
@@ -446,9 +455,8 @@ async def process_question_similarity_prune(
                     neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                     if neighbor_result:
                         sim_score_faiss, neighbor_chain_id, _, _ = neighbor_result
-                        # --- Step 2: If FAISS similarity high, calculate NEW Diversity Efficiency ---
-                        if sim_score_faiss > similarity_threshold:
-                            logger.warning(f"[bold yellow]PRUNING CONDITION (FAISS)![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, FAISS_score={sim_score_faiss:.4f}")
+                        if sim_score_faiss > threshold_to_use_this_step:
+                            logger.warning(f"[bold yellow]PRUNING CONDITION (FAISS)![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, FAISS_score={sim_score_faiss:.4f} > Threshold={threshold_to_use_this_step:.4f}")
 
                             neighbor_state = active_chains.get(neighbor_chain_id)
                             if neighbor_state is None or not neighbor_state['is_active']:
@@ -1051,6 +1059,7 @@ async def process_question_similarity_prune(
         "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
+        "threshold_schedule": threshold_schedule,
         "correct_answer": correct_answer_for_scoring,
         "voted_answer": voted_answer,
         "final_score": final_score,
