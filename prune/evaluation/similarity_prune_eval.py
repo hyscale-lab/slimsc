@@ -39,9 +39,12 @@ def setup_output_directories_prune(
         dataset_name: str,
         n_start: int,
         threshold: float,
-        pruning_strategy: str) -> Dict[str, str]:
+        pruning_strategy: str,
+        threshold_schedule: str
+        ) -> Dict[str, str]:
     """Creates directories for storing similarity pruning evaluation results."""
-    run_name = f"{pruning_strategy}_n{n_start}_thresh{threshold:.2f}"
+    schedule_suffix = f"_{threshold_schedule}" if threshold_schedule != 'fixed' else ""
+    run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold:.2f}"
     model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
     chains_output_dir = os.path.join(model_dataset_dir, "individual_chains")
     summary_output_dir = os.path.join(model_dataset_dir, "summaries")
@@ -75,6 +78,7 @@ async def run_similarity_pruning_evaluation_async(
     n_chains_start: int,
     similarity_threshold: float,
     pruning_strategy: str,
+    threshold_schedule: str,
     vllm_url: str,
     base_output_dir: str,
     start_iteration: int = 1,
@@ -82,9 +86,15 @@ async def run_similarity_pruning_evaluation_async(
     specific_iterations: Optional[List[int]] = None
 ):
     """Runs the Similarity Pruning evaluation loop (Continuous Stream Version)."""
-    logger.info(f"Starting Similarity Pruning Eval ({pruning_strategy}): N_start={n_chains_start}, Threshold={similarity_threshold}, Model={model_name}")
+    # Determine the threshold to use for naming based on the schedule
+    threshold_for_naming = 0.9 if threshold_schedule == 'annealing' else similarity_threshold
+
+    logger.info(f"Starting Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={threshold_for_naming:.2f}, Model={model_name}")
     paths = setup_output_directories_prune(
-        base_output_dir, model_name, dataset_name, n_chains_start, similarity_threshold, pruning_strategy
+        base_output_dir, model_name, dataset_name, n_chains_start,
+        threshold=threshold_for_naming,
+        pruning_strategy=pruning_strategy,
+        threshold_schedule=threshold_schedule
     )
 
     # Pre-load embedding model
@@ -102,7 +112,8 @@ async def run_similarity_pruning_evaluation_async(
     csv_cols = [
         "iteration", "question_id", "n_chains_start", 
         "n_chains_completed_stream_for_voting", "n_chains_error",
-        "similarity_threshold", "correct_answer", "voted_answer", "final_score",
+        "similarity_threshold", "threshold_schedule",
+        "correct_answer", "voted_answer", "final_score",
         "prompt_tokens", "total_completion_tokens", "total_tokens", # total_completion_tokens is sum across ALL finished streams
         "individual_answers_str", "total_analysis_intervals",
         "avg_kv_cache_usage", "max_kv_cache_usage", # Per-question KV stats
@@ -122,12 +133,14 @@ async def run_similarity_pruning_evaluation_async(
                                "n_chains_pruned", "n_chains_error",
                                "prompt_tokens", "total_completion_tokens", "total_tokens",
                                "total_analysis_intervals"]:
-                         existing_df[col] = 0
+                        existing_df[col] = 0
                     elif col in ["final_score", "similarity_threshold",
                                  "avg_kv_cache_usage", "max_kv_cache_usage", "processing_duration_sec"]:
-                         existing_df[col] = pd.NA # Use pandas NA for missing numeric data
+                        existing_df[col] = pd.NA # Use pandas NA for missing numeric data
+                    elif col == "threshold_schedule":
+                        existing_df[col] = "fixed" # Assume fixed if column missing
                     else:
-                         existing_df[col] = None # Use None for object/string types
+                        existing_df[col] = None # Use None for object/string types
 
             # Ensure correct dtypes for merging/comparison, especially iteration
             existing_df['iteration'] = pd.to_numeric(existing_df['iteration'], errors='coerce').astype('Int64') # Use nullable Int64
@@ -207,6 +220,7 @@ async def run_similarity_pruning_evaluation_async(
             tokenizer_path=tokenizer_path,
             similarity_threshold=similarity_threshold,
             pruning_strategy=pruning_strategy,
+            threshold_schedule=threshold_schedule,
             dataset_name=dataset_name
         )
         if result:
@@ -227,6 +241,8 @@ async def run_similarity_pruning_evaluation_async(
                                         "avg_kv_cache_usage", "max_kv_cache_usage",
                                         "processing_duration_sec"]:
                                 df[col] = pd.NA
+                            elif col == "threshold_schedule":
+                                df[col] = threshold_schedule
                             else:
                                 df[col] = None
                 # Filter out rows where iteration is NA after conversion
@@ -321,6 +337,7 @@ async def run_similarity_pruning_evaluation_async(
             "config": {
                 "n_chains_start": n_chains_start,
                 "similarity_threshold": similarity_threshold,
+                "threshold_schedule": threshold_schedule,
                 "pruning_strategy": pruning_strategy,
                 "iterations_selected_by": "specific_list" if specific_iterations is not None else "range",
                 "random_seed": DEFAULT_SEED if specific_iterations is not None and any(specific_iterations) and hasattr(random, 'getstate') else None
@@ -425,12 +442,23 @@ def main():
                         help='Ending iteration (inclusive). Used only if --num_qns and --iterations are not specified.')
     parser.add_argument('--iterations', type=str, default=None,
                         help='Comma-separated list of specific iterations (e.g., "1,5,10-12"). If specified, overrides --start and --end. Overridden by --num_qns.')
+    parser.add_argument('--threshold_schedule', type=str, default='fixed', choices=['fixed', 'annealing'],
+                    help='How the similarity threshold is determined: "fixed" uses the --threshold value, "annealing" decays it exponentially.')
     args = parser.parse_args()
 
     # Validate threshold
     if not (0.0 < args.threshold <= 1.0):
         logger.error("[red]Similarity threshold must be between 0.0 (exclusive) and 1.0 (inclusive).[/red]")
         return
+
+    # Log if annealing is used, potentially mentioning the initial threshold from the formula
+    if args.threshold_schedule == 'annealing':
+        logger.info(f"[yellow]Using annealing threshold schedule. The --threshold value ({args.threshold}) will be ignored during pruning checks.[/yellow]")
+        logger.info(f"Annealing formula: 0.9 * exp(analysis_step * -0.02197)")
+        # Define a nominal threshold for directory naming when annealing, e.g., the initial value 0.9
+        threshold_for_naming = 0.9
+    else:
+        threshold_for_naming = args.threshold
 
     specific_iterations_list: Optional[List[int]] = None
 
@@ -510,6 +538,7 @@ def main():
             n_chains_start=args.n_start,
             similarity_threshold=args.threshold,
             pruning_strategy=args.pruning_strategy,
+            threshold_schedule=args.threshold_schedule,
             vllm_url=args.vllm_url,
             base_output_dir=args.output_dir,
             # Pass the determined list (if any)

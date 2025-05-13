@@ -14,7 +14,7 @@ from ..utils.similarity_utils import (
     FaissIndexManager, embed_segments, find_newly_completed_thoughts,
     extract_final_thought, get_embedding_model, MIN_SEGMENT_TOKENS, TARGET_PHRASES
 )
-from .voting import majority_vote_for_sim_prune
+from .voting import majority_vote_for_sim_prune, fallback_tie_break_logic
 from .kv_cache_extraction import extract_kv_cache_usage_for_question
 
 import logging
@@ -182,6 +182,7 @@ async def process_question_similarity_prune(
     tokenizer_path: str,
     similarity_threshold: float,
     pruning_strategy: str,
+    threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
     max_analysis_steps: int = 100 # Limit analysis intervals
 ) -> Optional[Dict]:
@@ -329,6 +330,14 @@ async def process_question_similarity_prune(
         analysis_step += 1
         logger.info(f"[bold cyan][Q{iteration} Analysis Interval {analysis_step}] Checking chains...[/bold cyan]")
 
+        if threshold_schedule == "annealing":
+            current_dynamic_threshold = 0.9 * np.exp((analysis_step - 1) * -0.02197)
+            # Ensure threshold doesn't go below zero due to extreme steps/float issues
+            threshold_to_use_this_step = max(0.1, current_dynamic_threshold)
+            logger.debug(f"[Annealing Schedule] Step {analysis_step}: Using dynamic threshold {threshold_to_use_this_step:.4f}")
+        else: # Default 'fixed' schedule
+            threshold_to_use_this_step = similarity_threshold # Use the fixed threshold passed in
+
         # --- Identify chains needing analysis/pruning checks ---
         # These are chains that are still marked active AND whose worker isn't finished yet,
         # AND are still in the reasoning phase.
@@ -424,10 +433,12 @@ async def process_question_similarity_prune(
             # Iterate through thoughts that were successfully embedded
             for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
                 # Double-check eligibility (might have been pruned already in this loop by another thought)
-                if chain_id not in chains_eligible_for_pruning_check or chain_id in chains_to_prune_this_interval:
-                    continue # Skip if chain no longer eligible or already marked for pruning
-
-                chain_state = active_chains[chain_id] # Get current state
+                if chain_id not in chains_to_prune_this_interval:
+                    chain_state_for_faiss_add = active_chains.get(chain_id)
+                    if chain_state_for_faiss_add and \
+                       chain_state_for_faiss_add.get("is_active") and \
+                       not chain_state_for_faiss_add.get("finished"):
+                        index_manager.add_embedding(embedding, chain_id, thought_idx, text)
 
                 # Pruning check conditions:
                 # 1. Thought index is >= 2 (allow first two thoughts)
@@ -444,9 +455,8 @@ async def process_question_similarity_prune(
                     neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                     if neighbor_result:
                         sim_score_faiss, neighbor_chain_id, _, _ = neighbor_result
-                        # --- Step 2: If FAISS similarity high, calculate NEW Diversity Efficiency ---
-                        if sim_score_faiss > similarity_threshold:
-                            logger.warning(f"[bold yellow]PRUNING CONDITION (FAISS)![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, FAISS_score={sim_score_faiss:.4f}")
+                        if sim_score_faiss > threshold_to_use_this_step:
+                            logger.warning(f"[bold yellow]PRUNING CONDITION (FAISS)![/bold yellow] Chain {chain_id} (T{thought_idx}) vs {neighbor_chain_id}, FAISS_score={sim_score_faiss:.4f} > Threshold={threshold_to_use_this_step:.4f}")
 
                             neighbor_state = active_chains.get(neighbor_chain_id)
                             if neighbor_state is None or not neighbor_state['is_active']:
@@ -454,7 +464,7 @@ async def process_question_similarity_prune(
                                 embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
                                 continue
 
-                            prune_target_id = None
+                            potential_loser_id = None
                             # Get thought counts (needed for multiple strategies now)
                             current_thought_count = chain_state.get('completed_thought_count', 0)
                             neighbor_thought_count = neighbor_state.get('completed_thought_count', 0)
@@ -462,26 +472,8 @@ async def process_question_similarity_prune(
                             if pruning_strategy == "random":
                                 logger.info(f"Random Pruning Choice between: Chain {chain_id} and Chain {neighbor_chain_id}")
                                 # Randomly select one of the two chains involved in the similarity match
-                                prune_target_id = random.choice([chain_id, neighbor_chain_id])
-                                logger.warning(f"--> Randomly chose to prune Chain {prune_target_id}.")
-
-                            elif pruning_strategy == "fewest_thoughts":
-                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
-                                if current_thought_count <= neighbor_thought_count:
-                                    prune_target_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
-                                else:
-                                    prune_target_id = neighbor_chain_id
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
-
-                            elif pruning_strategy == "most_thoughts":
-                                logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
-                                if current_thought_count >= neighbor_thought_count:
-                                    prune_target_id = chain_id
-                                    logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
-                                else:
-                                    prune_target_id = neighbor_chain_id
-                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
+                                potential_loser_id = random.choice([chain_id, neighbor_chain_id])
+                                logger.warning(f"--> Randomly chose to prune Chain {potential_loser_id}.")
 
                             elif pruning_strategy == "diversity":
                                 embeddings_A = chain_state.get("embeddings", [])
@@ -500,85 +492,92 @@ async def process_question_similarity_prune(
                                             f"Chain {neighbor_chain_id} (Thoughts={num_thoughts_B}, MeanSim={mean_sim_B:.4f}, InternalSim={internal_sim_B:.4f})")
 
                                 if internal_sim_A > internal_sim_B:
-                                    prune_target_id = chain_id
+                                    potential_loser_id = chain_id
                                     logger.warning(f"--> Pruning Chain {chain_id} (Diversity: Higher internal_sim).")
                                 elif internal_sim_B > internal_sim_A:
-                                    prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                    potential_loser_id = neighbor_chain_id # Neighbor guaranteed eligible here
                                     logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Diversity: Higher internal_sim).")
                                 else: # InternalSim are equal - Tie-break with fewer thoughts
                                     logger.warning("Diversity internal_sims equal. Tie-break: fewer thoughts.")
                                     if num_thoughts_A <= num_thoughts_B:
-                                        prune_target_id = chain_id
+                                        potential_loser_id = chain_id
                                         logger.warning(f"--> Pruning Chain {chain_id} (Tie-break: <= thoughts).")
                                     else:
-                                        prune_target_id = neighbor_chain_id # Neighbor guaranteed eligible here
+                                        potential_loser_id = neighbor_chain_id # Neighbor guaranteed eligible here
                                         logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Tie-break: fewer thoughts).")
 
-                            if prune_target_id:
-                                # Pruned Count Transfer Logic
-                                loser_id = prune_target_id
-                                # Determine the winner (the chain NOT being pruned in this comparison)
-                                winner_id = None
-                                if loser_id == chain_id:
-                                    winner_id = neighbor_chain_id
-                                elif loser_id == neighbor_chain_id:
-                                    winner_id = chain_id
+                            elif pruning_strategy == "fewest_thoughts":
+                                logger.info(f"Fewest Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
+                                if current_thought_count <= neighbor_thought_count:
+                                    potential_loser_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Fewest Thoughts: <= thoughts).")
                                 else:
-                                    # This case shouldn't happen if logic is correct
-                                    logger.error(f"Logic error: prune_target_id {loser_id} matched neither {chain_id} nor {neighbor_chain_id}")
-                                    winner_id = None # Cannot determine winner
+                                    potential_loser_id = neighbor_chain_id
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Fewest Thoughts: fewer thoughts).")
 
-                                loser_state = active_chains.get(loser_id)
-                                winner_state = active_chains.get(winner_id) if winner_id else None
-
-                                # Ensure both winner and loser are valid and active before transferring count
-                                if loser_state and winner_state and loser_state['is_active'] and winner_state['is_active']:
-                                    loser_pruned_count = loser_state.get("pruned_count", 0)
-                                    count_to_transfer = 1 + loser_pruned_count # 1 for the current prune + loser's history
-
-                                    # Add count to the winner
-                                    winner_state["pruned_count"] = winner_state.get("pruned_count", 0) + count_to_transfer
-
-                                    # Optional: Track details
-                                    winner_state.setdefault("pruned_others", []).append({
-                                        "pruned_chain_id": loser_id,
-                                        "transferred_count": count_to_transfer,
-                                        "step": analysis_step
-                                    })
-                                    loser_state["pruned_by"] = winner_id
-
-                                    logger.info(f"Chain {winner_id} pruned chain {loser_id} (strategy: {pruning_strategy}). "
-                                                f"Transferring count: 1 (current) + {loser_pruned_count} (previous) = {count_to_transfer}. "
-                                                f"New count for {winner_id}: {winner_state['pruned_count']}")
+                            elif pruning_strategy == "most_thoughts":
+                                logger.info(f"Most Thoughts Check: Chain {chain_id} (T={current_thought_count}) vs {neighbor_chain_id} (T={neighbor_thought_count})")
+                                if current_thought_count >= neighbor_thought_count:
+                                    potential_loser_id = chain_id
+                                    logger.warning(f"--> Pruning Chain {chain_id} (Most Thoughts: > thoughts).")
                                 else:
-                                    logger.warning(f"Could not transfer pruned count from {loser_id} to {winner_id}. "
-                                                   f"Winner active: {winner_state.get('is_active', 'N/A') if winner_state else 'Not Found'}, "
-                                                   f"Loser active: {loser_state.get('is_active', 'N/A') if loser_state else 'Not Found'}")
+                                    potential_loser_id = neighbor_chain_id
+                                    logger.warning(f"--> Pruning Chain {neighbor_chain_id} (Most Thoughts: > thoughts).")
+
+                            if potential_loser_id: # A loser was identified by the strategy
+                                # Determine actual winner and loser for this specific pruning event
+                                actual_loser_id = potential_loser_id
+                                actual_winner_id = neighbor_chain_id if actual_loser_id == chain_id else chain_id
+
+                                proceed_with_prune = True
+
+                                # CHECK 1: Is the designated winner already going to be pruned in this interval?
+                                if actual_winner_id in chains_to_prune_this_interval:
+                                    logger.warning(f"Chain {actual_winner_id} (intended pruner of {actual_loser_id}) "
+                                                   f"is ALREADY in chains_to_prune_this_interval. Skipping this pruning event.")
+                                    proceed_with_prune = False
                                 
-                                # Check if pruning this target is allowed (leaves >= 1 active)
-                                # Check how many chains are currently marked active
-                                num_active_before_this_prune = sum(1 for state in active_chains.values() if state['is_active'])
-                                # How many are already marked for pruning in this interval
-                                num_already_marked_this_interval = len(chains_to_prune_this_interval)
+                                # CHECK 2: Is the designated loser already going to be pruned in this interval?
+                                elif actual_loser_id in chains_to_prune_this_interval:
+                                    logger.warning(f"Chain {actual_loser_id} (intended_loser) "
+                                                   f"is ALREADY in chains_to_prune_this_interval by another chain. Skipping this new pruning event.")
+                                    proceed_with_prune = False
+                                
+                                if proceed_with_prune:
+                                    # CHECK 3: "leaves >= 1 active"
+                                    num_active_before_this_prune = sum(1 for st in active_chains.values() if st['is_active'])
+                                    # num_already_marked_this_interval considers those already in the set
+                                    num_already_marked_this_interval = len(chains_to_prune_this_interval)
+                                    # If we add actual_loser_id (who is not yet in the set), one more chain is marked.
+                                    potential_remaining_active_count = num_active_before_this_prune - num_already_marked_this_interval - 1
 
-                                # Check if this prune_target_id is already marked (can happen if compared multiple times)
-                                target_already_marked = prune_target_id in chains_to_prune_this_interval
+                                    if potential_remaining_active_count >= 1:
+                                        # All checks passed, COMMIT to this pruning action for this interval
+                                        loser_state = active_chains.get(actual_loser_id)
+                                        winner_state = active_chains.get(actual_winner_id)
 
-                                # Calculate how many would be left if we prune this target
-                                # (only decrement count if it's not already marked for pruning)
-                                potential_remaining_active = num_active_before_this_prune - num_already_marked_this_interval
-                                if not target_already_marked:
-                                     potential_remaining_active -= 1
+                                        if loser_state and winner_state and loser_state['is_active'] and winner_state['is_active']:
+                                            loser_pruned_count = loser_state.get("pruned_count", 0)
+                                            count_to_transfer = 1 + loser_pruned_count
+                                            winner_state["pruned_count"] = winner_state.get("pruned_count", 0) + count_to_transfer
+                                            winner_state.setdefault("pruned_others", []).append({
+                                                "pruned_chain_id": actual_loser_id,
+                                                "transferred_count": count_to_transfer,
+                                                "step": analysis_step
+                                            })
+                                            loser_state["pruned_by"] = actual_winner_id
+                                            logger.info(f"Chain {actual_winner_id} will prune chain {actual_loser_id} (strategy: {pruning_strategy}). "
+                                                        f"Transferring count: {count_to_transfer}.")
 
-                                # Only add to prune list if doing so leaves AT LEAST ONE active chain
-                                if potential_remaining_active >= 1:
-                                     if not target_already_marked:
-                                        chains_to_prune_this_interval.add(loser_id)
-                                        # Store winner_id here too for clarity later if needed
-                                        pruning_info_this_interval[loser_id] = (analysis_step, winner_id)
-                                        logger.warning(f"--> Marked Chain {loser_id} for pruning by {winner_id} (based on T{thought_idx} from {chain_id}). Will leave {potential_remaining_active} active.")
-                                else:
-                                     logger.warning(f"--> Skipped pruning Chain {loser_id} (by {winner_id}). Would leave {potential_remaining_active} active chain(s). Keeping >= 1 active.")
+                                            # Add loser to the set of chains to be pruned at the end of this interval
+                                            chains_to_prune_this_interval.add(actual_loser_id)
+                                            pruning_info_this_interval[actual_loser_id] = (analysis_step, actual_winner_id)
+                                        else:
+                                            logger.warning(f"Could not perform prune: "
+                                                           f"loser ({actual_loser_id}) or winner ({actual_winner_id}) state invalid/inactive at point of transfer.")
+                                    else:
+                                        logger.warning(f"--> Skipped pruning Chain {actual_loser_id} by {actual_winner_id}. "
+                                                       f"Would leave {potential_remaining_active_count} active chain(s). Keeping >= 1 active.")
                             else: # Should not happen if logic is correct, but as fallback:
                                 if chain_id not in chains_to_prune_this_interval:
                                     embeddings_to_add_to_faiss.append((embedding, chain_id, thought_idx, text))
@@ -781,16 +780,150 @@ async def process_question_similarity_prune(
             "pruned_count": chain_state.get("pruned_count", 0)
         })
 
-    # Majority Vote - uses the extracted_answer field we just added.
+    voted_answer: Optional[str] = None
+    final_score: int = 0
+    all_extracted_answers_from_initial_vote: List[str] = [] # Keep track of original answers
+    llm_tie_break_performed = False
+    tie_break_prompt_tokens_additional = 0
+    tie_break_completion_tokens_additional = 0
+
     if not successful_chain_results_for_voting:
         logger.warning(f"[Q{iteration}] No chains with extracted answers completed streams for majority vote.")
-        voted_answer, final_score, all_extracted_answers = None, 0, []
+        # voted_answer remains None, final_score 0
     else:
-        voted_answer, final_score, all_extracted_answers = majority_vote_for_sim_prune(
-            successful_chain_results_for_voting, 
-            correct_answer_for_scoring,
+        # Call the modified majority vote function
+        vote_status, initial_voted_answer, initial_score, extracted_answers_temp, \
+        chains_for_llm_tiebreak, tied_answers_list = majority_vote_for_sim_prune(
+            successful_chain_results_for_voting,
+            correct_answer_for_scoring, # This is correct_answer_reference
             dataset_name=dataset_name
         )
+        all_extracted_answers_from_initial_vote = extracted_answers_temp
+
+        if vote_status == "winner":
+            voted_answer = initial_voted_answer
+            final_score = initial_score
+        elif vote_status == "empty":
+            voted_answer = None
+            final_score = 0
+        elif vote_status == "REQUIRES_LLM_TIEBREAK" and chains_for_llm_tiebreak and tied_answers_list:
+            llm_tie_break_performed = True
+            logger.info(f"Q{iteration}: Tie detected. Attempting LLM-based tie-breaking.")
+
+            # 1. Construct the tie-breaking prompt
+            # Extract the core question from the example. This might vary by dataset.
+            # Assuming 'example' has a 'Question' field for GPQA-like datasets.
+            # For MATH/AIME, the prompt_text itself is the question.
+            original_question_text = example.get("Question", "")
+            if not original_question_text and "gpqa" in dataset_name.lower(): # Fallback for GPQA
+                 original_question_text = example.get("Problem", "").split("\n\nQuestion: ")[-1].split("\n\nChoices:")[0]
+            elif not original_question_text: # General fallback
+                 original_question_text = "The original problem was previously presented."
+
+
+            tie_breaker_prompt_parts = [
+                "You will be presented with an original question and several reasoning chains that attempt to answer it."
+                "These reasoning chains have resulted in a tie for the most common final answer.",
+                "Your task is to review all the provided reasoning chains and determine which reasoning leads to the most confident and correct final answer.\n",
+                f"The original question was:\n{original_question_text}\n",
+                "Here are the reasoning chains that led to a tie:"
+            ]
+            for idx, chain_data in enumerate(chains_for_llm_tiebreak):
+                tie_breaker_prompt_parts.append(f"\n--- Reasoning Chain {idx+1} (Original Answer: {chain_data.get('extracted_answer')}) ---")
+                tie_breaker_prompt_parts.append(chain_data.get("full_content", "Content not available."))
+                tie_breaker_prompt_parts.append(f"--- End of Reasoning Chain {idx+1} ---")
+
+            tie_breaker_prompt_parts.append(
+                "\nAfter reviewing all chains, please provide your final concluded answer. "
+                "Your response should ONLY be the thought process and the final answer, "
+                "concluding with the final answer in the same format as the reasoning chains provided above."
+                "Do not add any preamble like \"Based on my analysis...\" or \"I have chosen...\". "
+                "Just provide the reasoning and the final answer.\n\nFinal Answer:"
+            )
+            tie_breaker_full_prompt = "\n".join(tie_breaker_prompt_parts)
+
+            # 2. Calculate tiebreak_prompt_tokens
+            try:
+                tie_break_prompt_tokens_additional = count_tokens(tie_breaker_full_prompt, tokenizer_path)
+                if tie_break_prompt_tokens_additional is None: tie_break_prompt_tokens_additional = 0
+            except Exception as e:
+                logger.error(f"Error counting tokens for tie-breaker prompt: {e}")
+                tie_break_prompt_tokens_additional = 0
+            
+            total_prompt_tokens_agg += tie_break_prompt_tokens_additional # Add to question's total
+
+            # 3. Make the LLM call for tie-breaking
+            tie_breaker_response_text = ""
+            tie_breaker_request_id = f"q{iteration}_tiebreaker_c{len(active_chains) + 1}" # Unique ID
+            logger.info(f"Q{iteration}: Sending tie-breaker prompt to LLM (request_id: {tie_breaker_request_id}). Tokens: {tie_break_prompt_tokens_additional}")
+            
+            try:
+                tie_breaker_stream_gen = stream_vllm_request(
+                    prompt=tie_breaker_full_prompt,
+                    vllm_url=vllm_url,
+                    model_name=model_name,
+                    request_id=tie_breaker_request_id,
+                    temperature=0.1, # Low temperature for judgment
+                    logprobs=None
+                )
+                async for chunk in tie_breaker_stream_gen:
+                    if "error" in chunk:
+                        logger.error(f"LLM tie-breaker error: {chunk['error']}")
+                        tie_breaker_response_text = "" # Mark as failed
+                        break
+                    if chunk and "choices" in chunk and chunk["choices"]:
+                        delta = chunk["choices"][0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            tie_breaker_response_text += content
+                        # Get completion tokens from usage if available in the last chunk
+                        if chunk["choices"][0].get("finish_reason") == "stop" and "usage" in chunk and chunk["usage"]:
+                            tie_break_completion_tokens_additional = chunk["usage"].get("completion_tokens", 0)
+
+
+                if not tie_breaker_response_text:
+                    logger.warning(f"Q{iteration}: LLM tie-breaker returned no text.")
+                else:
+                    logger.info(f"Q{iteration}: LLM tie-breaker response received (length {len(tie_breaker_response_text)}).")
+                    # If completion tokens weren't in usage, count them manually (less accurate)
+                    if tie_break_completion_tokens_additional == 0:
+                        try:
+                            manual_ct = count_tokens(tie_breaker_response_text, tokenizer_path)
+                            tie_break_completion_tokens_additional = manual_ct if manual_ct is not None else 0
+                        except Exception as e_ct:
+                            logger.error(f"Error counting tokens for tie-breaker response: {e_ct}")
+                            tie_break_completion_tokens_additional = 0
+                
+                total_completion_tokens_across_all_started_chains += tie_break_completion_tokens_additional # Add to question's total
+
+            except Exception as e:
+                logger.exception(f"Q{iteration}: Exception during LLM tie-breaker call.")
+                tie_breaker_response_text = "" # Ensure it's empty to trigger fallback
+
+            # 4. Extract answer from LLM tie-breaker response
+            if tie_breaker_response_text:
+                voted_answer = dataset_handler.extract_answer(tie_breaker_response_text)
+                if voted_answer:
+                    logger.info(f"Q{iteration}: LLM tie-breaker selected answer: {voted_answer}")
+                    final_score = dataset_handler.calculate_score(voted_answer, correct_answer_for_scoring)
+                else:
+                    logger.warning(f"Q{iteration}: Could not extract answer from LLM tie-breaker response. Applying fallback.")
+                    voted_answer, final_score = fallback_tie_break_logic(
+                        chains_for_llm_tiebreak,
+                        tied_answers_list,
+                        correct_answer_for_scoring,
+                        dataset_name,
+                        tokenizer_path
+                    )
+            else: # LLM call failed or returned empty
+                logger.warning(f"Q{iteration}: LLM tie-breaker failed. Applying fallback.")
+                voted_answer, final_score = fallback_tie_break_logic(
+                    chains_for_llm_tiebreak,
+                    tied_answers_list,
+                    correct_answer_for_scoring,
+                    dataset_name,
+                    tokenizer_path
+                )
 
     # --- Save Individual Chain Outputs ---
     # Save individual chain outputs for ALL chains that started
@@ -847,7 +980,7 @@ async def process_question_similarity_prune(
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
         "correct_answer_reference": correct_answer_for_scoring,
-        "individual_answers_final": all_extracted_answers, # Answers from chains used for voting
+        "individual_answers_final": all_extracted_answers_from_initial_vote, # Answers from chains used for voting
         "voted_answer": voted_answer,
         "final_score": final_score,
         "processing_duration_sec": total_duration, # Use float for JSON
@@ -893,6 +1026,12 @@ async def process_question_similarity_prune(
               } for state in error_chains_data
          ]
     }
+    if llm_tie_break_performed:
+        summary_data["llm_tie_break_performed"] = True
+        summary_data["llm_tie_break_prompt_tokens"] = tie_break_prompt_tokens_additional
+        summary_data["llm_tie_break_completion_tokens"] = tie_break_completion_tokens_additional
+        summary_data["llm_tie_break_response_text"] = tie_breaker_response_text
+
     summary_filename = os.path.join(paths["summaries"], f"question_{iteration}_summary.json")
     try:
         with open(summary_filename, "w", encoding='utf-8') as f:
@@ -911,22 +1050,23 @@ async def process_question_similarity_prune(
     # The CSV stores PER-QUESTION values, which are then used for overall aggregation.
     # `total_completion_tokens` for the CSV should be the sum across ALL chains that were started
     # and reported tokens via usage, representing the total compute cost for this question attempt.
-    prompt_tokens_for_csv = total_prompt_tokens_agg
 
     return {
         "iteration": iteration,
         "question_id": question_id,
         "n_chains_start": n_chains_start,
         "n_chains_completed_stream_for_voting": len(successful_chain_results_for_voting),
+        "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
+        "threshold_schedule": threshold_schedule,
         "correct_answer": correct_answer_for_scoring,
         "voted_answer": voted_answer,
         "final_score": final_score,
-        "prompt_tokens": prompt_tokens_for_csv,
+        "prompt_tokens": total_prompt_tokens_agg,
         "total_completion_tokens": total_completion_tokens_across_all_started_chains, # Sum across ALL started chains whose streams finished (includes pruned)
-        "total_tokens": prompt_tokens_for_csv + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
-        "individual_answers_str": json.dumps(all_extracted_answers), # Answers from chains used for voting
+        "total_tokens": total_prompt_tokens_agg + total_completion_tokens_across_all_started_chains, # Sum across ALL started chains
+        "individual_answers_str": json.dumps(all_extracted_answers_from_initial_vote), # Answers from chains used for voting
         "total_analysis_intervals": analysis_step,
         "avg_kv_cache_usage": avg_kv_usage,
         "max_kv_cache_usage": max_kv_usage,
