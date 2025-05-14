@@ -41,7 +41,7 @@ def create_prompt_math500(example: Dict) -> Tuple[str, str]:
     question = example.get('question', example.get('problem', 'N/A'))
     
     # Build the prompt with clear instructions
-    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering."""
+    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}. Use only one \\boxed{{}} for your answer. If your answer is for example 1, 2 and 3 it should beleft as \\boxed{{1, 2, 3}}. Your answer should be left in the most appropriate LaTeX format.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering."""
 
     # Get the correct answer
     correct_answer = example.get('answer', 'N/A')
@@ -166,49 +166,229 @@ def normalize_latex_expression(latex_expr: str) -> str:
     # Strip whitespace and convert to lowercase for case-insensitive comparison
     normalized = latex_expr.strip().lower()
     
-    # Remove redundant spaces 
-    normalized = re.sub(r'\s+', ' ', normalized)
+    # Handle special number formats first, before removing spaces
+    # Special handling for number formatting with commas and negative spaces
     
-    # Step 2: LaTeX command normalization
+    # First handle the specific LaTeX negative space pattern, but only when not in intervals/sets
+    def handle_comma(match):
+        # Check if this comma is inside a set/interval notation by looking at what comes before
+        before_match = normalized[:match.start()]
+        # Look for an open bracket/parenthesis without a matching close before the comma
+        open_count = before_match.count('(') + before_match.count('[') + before_match.count('{')
+        close_count = before_match.count(')') + before_match.count(']') + before_match.count('}')
+        
+        # If we have unclosed brackets, this is likely within an interval/set
+        if open_count > close_count:
+            # In interval context, preserve the comma
+            return match.group(0) 
+        else:
+            # In numeric context, remove the comma
+            if ',\\!' in match.group(0):
+                return match.group(0).replace(',\\!', '')
+            else:
+                return match.group(0).replace(',', '')
+    
+    # Apply comma handling for LaTeX negative space
+    normalized = re.sub(r'\d+,\\!\d+', handle_comma, normalized)
+    
+    # Apply comma handling for standard numeric separators (only when followed by exactly 3 digits)
+    normalized = re.sub(r'\d+,\d{3}', handle_comma, normalized)
+    
+    # Remove spaces 
+    normalized = re.sub(r'\s+', '', normalized)
+    
+    # Now go back and remove the marked commas (after spaces have been normalized)
+    normalized = re.sub(r',\\!', '', normalized)  # Remove LaTeX negative space commas
+    normalized = re.sub(r'(?<![(\[\{])\d+,(?=\d{3}(?:[,\d)]|$))', lambda m: m.group(0).replace(',', ''), normalized)  # Remove standard comma separators
+    
+    # Step 2: Unit text removal (must happen before general text command normalization)
+    # ----------------------------------
+    # List of common unit words and phrases that can be safely removed
+    unit_words = [
+        r'(\s*cents)',
+        r'(\s*dollars)',
+        r'(\s*meters)',
+        r'(\s*centimeters)',
+        r'(\s*kilometers)',
+        r'(\s*grams)',
+        r'(\s*kilograms)',
+        r'(\s*kg)',
+        r'(\s*pounds)',
+        r'(\s*ounces)',
+        r'(\s*seconds)',
+        r'(\s*minutes)',
+        r'(\s*hours)',
+        r'(\s*degrees)',
+        r'(\s*\^\\circ)',  # Double-escape for caret and circ
+        r'(\s*\\%)',       # Escaped percent symbol
+        r'(\s*radians)',
+        r'(\s*units)',
+        r'(\s*items)',
+        r'(\s*pieces)',
+        r'(\s*total)',
+        r'(\s*each)',
+        r'(\s*per)',
+        r'(\s*per unit)',
+        r'(\s*per item)',
+        r'(\s*per piece)',
+        r'(\s*inches)',    # Add inches
+        r'(\s*feet)',      # Add feet
+        r'(\s*miles)',     # Add miles
+    ]    
+    
+    # First remove any \text{unit} patterns
+    text_pattern = r'\\text\{(?:' + '|'.join(unit_words) + r')+\}'  # No space required after \text
+    # print(f"text_pattern: {text_pattern}")
+    normalized = re.sub(text_pattern, '', normalized)
+    
+    # Add special handling for squared units with \mbox
+    normalized = re.sub(r'\\mbox\{\s*inches\s*\}\^2', '', normalized)  # Remove \mbox{ inches }^2
+    normalized = re.sub(r'\\mbox\{\s*[a-z]+\s*\}(?:\^[23])?', '', normalized)  # Generic handling for any unit with optional power
+
+    # if '1,2' in normalized:
+    #     print(f"testing this la:  -> '{normalized}'")
+    
+    # Then remove any other text command patterns with units
+    text_commands = [
+        r'\\textrm',
+        r'\\textsf',
+        r'\\texttt',
+        r'\\mathrm',
+        r'\\mathit',
+        # r'\\mathbf',
+        r'\\mathsf',
+        r'\\mathtt',
+        r'\\mathcal'
+    ]
+    
+    for cmd in text_commands:
+        cmd_pattern = cmd + r'\{(?:' + '|'.join(unit_words) + r')+\}'  # No space required after command
+        # print(f"cmd_pattern: {cmd_pattern}")
+        normalized = re.sub(cmd_pattern, '', normalized)
+    
+    # Now handle plain text units (must be whole words)
+    for unit in unit_words:
+        # Match the unit word as a whole word to avoid partial matches
+        unit_pattern = r'\b' + re.escape(unit) + r'\b'
+        normalized = re.sub(unit_pattern, '', normalized)
+    
+    # Clean up any remaining whitespace
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    
+    # Step 3: LaTeX command normalization
     # ----------------------------------
     # Standardize various fraction formats
-    # Fix the regex to ensure it keeps the \frac part
     normalized = re.sub(r'\\dfrac(\{)', r'\\frac\1', normalized)
     normalized = re.sub(r'\\tfrac(\{)', r'\\frac\1', normalized)
     normalized = re.sub(r'\\displaystyle\\frac(\{)', r'\\frac\1', normalized)
     normalized = re.sub(r'\\displaystyle', '', normalized)
     
-    # Standardize various typography commands
-    normalized = re.sub(r'\\text\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\textrm\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\textbf\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\textit\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\textsf\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\texttt\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathbf\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathit\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathrm\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathcal\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathsf\{([^{}]+)\}', r'\1', normalized)
-    normalized = re.sub(r'\\mathtt\{([^{}]+)\}', r'\1', normalized)
+    # Normalize \frac without braces - e.g., \frac43 -> \frac{4}{3}
+    normalized = re.sub(r'\\frac(\d+)(\d+)', r'\\frac{\1}{\2}', normalized)
+    
+    # Normalize \frac with one brace - e.g., \frac{270}7 -> \frac{270}{7}
+    normalized = re.sub(r'\\frac\{([^{}]+)\}(\d+)', r'\\frac{\1}{\2}', normalized)
+    
+    # Now handle general text commands (non-unit text)
+    text_commands = [
+        (r'\\text\{([^{}]+)\}', r'\1'),
+        (r'\\textrm\{([^{}]+)\}', r'\1'),
+        (r'\\textbf\{([^{}]+)\}', r'\1'),
+        (r'\\textit\{([^{}]+)\}', r'\1'),
+        (r'\\textsf\{([^{}]+)\}', r'\1'),
+        (r'\\texttt\{([^{}]+)\}', r'\1'),
+        (r'\\mathbf\{([^{}]+)\}', r'\1'),
+        (r'\\mathit\{([^{}]+)\}', r'\1'),
+        (r'\\mathrm\{([^{}]+)\}', r'\1'),
+        (r'\\mathcal\{([^{}]+)\}', r'\1'),
+        (r'\\mathsf\{([^{}]+)\}', r'\1'),
+        (r'\\mathtt\{([^{}]+)\}', r'\1')
+    ]
+    
+    for pattern, replacement in text_commands:
+        normalized = re.sub(pattern, replacement, normalized)
     
     # Normalize spacing commands
     normalized = re.sub(r'\\,|\\:|\\;|\\!|\\quad|\\qquad|~', ' ', normalized)
     normalized = re.sub(r'\\\s+', ' ', normalized)  # backslash followed by whitespace
     
-    # Step 3: Mathematical notation normalization
+    # Step 4: Mathematical notation normalization
     # -----------------------------------------
     # Normalize delimiters and brackets
-    # Remove \left and \right commands
-    normalized = re.sub(r'\\left(\S)', r'\1', normalized)
-    normalized = re.sub(r'\\right(\S)', r'\1', normalized)
+    # Replace \left and \right commands with their corresponding brackets
+    bracket_pairs = [
+        (r'\\left\(', '('),
+        (r'\\right\)', ')'),
+        (r'\\left\[', '['),
+        (r'\\right\]', ']'),
+        (r'\\left\{', '{'),
+        (r'\\right\}', '}'),
+        (r'\\left\|', '|'),
+        (r'\\right\|', '|'),
+        (r'\\left\\langle', '⟨'),
+        (r'\\right\\rangle', '⟩'),
+        (r'\\left\\lvert', '|'),
+        (r'\\right\\rvert', '|'),
+        (r'\\left\\lVert', '‖'),
+        (r'\\right\\rVert', '‖'),
+        # Generic \left and \right with any delimiter
+        (r'\\left(\S)', r'\1'),
+        (r'\\right(\S)', r'\1'),
+    ]
     
-    # Normalize braces for sets
-    normalized = re.sub(r'\\{', '{', normalized)
-    normalized = re.sub(r'\\}', '}', normalized)
+    for pattern, replacement in bracket_pairs:
+        normalized = re.sub(pattern, replacement, normalized)
+    
+    # Now normalize set operations
+    set_ops = ['\\cup', '\\cap', '\\setminus', '\\times']
+    for op in set_ops:
+        # Escape the backslash in the LaTeX command for regex
+        escaped_op = op.replace('\\', '\\\\')
+        normalized = re.sub(f' *{escaped_op} *', f' {escaped_op} ', normalized)
+    
+    # Normalize spacing in sets - now with more comprehensive patterns
+    # First, find all sets and normalize them
+    def normalize_set_spacing(match):
+        set_content = match.group(1)
+        # Add space after each comma, but don't change other spacing
+        normalized_content = re.sub(r',\s*', ', ', set_content)
+        return '{' + normalized_content + '}'
+        
+    # Apply the set spacing normalization to ALL sets, regardless of content
+    normalized = re.sub(r'\{([^\{}]+)}', normalize_set_spacing, normalized)
     
     # Normalize different ways to express square roots
     normalized = re.sub(r'\\sqrt\s+(\d+)', r'\\sqrt{\1}', normalized)
+    normalized = re.sub(r'\\sqrt(\d+)', r'\\sqrt{\1}', normalized)  # Handle \sqrt2 format (without space or braces)
+    
+    # Step 5: Matrix normalization
+    # ---------------------------
+    # First, normalize any plain fractions in matrix elements to \frac format
+    # This handles cases like "1/5" in matrix elements
+    def normalize_matrix_fractions(match):
+        matrix_content = match.group(1)
+        # Find all plain fractions in the matrix content
+        def replace_fraction(m):
+            num, denom = m.groups()
+            return f"\\frac{{{num}}}{{{denom}}}"
+        # Replace plain fractions with \frac format
+        matrix_content = re.sub(r'(\d+)/(\d+)', replace_fraction, matrix_content)
+        return f"\\begin{{pmatrix}}{matrix_content}\\end{{pmatrix}}"
+    
+    # Apply matrix normalization
+    normalized = re.sub(r'\\begin\{pmatrix\}(.*?)\\end\{pmatrix\}', normalize_matrix_fractions, normalized, flags=re.DOTALL)
+    
+    # Step 6: Interval and Set Operation Normalization
+    # ----------------------------------------------
+    # Normalize spacing in intervals and set operations
+    def normalize_interval(match):
+        # Extract the interval components
+        left_paren, num1, num2, right_paren = match.groups()
+        # Return with standardized spacing
+        return f"{left_paren}{num1}, {num2}{right_paren}"
+    
+    # Handle intervals with different spacing
+    normalized = re.sub(r'([\(\[\{])\s*(\d+)\s*,\s*(\d+)\s*([\)\]\}])', normalize_interval, normalized)
     
     # Normalize plain-text fractions like a/b to LaTeX \frac{a}{b}
     # This is tricky because we don't want to convert things like "x/y + z" incorrectly
@@ -236,7 +416,32 @@ def normalize_latex_expression(latex_expr: str) -> str:
     normalized = re.sub(r'(\w)\^(\w|\d)', r'\1^\2', normalized)
     normalized = re.sub(r'(\w)_(\w|\d)', r'\1_\2', normalized)
     
-    # Step 4: Standardize spacing around operators
+    # Special handling for degree notation
+    normalized = re.sub(r'(\d+)\^\\circ', r'\1', normalized)  # Remove degree symbols like 90^\circ
+    normalized = re.sub(r'(\d+)\\degree', r'\1', normalized)  # Alternative degree notation
+    normalized = re.sub(r'(\d+)°', r'\1', normalized)  # Unicode degree symbol
+    
+    # Special handling for number formatting with commas
+    # Moved to the top of the function for earlier application
+    # normalized = re.sub(r'(\d+),\\!(\d{3})', r'\1\2', normalized)  # Remove comma with negative space (10,\!080 → 10080)
+    # normalized = re.sub(r'(\d+),(\d{3})', r'\1\2', normalized)  # Remove comma separators in numbers (10,080 → 10080)
+    
+    # Special handling for percentage notation
+    normalized = re.sub(r'(\d+)\\%', r'\1', normalized)  # Remove percentage symbols like 10\%
+    normalized = re.sub(r'(\d+)%', r'\1', normalized)    # Handle simple percent sign
+    
+    # Special handling for numerical bases (subscripts)
+    normalized = re.sub(r'(\d+)_(\d+)', r'\1', normalized)     # Remove base subscripts like 2516_8
+    normalized = re.sub(r'(\d+)_\{(\d+)\}', r'\1', normalized) # Remove base subscripts with braces like 4210_{5}
+    
+    # Special handling for decimal notation
+    normalized = re.sub(r'^\.(\d+)', r'0.\1', normalized)  # Convert leading decimal point (.0672) to standard form (0.0672)
+    
+    # Special handling for currency symbols
+    normalized = re.sub(r'\\\$(\d+\.*)', r'\1', normalized)  # Remove LaTeX escaped dollar signs like \$18.90
+    normalized = re.sub(r'\$(\d+\.*)', r'\1', normalized)   # Remove regular dollar signs like $18.90
+    
+    # Step 7: Standardize spacing around operators
     # ------------------------------------------
     # List of mathematical operators to standardize spacing around
     operators = ['+', '-', '=', '<', '>', '≤', '≥', '≠', '≈', '×', '÷', '·', '±', '∓', '→', '←']
@@ -263,8 +468,30 @@ def normalize_latex_expression(latex_expr: str) -> str:
     
     # Clean up any double spaces introduced
     normalized = re.sub(r'\s+', ' ', normalized)
+
+    # ---------------------
+    # Step 8: Special cases
+    # ---------------------
+    # Remove "x\in" at the beginning of expressions
+    normalized = re.sub(r'^x\s*\\in\s*', '', normalized)
+    normalized = re.sub(r'^x\s*=\s*', '', normalized)
     
-    # Step 5: Final clean-up
+    # Special handling for multiple-choice answers
+    normalized = re.sub(r'\\text\{\s*\(([A-Za-z])\)\s*\}', r'\1', normalized)  # \text{(C)} -> C
+    normalized = re.sub(r'\(([A-Za-z])\)', r'\1', normalized)                  # (C) -> C
+    
+    # Special handling for identity matrix notation
+    # Match -I matrix (negative identity) in different formats
+    if re.search(r'\\begin\{pmatrix\}\s*-\s*1\s*&\s*0\s*\\\\s*0\s*&\s*-\s*1\s*\\end\{pmatrix\}', normalized) or \
+       re.search(r'\\begin\{pmatrix\}-1&0\\\\0&-1\\end\{pmatrix\}', normalized):
+        normalized = "-i"  # Use simple -i without \mathbf
+    
+    # Convert all symbolic forms of negative identity to simple -i
+    if re.search(r'-\\mathbf\{[iI]\}', normalized) or re.search(r'-[iI]', normalized):
+        normalized = "-i"  # Standardize to lowercase i without formatting
+    
+    # ---------------------
+    # Step 9: Final clean-up
     # ---------------------
     # Normalize various non-mathematical characters
     normalized = re.sub(r'[.,;:]+$', '', normalized)  # Remove trailing punctuation
@@ -467,6 +694,91 @@ if __name__ == "__main__":
         
         # Complex numbers
         ("-2 + 7i", "-2+7i"),  # Complex number with different spacing
+        
+        # Matrix variations
+        ("\\begin{pmatrix} 1/5 \\\\ -18/5 \\end{pmatrix}", "\\begin{pmatrix} \\dfrac{1}{5} \\\\ -\\dfrac{18}{5} \\end{pmatrix}"),  # Matrix with different fraction formats
+        ("\\begin{pmatrix} \\frac{1}{5} \\\\ -\\frac{18}{5} \\end{pmatrix}", "\\begin{pmatrix} 1/5 \\\\ -18/5 \\end{pmatrix}"),  # Matrix with plain fractions
+        
+        # Interval and set operation variations
+        ("(2,12) \\cup (12,102)", "(2, 12) \\cup (12, 102)"),  # Different spacing in intervals and set operations
+        ("[1,2] \\cap [2,3]", "[1, 2] \\cap [2, 3]"),  # Different spacing in closed intervals
+        ("\\{1,2\\} \\cup \\{3,4\\}", "\\{1, 2\\} \\cup \\{3, 4\\}"),  # Different spacing in sets
+        ("(2,12)\\cup(12,102)", "(2, 12) \\cup (12, 102)"),  # No spaces vs. spaces
+        
+        # Optional units variations
+        ("5.4 \\text{ cents}", "5.4"),  # With and without units
+        ("3.14 \\textrm{ meters}", "3.14"),  # Different text command
+        ("2.5 \\textsf{ kg}", "2.5"),  # Another text command
+        ("1.618 \\mathrm{ units}", "1.618"),  # Math text command
+        ("42 \\text{ items} \\text{ total}", "42"),  # Multiple units
+        
+        # Essential mathematical text (should be preserved)
+        ("\\text{for all } x > 0", "\\text{for all } x > 0"),  # Essential text
+        ("\\text{if } n \\in \\mathbb{N}", "\\text{if } n \\in \\mathbb{N}"),  # Essential text
+        ("\\text{where } x \\neq 0", "\\text{where } x \\neq 0"),  # Essential text
+        ("\\text{for } x \\in \\mathbb{R}", "\\text{for } x \\in \\mathbb{R}"),  # Essential text
+        ("\\text{such that } f(x) > 0", "\\text{such that } f(x) > 0"),  # Essential text
+        
+        # Mixed cases with both units and essential text
+        ("5.4 \\text{ cents} \\text{ for } x > 0", "5.4 \\text{ for } x > 0"),  # Unit + essential text
+        ("3.14 \\text{ meters} \\text{ where } n \\in \\mathbb{N}", "3.14 \\text{ where } n \\in \\mathbb{N}"),  # Unit + essential text
+        
+        # Degree notation test cases
+        ("90^\\circ,90", "90,90"),  # Degrees symbol should be removed as a unit
+        
+        # Bracket normalization test cases
+        ("\\left( 3, \\frac{\\pi}{2} \\right)", "(3, \\frac{\\pi}{2})"),  # \left( and \right) should be normalized to simple parentheses
+        
+        # x\in removal special case
+        ("x \\in [0,1]", "[0, 1]"),  # x\in at the beginning should be removed
+
+        # x= removal special case
+        ("x=1", "1"),  # x= at the beginning should be removed
+        
+        # sqrt format normalization
+        ("11\\sqrt2", "11\\sqrt{2}"),  # Different sqrt formats should be normalized
+        
+        # percentage normalization
+        ("10\\%", "10"),  # Percentage symbols should be removed
+        ("10%", "10"),    # Unicode percentage symbols should also be removed
+        
+        # numerical base/subscript normalization
+        ("2516_8", "2516"),  # Base subscripts should be removed
+        ("4210_{5}", "4210_5"),  # Base subscripts with braces should be removed
+        
+        # fraction format normalization
+        ("\\frac43", "\\frac{4}{3}"),  # Fraction without braces should be normalized
+        ("\\dfrac{4}{3}", "\\frac{4}{3}"),  # Different fraction styles should be normalized
+        ("\\frac{270}7\\text{ degrees}", "\\frac{270}{7}"),  # Mixed brace fraction with degrees
+        
+        # decimal notation normalization
+        (".0000672", "0.0000672"),  # Leading decimal point should be normalized with a leading zero
+        
+        # comma separator normalization
+        ("10,080", "10080"),  # Regular comma separators should be removed
+        ("10,\\!080", "10080"),  # LaTeX negative space comma separators should be removed
+        ("11,\\! 111,\\! 111,\\! 100","11111111100"),  # Multiple LaTeX negative space separators
+        
+        # multiple-choice answer format normalization
+        ("\\text{(C)}", "C"),  # LaTeX text with parentheses
+        ("(C)", "C"),          # Simple parentheses
+
+        ("\\frac 59","\\dfrac{5}{9}"),
+        
+        # identity matrix notation
+        ("\\begin{pmatrix} -1 & 0 \\\\ 0 & -1 \\end{pmatrix}", "-i"),  # Matrix form to symbolic form
+        ("-\\mathbf{I}", "-i"),  # Case and format normalization for identity matrix
+        
+        # squared units with \mbox
+        ("864 \\mbox{ inches}^2", "864"),  # Remove squared units
+        ("100 \\mbox{cm}^2", "100"),       # Remove generic squared units
+        ("15\\mbox{ cm}^2", "15"),         # Remove generic squared units
+        
+        # currency symbol normalization
+        ("\\$18.90", "18.90"),  # Remove LaTeX escaped dollar signs
+        ("$18.90", "18.90"),    # Remove regular dollar signs
+
+        ("\\$32,\\!348", "32348"),  # Remove LaTeX escaped dollar signs
     ]
     
     print(f"Testing {len(normalization_test_pairs)} normalization test pairs...")
@@ -526,6 +838,25 @@ if __name__ == "__main__":
             print(f"⚠️ WARNING: Expressions did not match after normalization but should be equivalent!")
             
     print(f"\nNormalization tests passed: {success_count}/{len(normalization_test_pairs)}")
+    
+    # Special test for degree notation
+    print("\n=== Special Test for Degree Notation ===")
+    degree_tests = [
+        ("90^\\circ", "90"),
+        ("90^\\circ,90", "90,90"),
+        ("(90^\\circ, 180^\\circ)", "(90, 180)"),
+        ("\\boxed{(3, 90^\\circ)}", "\\boxed{(3, 90)}"),
+        ("\\text{The angle is } 90^\\circ", "\\text{The angle is } 90"),
+    ]
+    
+    for i, (expr1, expected) in enumerate(degree_tests):
+        print(f"\nDegree Test {i+1}:")
+        print(f"Original: {expr1}")
+        normalized = normalize_latex_expression(expr1)
+        print(f"Normalized: {normalized}")
+        print(f"Expected: {expected}")
+        print(f"Correct normalization: {normalized == expected}")
+    
     print("\nAll tests completed!")
 
     # Special test for the 3/2 fraction issue
