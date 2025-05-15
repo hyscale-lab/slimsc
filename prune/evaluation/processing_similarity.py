@@ -184,6 +184,7 @@ async def process_question_similarity_prune(
     pruning_strategy: str,
     threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
+    num_steps_to_delay_pruning: int,
     max_analysis_steps: int = 100 # Limit analysis intervals
 ) -> Optional[Dict]:
     """
@@ -446,7 +447,7 @@ async def process_question_similarity_prune(
                 # 3. There is at least one other chain currently represented in the FAISS index (meaning at least 2 chains in index)
                 can_check_pruning = (
                     thought_idx > 20 and
-                    analysis_step > 20 and
+                    analysis_step > num_steps_to_delay_pruning and
                     num_chains_in_index >= 2 # Prune only if there's at least one other chain in the index
                 )
 
@@ -972,7 +973,7 @@ async def process_question_similarity_prune(
     # --- Save summary JSON ---
     # total_completion_tokens_across_all_started_chains captures the total compute across all attempts for this question.
     # This is used for the primary completion token metric in the CSV and aggregated metrics.
-    summary_data: Dict[str, Any] = { # Add type hint for clarity
+    summary_data: Dict[str, Any] = {
         "iteration": iteration, "question_id": question_id,
         "status": "SUCCESS" if len(error_chains_data) == 0 else f"PARTIAL_SUCCESS ({len(error_chains_data)}_failed)",
         "n_chains_start": n_chains_start,
@@ -980,6 +981,7 @@ async def process_question_similarity_prune(
         "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
+        "num_steps_to_delay_pruning": num_steps_to_delay_pruning,
         "correct_answer_reference": correct_answer_for_scoring,
         "individual_answers_final": all_extracted_answers_from_initial_vote, # Answers from chains used for voting
         "voted_answer": voted_answer,
