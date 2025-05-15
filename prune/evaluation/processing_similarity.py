@@ -441,11 +441,12 @@ async def process_question_similarity_prune(
                         index_manager.add_embedding(embedding, chain_id, thought_idx, text)
 
                 # Pruning check conditions:
-                # 1. Thought index is >= 2 (allow first two thoughts)
+                # 1. Thought index is > 20 (allow first 20 thoughts)
                 # 2. The chain is still in the reasoning phase (checked by chains_eligible_for_pruning_check)
                 # 3. There is at least one other chain currently represented in the FAISS index (meaning at least 2 chains in index)
                 can_check_pruning = (
-                    thought_idx >= 2 and
+                    thought_idx > 20 and
+                    analysis_step > 20 and
                     num_chains_in_index >= 2 # Prune only if there's at least one other chain in the index
                 )
 
