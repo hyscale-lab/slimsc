@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
-MAX_TOKENS_PER_STREAM = 32768 # Max completion tokens per chain
+MAX_TOKENS_PER_STREAM = 39000 # Max completion tokens per chain
 ANALYSIS_INTERVAL_SECONDS = 3 # How often to check for new thoughts/prune
 random.seed(42) # For reproducibility
 
@@ -236,8 +236,8 @@ async def process_question_similarity_prune(
             # _prompt_output_details is the correct_answer_string
             correct_answer_for_scoring = _prompt_output_details
 
-        if not correct_answer_for_scoring: # Basic validation
-            logger.error(f"[red]Failed to obtain correct answer reference for Q{iteration} from dataset_handler.[/red]")
+        if not correct_answer_for_scoring:
+            logger.error(f"[red]Failed to obtain correct answer reference for Q{iteration} from dataset_handler for dataset {dataset_name}. Details: {_prompt_output_details}[/red]")
             raise ValueError("Correct answer reference not found after prompt creation.")
 
     except Exception as e:

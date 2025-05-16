@@ -702,7 +702,7 @@ def main():
                         help='Name of the dataset (used to find SC directory).')
     parser.add_argument('--tokenizer_path', type=str, required=True,
                         help='Path to HuggingFace tokenizer directory (REQUIRED for finding thoughts).')
-    parser.add_argument('--analysis_output_dir', type=str, default=os.path.join(home, "slimsc/prune/analysis_results"), # Changed default output location
+    parser.add_argument('--analysis_output_dir', type=str, default=os.path.join(home, "slimsc/prune/analysis"), # Changed default output location
                         help='Base directory to SAVE the analysis results.')
 
     # Iteration selection (optional, defaults to all available in SC run)
