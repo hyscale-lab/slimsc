@@ -189,6 +189,10 @@ def process_single_question_offline_sync(
         all_sim_scores_this_step = []
         correct_sim_scores_this_step = []
         incorrect_sim_scores_this_step = []
+        correct_to_correct_scores = []
+        correct_to_incorrect_scores = []
+        incorrect_to_correct_scores = []
+        incorrect_to_incorrect_scores = []
 
         for chain_id, state in chain_states.items():
             text_for_this_chain_at_limit = get_text_up_to_n_tokens(state['full_text_original'], current_token_limit, worker_idx)
@@ -197,7 +201,6 @@ def process_single_question_offline_sync(
                 continue
             state['current_text_for_step'] = text_for_this_chain_at_limit
             
-            # to do: need to apply multi tokenizer approach here
             new_segments, updated_boundaries = find_newly_completed_thoughts_optimized(
                 full_text=state['current_text_for_step'],
                 processed_boundaries=state['processed_boundaries'],
@@ -209,7 +212,12 @@ def process_single_question_offline_sync(
             if new_segments:
                 for _s_idx, _e_idx, text_c in new_segments:
                     thought_idx_for_chain = state['completed_thought_count']
-                    all_new_thoughts_this_step_data.append({'chain_id': chain_id, 'thought_idx': thought_idx_for_chain, 'text': text_c})
+                    all_new_thoughts_this_step_data.append({
+                        'chain_id': chain_id, 
+                        'thought_idx': thought_idx_for_chain, 
+                        'text': text_c,
+                        'is_correct': state['is_eventually_correct']
+                    })
                     state['completed_thought_count'] += 1
                 state['processed_boundaries'] = updated_boundaries
 
@@ -222,64 +230,67 @@ def process_single_question_offline_sync(
         if embeddings_for_new_thoughts is None or len(embeddings_for_new_thoughts) != len(all_new_thoughts_this_step_data):
             continue
 
-        for i, item in enumerate(all_new_thoughts_this_step_data): item['embedding'] = embeddings_for_new_thoughts[i]
+        for i, item in enumerate(all_new_thoughts_this_step_data): 
+            item['embedding'] = embeddings_for_new_thoughts[i]
 
         candidate_embeddings_for_faiss = []
 
         for thought_data in all_new_thoughts_this_step_data:
-            chain_id, thought_idx, embedding, text = thought_data['chain_id'], thought_data['thought_idx'], thought_data['embedding'], thought_data['text']
+            chain_id, thought_idx, embedding, text, is_correct = (
+                thought_data['chain_id'], 
+                thought_data['thought_idx'], 
+                thought_data['embedding'], 
+                thought_data['text'],
+                thought_data['is_correct']
+            )
 
             can_potentially_prune = (thought_idx >= 2 and index_manager.get_num_embeddings() > 0)
-
-            # print("chain_id: ", chain_id)
-            # print("thought_idx: ", thought_idx)
-            # print("index_manager.get_num_embeddings(): ", index_manager.get_num_embeddings())
-            # print("can_potentially_prune: ", can_potentially_prune)
-            # print("\n\n")
 
             if can_potentially_prune:
                 neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                 if neighbor_result:
-                    sim_score, _, _, _ = neighbor_result
+                    sim_score, neighbor_chain_id, _, _ = neighbor_result
                     all_sim_scores_this_step.append(sim_score)
-                    if chain_states[chain_id]['is_eventually_correct']:
+                    
+                    # Get the correctness of the neighbor chain
+                    neighbor_is_correct = chain_states[neighbor_chain_id]['is_eventually_correct']
+                    
+                    # Track all combinations of correctness
+                    if is_correct:
                         correct_sim_scores_this_step.append(sim_score)
+                        if neighbor_is_correct:
+                            correct_to_correct_scores.append(sim_score)
+                        else:
+                            correct_to_incorrect_scores.append(sim_score)
                     else:
                         incorrect_sim_scores_this_step.append(sim_score)
-            candidate_embeddings_for_faiss.append({'embedding': embedding, 'chain_id': chain_id, 'thought_idx': thought_idx, 'text': text})
+                        if neighbor_is_correct:
+                            incorrect_to_correct_scores.append(sim_score)
+                        else:
+                            incorrect_to_incorrect_scores.append(sim_score)
+
+            candidate_embeddings_for_faiss.append({
+                'embedding': embedding, 
+                'chain_id': chain_id, 
+                'thought_idx': thought_idx, 
+                'text': text
+            })
                     
         for item_to_add in candidate_embeddings_for_faiss:
-            # print('running add_embedding')
             cid_add = item_to_add['chain_id']
             index_manager.add_embedding(item_to_add['embedding'], cid_add, item_to_add['thought_idx'], item_to_add['text'])
             chain_states[cid_add]['embeddings'].append(item_to_add['embedding'])
 
-        results_at_each_step_counts.append({'all': all_sim_scores_this_step, 'correct': correct_sim_scores_this_step, 'incorrect': incorrect_sim_scores_this_step})
+        results_at_each_step_counts.append({
+            'all': all_sim_scores_this_step,
+            'correct': correct_sim_scores_this_step,
+            'incorrect': incorrect_sim_scores_this_step,
+            'correct_to_correct': correct_to_correct_scores,
+            'correct_to_incorrect': correct_to_incorrect_scores,
+            'incorrect_to_correct': incorrect_to_correct_scores,
+            'incorrect_to_incorrect': incorrect_to_incorrect_scores
+        })
 
-    # print('results_at_each_step_counts: ', results_at_each_step_counts)
-    
-    # Print thoughts for each chain
-    total_thoughts = 0
-    for chain_id, state in chain_states.items():
-        # print(f"\nChain {chain_id}: {state['completed_thought_count']} thoughts")
-        total_thoughts += state['completed_thought_count']
-        
-        # Get the text segments for this chain
-        text_for_chain = state['current_text_for_step']
-        segments, _ = find_newly_completed_thoughts_optimized(
-            full_text=text_for_chain,
-            processed_boundaries=[0],
-            worker_idx=worker_idx,
-            target_phrases=TARGET_PHRASES,
-            min_segment_tokens=1
-        )
-        
-        # # Print each thought
-        # for i, (start_idx, end_idx, thought_text) in enumerate(segments):
-        #     print(f"  Thought {i+1}: {thought_text}")
-    
-    print(f"\nTotal thoughts across all chains: {total_thoughts}")
-    
     return results_at_each_step_counts
 
 def process_question_worker(chosen_question_iterations, worker_idx, sampled_df, control_summaries_dir, control_chains_dir, args):
@@ -375,7 +386,11 @@ def main_offline_analysis(args):
     combined_scores_by_step = {
         'all': [],      # List of lists, each inner list contains scores for one step
         'correct': [],  # Same structure for correct chains
-        'incorrect': [] # Same structure for incorrect chains
+        'incorrect': [], # Same structure for incorrect chains
+        'correct_to_correct': [],    # New metric: correct chains similar to correct chains
+        'correct_to_incorrect': [],  # New metric: correct chains similar to incorrect chains
+        'incorrect_to_correct': [],  # New metric: incorrect chains similar to correct chains
+        'incorrect_to_incorrect': [] # New metric: incorrect chains similar to incorrect chains
     }
 
     num_workers = min(5, len(sampled_question_iterations))
@@ -398,114 +413,101 @@ def main_offline_analysis(args):
         for question_id, question_results in worker_result.items():
             for step_idx, step_results in enumerate(question_results):
                 while len(combined_scores_by_step['all']) <= step_idx:
-                    combined_scores_by_step['all'].append([])
-                    combined_scores_by_step['correct'].append([])
-                    combined_scores_by_step['incorrect'].append([])
+                    for key in combined_scores_by_step:
+                        combined_scores_by_step[key].append([])
                 combined_scores_by_step['all'][step_idx].extend(step_results['all'])
                 combined_scores_by_step['correct'][step_idx].extend(step_results['correct'])
                 combined_scores_by_step['incorrect'][step_idx].extend(step_results['incorrect'])
+                combined_scores_by_step['correct_to_correct'][step_idx].extend(step_results['correct_to_correct'])
+                combined_scores_by_step['correct_to_incorrect'][step_idx].extend(step_results['correct_to_incorrect'])
+                combined_scores_by_step['incorrect_to_correct'][step_idx].extend(step_results['incorrect_to_correct'])
+                combined_scores_by_step['incorrect_to_incorrect'][step_idx].extend(step_results['incorrect_to_incorrect'])
 
-    # Improved box plot visualization
-    all_scores = combined_scores_by_step['all']
-    correct_scores = combined_scores_by_step['correct']
-    incorrect_scores = combined_scores_by_step['incorrect']
-    num_steps = len(all_scores)
+    # Calculate statistics for each step
+    steps = range(len(combined_scores_by_step['all']))
+    stats = {
+        'all': {'median': [], 'p25': [], 'p75': []},
+        'correct': {'median': [], 'p25': [], 'p75': []},
+        'incorrect': {'median': [], 'p25': [], 'p75': []},
+        'correct_to_correct': {'median': [], 'p25': [], 'p75': []},
+        'correct_to_incorrect': {'median': [], 'p25': [], 'p75': []},
+        'incorrect_to_correct': {'median': [], 'p25': [], 'p75': []},
+        'incorrect_to_incorrect': {'median': [], 'p25': [], 'p75': []}
+    }
+
+    for step_idx in range(len(combined_scores_by_step['all'])):
+        for category in stats:
+            scores = combined_scores_by_step[category][step_idx]
+            if scores:
+                stats[category]['median'].append(np.median(scores))
+                stats[category]['p25'].append(np.percentile(scores, 25))
+                stats[category]['p75'].append(np.percentile(scores, 75))
+            else:
+                stats[category]['median'].append(np.nan)
+                stats[category]['p25'].append(np.nan)
+                stats[category]['p75'].append(np.nan)
+
+    # Create the plot
+    plt.figure(figsize=(15, 8))
+
+    # Plot all chains (blue)
+    plt.plot(steps, stats['all']['median'], 'b-', label='All Chains (median)', alpha=0.7)
+    plt.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='blue', alpha=0.2, label='All Chains (25-75%)')
+
+    # Plot correct chains (green)
+    plt.plot(steps, stats['correct']['median'], 'g-', label='Correct Chains (median)', alpha=0.7)
+    plt.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='green', alpha=0.2, label='Correct Chains (25-75%)')
+
+    # Plot incorrect chains (red)
+    plt.plot(steps, stats['incorrect']['median'], 'r-', label='Incorrect Chains (median)', alpha=0.7)
+    plt.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='red', alpha=0.2, label='Incorrect Chains (25-75%)')
+
+    # Plot cross-category similarities
+    plt.plot(steps, stats['correct_to_correct']['median'], 'g--', label='Correct→Correct (median)', alpha=0.7)
+    plt.plot(steps, stats['correct_to_incorrect']['median'], 'g:', label='Correct→Incorrect (median)', alpha=0.7)
+    plt.plot(steps, stats['incorrect_to_correct']['median'], 'r--', label='Incorrect→Correct (median)', alpha=0.7)
+    plt.plot(steps, stats['incorrect_to_incorrect']['median'], 'r:', label='Incorrect→Incorrect (median)', alpha=0.7)
+
+    plt.xlabel('Processing Step')
+    plt.ylabel('Similarity Score')
     
-    # Create plots for every 20 steps
-    chunk_size = 20
-    for chunk_idx in range(0, num_steps, chunk_size):
-        end_idx = min(chunk_idx + chunk_size, num_steps)
-        chunk_all_scores = all_scores[chunk_idx:end_idx]
-        chunk_correct_scores = correct_scores[chunk_idx:end_idx]
-        chunk_incorrect_scores = incorrect_scores[chunk_idx:end_idx]
-        
-        positions = np.arange(len(chunk_all_scores))
-        width = 0.25
-
-        plt.figure(figsize=(15, 6))
-
-        # Plot each category with an offset and color
-        box1 = plt.boxplot(
-            chunk_all_scores,
-            positions=positions - width,
-            widths=width,
-            patch_artist=True,
-            boxprops=dict(facecolor='blue', color='blue', alpha=0.5),
-            medianprops=dict(color='black'),
-            showfliers=False,
-            labels=['' for _ in range(len(chunk_all_scores))]
-        )
-        box2 = plt.boxplot(
-            chunk_correct_scores,
-            positions=positions,
-            widths=width,
-            patch_artist=True,
-            boxprops=dict(facecolor='green', color='green', alpha=0.5),  # GREEN for correct
-            medianprops=dict(color='black'),
-            showfliers=False,
-            labels=['' for _ in range(len(chunk_all_scores))]
-        )
-        box3 = plt.boxplot(
-            chunk_incorrect_scores,
-            positions=positions + width,
-            widths=width,
-            patch_artist=True,
-            boxprops=dict(facecolor='red', color='red', alpha=0.5),  # RED for incorrect
-            medianprops=dict(color='black'),
-            showfliers=False,
-            labels=['' for _ in range(len(chunk_all_scores))]
-        )
-
-        # Set x-ticks every 5 steps (or all if < 20 steps)
-        step_ticks = np.arange(0, len(chunk_all_scores), 5 if len(chunk_all_scores) > 20 else 1)
-        plt.xticks(positions[step_ticks], [f'Step {i+chunk_idx+1}' for i in step_ticks], rotation=45)
-
-        plt.xlabel('Processing Step')
-        plt.ylabel('Similarity Score')
-        
-        # Create a more descriptive title with additional information
-        model_name = args.model_arch
-        dataset_name = args.dataset_name
-        n_chains = args.n_chains
-        n_questions = args.num_questions
-        seed = args.seed
-        plt.title(
-            f'Similarity Score Distribution\n'
-            f'{model_name} on {dataset_name}\n'
-            f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}\n'
-            f'Steps {chunk_idx+1}-{end_idx}',
-            pad=20
-        )
-        
-        # Add legend with better positioning and formatting
-        legend = plt.legend(
-            [box1["boxes"][0], box2["boxes"][0], box3["boxes"][0]],
-            ['All Chains', 'Correct Chains', 'Incorrect Chains'],
-            loc='upper right',
-            bbox_to_anchor=(1.0, 1.0),
-            frameon=True,
-            framealpha=0.9,
-            edgecolor='black'
-        )
-        
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.tight_layout()
-        
-        # Save the plot to the output directory
-        output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
-        os.makedirs(output_dir, exist_ok=True)
-        plot_path = os.path.join(output_dir, f'box_plot_of_similarity_scores_by_processing_step_{args.model_arch}_{args.dataset_name}_{args.control_run_name}_steps_{chunk_idx+1}-{end_idx}.png')
-        plt.savefig(plot_path)
-        plt.close()
-
-    # Add argument for output directory
+    # Create a more descriptive title with additional information
+    model_name = args.model_arch
+    dataset_name = args.dataset_name
+    n_chains = args.n_chains
+    n_questions = args.num_questions
+    seed = args.seed
+    plt.title(
+        f'Similarity Score Distribution\n'
+        f'{model_name} on {dataset_name}\n'
+        f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
+        pad=20
+    )
+    
+    # Add legend with better positioning and formatting
+    plt.legend(
+        loc='upper right',
+        bbox_to_anchor=(1.0, 1.0),
+        frameon=True,
+        framealpha=0.9,
+        edgecolor='black'
+    )
+    
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    
+    # Save the plot to the output directory
     output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
     os.makedirs(output_dir, exist_ok=True)
+    plot_path = os.path.join(output_dir, f'line_plot_of_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(plot_path)
+    plt.close()
 
     # Save per-question and combined results to a single JSON file
     output_json = {
         'per_question_results': all_worker_results,
-        'combined_scores_by_step': combined_scores_by_step
+        'combined_scores_by_step': combined_scores_by_step,
+        'statistics': stats
     }
     with open(os.path.join(output_dir, 'sim_score_results.json'), 'w') as f:
         json.dump(output_json, f, indent=2)
