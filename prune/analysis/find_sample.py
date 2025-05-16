@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
+import random
 
 # Configuration
-FILE_PATH = '~/slimsc/prune/results/R1-Distill-Qwen-14B/gpqa_diamond/sc_10_control/evaluation_summary.csv'
+FILE_PATH = '~/slimsc/prune/results/QwQ-32B/aime/sc_8_control/evaluation_summary.csv'
 SAMPLE_SIZE = 50
 MIN_SEEDS_TO_TRY = 1000   # Minimum number of seeds to try
 MAX_SEEDS_TO_TRY = 10000  # Maximum number of seeds to try if no early stop
@@ -19,11 +20,12 @@ def find_best_sample_seed(df_full, sample_size, min_seeds, max_seeds, early_stop
     Finds the seed that produces a sample with accuracy closest to the full dataset.
     Tries at least `min_seeds` and up to `max_seeds`, stopping early if a near-perfect match is found.
     """
-    if len(df_full) < sample_size:
-        raise ValueError(f"Full dataset size ({len(df_full)}) is smaller than desired sample size ({sample_size}).")
+    total_examples = len(df_full)
+    if total_examples < sample_size:
+        raise ValueError(f"Full dataset size ({total_examples}) is smaller than desired sample size ({sample_size}).")
 
     full_accuracy = calculate_accuracy(df_full)
-    print(f"Full dataset accuracy ({len(df_full)} questions): {full_accuracy:.6f}")
+    print(f"Full dataset accuracy ({total_examples} questions): {full_accuracy:.6f}")
 
     best_seed = -1
     min_accuracy_diff = float('inf')
@@ -32,8 +34,13 @@ def find_best_sample_seed(df_full, sample_size, min_seeds, max_seeds, early_stop
     for i in range(max_seeds):
         seed = i # Using iteration number as seed for simplicity and reproducibility
         
+        random.seed(seed) # Set the seed for the Python random module
+        all_possible_iterations = list(range(1, total_examples + 1)) # Creates a list [1, 2, ..., total_examples]
+        random.shuffle(all_possible_iterations) # Shuffles this list in place
+        specific_iterations_list = sorted(all_possible_iterations[:sample_size])
+
         # Ensure a different sample for each seed by using the seed in random_state
-        sample_df = df_full.sample(n=sample_size, random_state=seed, replace=False)
+        sample_df = df_full[df_full['iteration'].isin(specific_iterations_list)]
         current_sample_accuracy = calculate_accuracy(sample_df)
         accuracy_diff = abs(current_sample_accuracy - full_accuracy)
         
@@ -42,6 +49,8 @@ def find_best_sample_seed(df_full, sample_size, min_seeds, max_seeds, early_stop
             best_seed = seed
             best_sample_accuracy = current_sample_accuracy
             print(f"Iter {i+1}/{max_seeds}: New best: Seed {seed}, Sample Acc: {current_sample_accuracy:.6f}, Diff: {min_accuracy_diff:.6f}")
+            print(f"Generated {len(specific_iterations_list)} specific iteration numbers using random.shuffle and new best seed {seed}:")
+            print(specific_iterations_list[:10])
         elif (i + 1) % (max_seeds // 20) == 0 : # Print progress occasionally
              print(f"Iter {i+1}/{max_seeds}: Current best diff: {min_accuracy_diff:.6f} (Seed {best_seed})")
 
