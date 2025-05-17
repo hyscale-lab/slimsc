@@ -30,7 +30,7 @@ except ImportError:
     )
      from slimsc.prune.utils import DatasetHandler
 
-TOKENIZER_PATH = "/home/users/ntu/aqui0001/scratch/r1-distill"
+TOKENIZER_PATH = "/home/users/ntu/colinhon/scratch/r1-distill"
 _tokenizer_cache_offline = [None, None, None, None, None]
 tokenizer_cache_max_size = 5
 
@@ -447,60 +447,72 @@ def main_offline_analysis(args):
                 stats[category]['p25'].append(np.nan)
                 stats[category]['p75'].append(np.nan)
 
-    # Create the plot
+    # Create the main categories plot
     plt.figure(figsize=(15, 8))
-
-    # Plot all chains (blue)
+    
+    # Plot main categories (all, correct, incorrect)
     plt.plot(steps, stats['all']['median'], 'b-', label='All Chains (median)', alpha=0.7)
     plt.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='blue', alpha=0.2, label='All Chains (25-75%)')
 
-    # Plot correct chains (green)
     plt.plot(steps, stats['correct']['median'], 'g-', label='Correct Chains (median)', alpha=0.7)
     plt.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='green', alpha=0.2, label='Correct Chains (25-75%)')
 
-    # Plot incorrect chains (red)
     plt.plot(steps, stats['incorrect']['median'], 'r-', label='Incorrect Chains (median)', alpha=0.7)
     plt.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='red', alpha=0.2, label='Incorrect Chains (25-75%)')
 
-    # Plot cross-category similarities
-    plt.plot(steps, stats['correct_to_correct']['median'], 'g--', label='Correct→Correct (median)', alpha=0.7)
-    plt.plot(steps, stats['correct_to_incorrect']['median'], 'g:', label='Correct→Incorrect (median)', alpha=0.7)
-    plt.plot(steps, stats['incorrect_to_correct']['median'], 'r--', label='Incorrect→Correct (median)', alpha=0.7)
-    plt.plot(steps, stats['incorrect_to_incorrect']['median'], 'r:', label='Incorrect→Incorrect (median)', alpha=0.7)
-
     plt.xlabel('Processing Step')
     plt.ylabel('Similarity Score')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
     
-    # Create a more descriptive title with additional information
+    # Create a more descriptive title
     model_name = args.model_arch
     dataset_name = args.dataset_name
     n_chains = args.n_chains
     n_questions = args.num_questions
     seed = args.seed
     plt.title(
-        f'Similarity Score Distribution\n'
+        f'Main Category Similarity Score Distribution\n'
         f'{model_name} on {dataset_name}\n'
         f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
         pad=20
     )
     
-    # Add legend with better positioning and formatting
-    plt.legend(
-        loc='upper right',
-        bbox_to_anchor=(1.0, 1.0),
-        frameon=True,
-        framealpha=0.9,
-        edgecolor='black'
-    )
-    
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
     
-    # Save the plot to the output directory
+    # Save the main categories plot
     output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
     os.makedirs(output_dir, exist_ok=True)
-    plot_path = os.path.join(output_dir, f'line_plot_of_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
-    plt.savefig(plot_path)
+    main_plot_path = os.path.join(output_dir, f'main_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(main_plot_path)
+    plt.close()
+
+    # Create and save the cross-category plot
+    plt.figure(figsize=(15, 8))
+    
+    # Plot cross-category similarities
+    plt.plot(steps, stats['correct_to_correct']['median'], 'c-', label='Correct→Correct (median)', alpha=0.7)
+    plt.plot(steps, stats['correct_to_incorrect']['median'], 'm-', label='Correct→Incorrect (median)', alpha=0.7)
+    plt.plot(steps, stats['incorrect_to_correct']['median'], 'y-', label='Incorrect→Correct (median)', alpha=0.7)
+    plt.plot(steps, stats['incorrect_to_incorrect']['median'], 'k-', label='Incorrect→Incorrect (median)', alpha=0.7)
+
+    plt.xlabel('Processing Step')
+    plt.ylabel('Similarity Score')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
+    
+    plt.title(
+        f'Cross-Category Similarity Score Distribution\n'
+        f'{model_name} on {dataset_name}\n'
+        f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
+        pad=20
+    )
+    
+    plt.tight_layout()
+    
+    # Save the cross-category plot
+    cross_plot_path = os.path.join(output_dir, f'cross_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(cross_plot_path)
     plt.close()
 
     # Save per-question and combined results to a single JSON file
@@ -556,7 +568,7 @@ if __name__ == "__main__":
 
     """
         sample command
-        python sim_score_analysis.py --model_arch QwQ-32B --base_slimsc_dir "/home/users/ntu/aqui0001/slimsc" --dataset_name gpqa_diamond --control_run_name sc_16_control --n_chains 16 --tokenizer_path /home/users/ntu/aqui0001/scratch/qwq --num_questions 50 --seed 7 --token_step_size 100 --output_dir testing
+        python sim_score_analysis.py --model_arch R1-Distill-Qwen-14B --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --dataset_name aime --control_run_name sc_16_control --n_chains 16 --tokenizer_path /home/users/ntu/colinhon/scratch/r1-distill --num_questions 30 --seed 7 --token_step_size 100 --output_dir aime_analysis
     """
 
 
