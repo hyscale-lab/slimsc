@@ -327,7 +327,7 @@ def process_question_worker(chosen_question_iterations, worker_idx, sampled_df, 
                     lines = f.readlines()
                     content_start_line = 0
                     for idx_line, line_txt in enumerate(lines):
-                        if line_txt.strip() == "--- Full Content ---":
+                        if line_txt.strip() == "--- Reasoning Content ---":
                             content_start_line = idx_line + 1
                             break
                     chain_contents[chain_id] = "".join(lines[content_start_line:]).strip()
@@ -448,22 +448,22 @@ def main_offline_analysis(args):
                 stats[category]['p75'].append(np.nan)
 
     # Create the main categories plot
-    plt.figure(figsize=(15, 8))
+    fig, ax = plt.subplots(figsize=(5, 4))
     
     # Plot main categories (all, correct, incorrect)
-    plt.plot(steps, stats['all']['median'], 'b-', label='All Chains (median)', alpha=0.7)
-    plt.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='blue', alpha=0.2, label='All Chains (25-75%)')
+    ax.plot(steps, stats['all']['median'], color='tab:blue', label='All Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='tab:blue', alpha=0.2, label='All Chains (25-75%)')
 
-    plt.plot(steps, stats['correct']['median'], 'g-', label='Correct Chains (median)', alpha=0.7)
-    plt.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='green', alpha=0.2, label='Correct Chains (25-75%)')
+    ax.plot(steps, stats['correct']['median'], color='tab:green', label='Correct Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='tab:green', alpha=0.2, label='Correct Chains (25-75%)')
 
-    plt.plot(steps, stats['incorrect']['median'], 'r-', label='Incorrect Chains (median)', alpha=0.7)
-    plt.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='red', alpha=0.2, label='Incorrect Chains (25-75%)')
+    ax.plot(steps, stats['incorrect']['median'], color='tab:red', label='Incorrect Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='tab:red', alpha=0.2, label='Incorrect Chains (25-75%)')
 
-    plt.xlabel('Processing Step')
-    plt.ylabel('Similarity Score')
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
+    ax.set_xlabel('Processing Step')
+    ax.set_ylabel('Similarity Score')
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
     
     # Create a more descriptive title
     model_name = args.model_arch
@@ -471,7 +471,7 @@ def main_offline_analysis(args):
     n_chains = args.n_chains
     n_questions = args.num_questions
     seed = args.seed
-    plt.title(
+    ax.set_title(
         f'Main Category Similarity Score Distribution\n'
         f'{model_name} on {dataset_name}\n'
         f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
@@ -484,24 +484,24 @@ def main_offline_analysis(args):
     output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
     os.makedirs(output_dir, exist_ok=True)
     main_plot_path = os.path.join(output_dir, f'main_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
-    plt.savefig(main_plot_path)
+    plt.savefig(main_plot_path, dpi=300, bbox_inches='tight')
     plt.close()
 
     # Create and save the cross-category plot
-    plt.figure(figsize=(15, 8))
+    fig, ax = plt.subplots(figsize=(5, 4))
     
-    # Plot cross-category similarities
-    plt.plot(steps, stats['correct_to_correct']['median'], 'c-', label='Correct→Correct (median)', alpha=0.7)
-    plt.plot(steps, stats['correct_to_incorrect']['median'], 'm-', label='Correct→Incorrect (median)', alpha=0.7)
-    plt.plot(steps, stats['incorrect_to_correct']['median'], 'y-', label='Incorrect→Correct (median)', alpha=0.7)
-    plt.plot(steps, stats['incorrect_to_incorrect']['median'], 'k-', label='Incorrect→Incorrect (median)', alpha=0.7)
+    # Plot cross-category similarities using tab10 colors
+    ax.plot(steps, stats['correct_to_correct']['median'], color='tab:blue', label='Correct→Correct (median)', alpha=0.7)
+    ax.plot(steps, stats['correct_to_incorrect']['median'], color='tab:orange', label='Correct→Incorrect (median)', alpha=0.7)
+    ax.plot(steps, stats['incorrect_to_correct']['median'], color='tab:green', label='Incorrect→Correct (median)', alpha=0.7)
+    ax.plot(steps, stats['incorrect_to_incorrect']['median'], color='tab:red', label='Incorrect→Incorrect (median)', alpha=0.7)
 
-    plt.xlabel('Processing Step')
-    plt.ylabel('Similarity Score')
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
+    ax.set_xlabel('Processing Step')
+    ax.set_ylabel('Similarity Score')
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
     
-    plt.title(
+    ax.set_title(
         f'Cross-Category Similarity Score Distribution\n'
         f'{model_name} on {dataset_name}\n'
         f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
@@ -512,7 +512,7 @@ def main_offline_analysis(args):
     
     # Save the cross-category plot
     cross_plot_path = os.path.join(output_dir, f'cross_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
-    plt.savefig(cross_plot_path)
+    plt.savefig(cross_plot_path, dpi=300, bbox_inches='tight')
     plt.close()
 
     # Save per-question and combined results to a single JSON file
