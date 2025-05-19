@@ -507,6 +507,8 @@ def create_client_pbs_script(
             "--vllm_url $VLLM_URL", # Use exported variable
             f"--dataset_name {quoted_eval_args['dataset_name']}",
             f"--threshold_schedule {quoted_eval_args['threshold_schedule']}" if quoted_eval_args.get('threshold_schedule') else "",
+            f"--batch_size {quoted_eval_args['batch_size']}" if quoted_eval_args.get('batch_size') else "",
+            f"--batch_num {quoted_eval_args['batch_num']}" if quoted_eval_args.get('batch_num') else "",
         ]
         if quoted_eval_args.get('seed') is not None:
             eval_command_parts.append(f"--seed {quoted_eval_args['seed']}")
