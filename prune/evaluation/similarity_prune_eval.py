@@ -454,6 +454,8 @@ def main():
                         help=f'Random seed for question selection (if --num_qns is used) and other random operations. Overrides internal default seed ({DEFAULT_SEED}).')
     parser.add_argument('--num_steps_to_delay_pruning', type=int, default=20,
                         help='Number of analysis steps to wait before pruning based on similarity can begin (default: 20).')
+    parser.add_argument('--batch_size', type=int, default=None)
+    parser.add_argument('--batch_num', type=int, default=None)
     args = parser.parse_args()
 
     # Validate threshold
@@ -501,6 +503,12 @@ def main():
         # but shuffle is fine here. Let's use shuffle then slice/sort.
         random.shuffle(all_possible_iterations)
         specific_iterations_list = sorted(all_possible_iterations[:num_to_select])
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         logger.info(f"Selected {num_to_select} random questions using seed {DEFAULT_SEED}.")
         if num_to_select < 20: # Avoid printing huge lists
@@ -529,6 +537,12 @@ def main():
                     logger.warning(f"[yellow]Invalid iteration number format '{part}'. Skipping.[/yellow]")
 
         specific_iterations_list = sorted(list(set(specific_iterations_list))) # Remove duplicates and sort
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         if not specific_iterations_list:
              logger.error("[red]--iterations argument provided, but no valid iterations were parsed.[/red]")
