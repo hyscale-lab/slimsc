@@ -13,7 +13,6 @@ def check_suspicious_rows(csv_path):
 
     print(f"Total suspicious rows: {len(suspicious_rows)}")
     
-    # 返回 True (exit code 1) 如果存在异常行，否则返回 0
     return 1 if suspicious_rows else 0
 
 if __name__ == "__main__":
