@@ -42,7 +42,9 @@ def main_offline_analysis(args):
 
         # get window size. W = min(2, n_chains / 8)
         n_chains = int(control_run_name.split("_")[1])
-        window_size = max(1, int(n_chains / 8))  # Ensure window_size is at least 1 and is an integer
+        window_size = max(2, int(n_chains / 8))  # Ensure window_size is at least 1 and is an integer
+        if n_chains == 1:
+            window_size = 1
 
         # read in csv file
         control_eval_summary = pd.read_csv(control_eval_summary_path)
@@ -133,5 +135,5 @@ if __name__ == "__main__":
     main_offline_analysis(cli_args)
 
     """
-    python esc_simulator.py --base_slimsc_dir "/home/users/ntu/aqui0001/slimsc" --model_arch QwQ-32B --dataset_name gpqa_diamond
+    python esc_simulator.py --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --model_arch QwQ-32B --dataset_name aime
     """
