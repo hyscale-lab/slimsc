@@ -154,7 +154,8 @@ def process_single_question_offline_sync(
     chain_correctness: Dict[str, bool],
     n_chains: int,
     token_step_size: int,
-    worker_idx: int
+    worker_idx: int,
+    chain_extracted_answers: Dict[str, str],
 ) -> List[float]:
     """
     Process a single question offline and return a list of similarity scores.
@@ -168,7 +169,7 @@ def process_single_question_offline_sync(
         chain_id = f"q{question_info['iteration']}_c{i+1}"
         full_text = chain_contents.get(chain_id, "")
         is_eventually_correct = chain_correctness.get(chain_id, False)
-        
+        extracted_answer = chain_extracted_answers.get(chain_id, "")
         num_tokens_in_chain = len(get_tokenizer_offline(TOKENIZER_PATH, worker_idx).encode(full_text, add_special_tokens=False))
         if num_tokens_in_chain is None: 
             num_tokens_in_chain = 0
@@ -179,7 +180,8 @@ def process_single_question_offline_sync(
             "is_eventually_correct": is_eventually_correct,
             "current_text_for_step": "", "processed_boundaries": [0],
             "completed_thought_count": 0, "embeddings": [],
-            "max_tokens_in_chain": num_tokens_in_chain
+            "max_tokens_in_chain": num_tokens_in_chain,
+            "extracted_answer": extracted_answer,
         }
 
     results_at_each_step_counts = []
@@ -193,6 +195,8 @@ def process_single_question_offline_sync(
         correct_to_incorrect_scores = []
         incorrect_to_correct_scores = []
         incorrect_to_incorrect_scores = []
+        same_answer_chains_scores = []
+        same_answer_chains_correct_scores = []
 
         for chain_id, state in chain_states.items():
             text_for_this_chain_at_limit = get_text_up_to_n_tokens(state['full_text_original'], current_token_limit, worker_idx)
@@ -216,7 +220,8 @@ def process_single_question_offline_sync(
                         'chain_id': chain_id, 
                         'thought_idx': thought_idx_for_chain, 
                         'text': text_c,
-                        'is_correct': state['is_eventually_correct']
+                        'is_correct': state['is_eventually_correct'],
+                        'extracted_answer': state['extracted_answer']
                     })
                     state['completed_thought_count'] += 1
                 state['processed_boundaries'] = updated_boundaries
@@ -236,12 +241,13 @@ def process_single_question_offline_sync(
         candidate_embeddings_for_faiss = []
 
         for thought_data in all_new_thoughts_this_step_data:
-            chain_id, thought_idx, embedding, text, is_correct = (
+            chain_id, thought_idx, embedding, text, is_correct, extracted_answer = (
                 thought_data['chain_id'], 
                 thought_data['thought_idx'], 
                 thought_data['embedding'], 
                 thought_data['text'],
-                thought_data['is_correct']
+                thought_data['is_correct'],
+                thought_data['extracted_answer']
             )
 
             can_potentially_prune = (thought_idx >= 2 and index_manager.get_num_embeddings() > 0)
@@ -250,24 +256,33 @@ def process_single_question_offline_sync(
                 neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                 if neighbor_result:
                     sim_score, neighbor_chain_id, _, _ = neighbor_result
-                    all_sim_scores_this_step.append(sim_score)
+                    identifier = [chain_id, neighbor_chain_id]
+                    identifier.sort()
+                    identifier = tuple(identifier)
+                    all_sim_scores_this_step.append((identifier, sim_score))
                     
                     # Get the correctness of the neighbor chain
                     neighbor_is_correct = chain_states[neighbor_chain_id]['is_eventually_correct']
+                    neighbor_extracted_answer = chain_states[neighbor_chain_id]['extracted_answer']
+
+                    if extracted_answer == neighbor_extracted_answer:
+                        same_answer_chains_scores.append((identifier, sim_score))
+                        if is_correct:
+                            same_answer_chains_correct_scores.append((identifier, sim_score))
                     
                     # Track all combinations of correctness
                     if is_correct:
-                        correct_sim_scores_this_step.append(sim_score)
+                        correct_sim_scores_this_step.append((identifier, sim_score))
                         if neighbor_is_correct:
-                            correct_to_correct_scores.append(sim_score)
+                            correct_to_correct_scores.append((identifier, sim_score))
                         else:
-                            correct_to_incorrect_scores.append(sim_score)
+                            correct_to_incorrect_scores.append((identifier, sim_score))
                     else:
-                        incorrect_sim_scores_this_step.append(sim_score)
+                        incorrect_sim_scores_this_step.append((identifier, sim_score))
                         if neighbor_is_correct:
-                            incorrect_to_correct_scores.append(sim_score)
+                            incorrect_to_correct_scores.append((identifier, sim_score))
                         else:
-                            incorrect_to_incorrect_scores.append(sim_score)
+                            incorrect_to_incorrect_scores.append((identifier, sim_score))
 
             candidate_embeddings_for_faiss.append({
                 'embedding': embedding, 
@@ -288,7 +303,9 @@ def process_single_question_offline_sync(
             'correct_to_correct': correct_to_correct_scores,
             'correct_to_incorrect': correct_to_incorrect_scores,
             'incorrect_to_correct': incorrect_to_correct_scores,
-            'incorrect_to_incorrect': incorrect_to_incorrect_scores
+            'incorrect_to_incorrect': incorrect_to_incorrect_scores,
+            'same_answer_chains': same_answer_chains_scores,
+            'same_answer_chains_correct': same_answer_chains_correct_scores
         })
 
     return results_at_each_step_counts
@@ -345,13 +362,32 @@ def process_question_worker(chosen_question_iterations, worker_idx, sampled_df, 
             question_info=question_info_dict, chain_contents=chain_contents,
             chain_correctness=chain_correctness, n_chains=n_chains_sc,
             token_step_size=args.token_step_size,
-            worker_idx=worker_idx
+            worker_idx=worker_idx,
+            chain_extracted_answers=individual_chain_answers
         )
         worker_results.append(question_results)
         per_question_results[str(iteration_num)] = question_results
     return per_question_results
 
+def convert_numpy_types(obj):
+    """Convert numpy types to Python native types for JSON serialization."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    return obj
+
 def main_offline_analysis(args):
+    # Create output directory at the start
+    output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
+    os.makedirs(output_dir, exist_ok=True)
+
     base_results_dir = os.path.join(args.base_slimsc_dir, "prune/results", args.model_arch, args.dataset_name)
     control_run_name = args.control_run_name
     control_dir = os.path.join(base_results_dir, control_run_name)
@@ -390,7 +426,9 @@ def main_offline_analysis(args):
         'correct_to_correct': [],    # New metric: correct chains similar to correct chains
         'correct_to_incorrect': [],  # New metric: correct chains similar to incorrect chains
         'incorrect_to_correct': [],  # New metric: incorrect chains similar to correct chains
-        'incorrect_to_incorrect': [] # New metric: incorrect chains similar to incorrect chains
+        'incorrect_to_incorrect': [], # New metric: incorrect chains similar to incorrect chains
+        'same_answer_chains': [], # New metric: chains with the same answer
+        'same_answer_chains_correct': [] # New metric: correct chains with the same answer
     }
 
     num_workers = min(5, len(sampled_question_iterations))
@@ -422,9 +460,10 @@ def main_offline_analysis(args):
                 combined_scores_by_step['correct_to_incorrect'][step_idx].extend(step_results['correct_to_incorrect'])
                 combined_scores_by_step['incorrect_to_correct'][step_idx].extend(step_results['incorrect_to_correct'])
                 combined_scores_by_step['incorrect_to_incorrect'][step_idx].extend(step_results['incorrect_to_incorrect'])
-
+                combined_scores_by_step['same_answer_chains'][step_idx].extend(step_results['same_answer_chains'])
+                combined_scores_by_step['same_answer_chains_correct'][step_idx].extend(step_results['same_answer_chains_correct'])
     # Calculate statistics for each step
-    steps = range(len(combined_scores_by_step['all']))
+    steps = np.array(range(len(combined_scores_by_step['all'])))
     stats = {
         'all': {'median': [], 'p25': [], 'p75': []},
         'correct': {'median': [], 'p25': [], 'p75': []},
@@ -439,52 +478,179 @@ def main_offline_analysis(args):
         for category in stats:
             scores = combined_scores_by_step[category][step_idx]
             if scores:
-                stats[category]['median'].append(np.median(scores))
-                stats[category]['p25'].append(np.percentile(scores, 25))
-                stats[category]['p75'].append(np.percentile(scores, 75))
+                stats[category]['median'].append(np.median([item[1] for item in scores]))
+                stats[category]['p25'].append(np.percentile([item[1] for item in scores], 25))
+                stats[category]['p75'].append(np.percentile([item[1] for item in scores], 75))
             else:
                 stats[category]['median'].append(np.nan)
                 stats[category]['p25'].append(np.nan)
                 stats[category]['p75'].append(np.nan)
 
+    # Create stacked bar chart for same answer chains
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Calculate data for each threshold
+    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    # print('same_answer_chains', combined_scores_by_step['same_answer_chains'])
+    same_answer_counts = []
+    same_answer_correct_counts = []
+    flat_same_answer_chains_correct = set()
+    flat_same_answer_chains = set()
+    all_sim_chains = set()
+    for step_results in combined_scores_by_step['same_answer_chains_correct']:
+        for identifier, _ in step_results:
+            flat_same_answer_chains_correct.add(identifier)
+    for step_results in combined_scores_by_step['same_answer_chains']:
+        for identifier, _ in step_results:
+            flat_same_answer_chains.add(identifier)
+    for step_results in combined_scores_by_step['all']:
+        for item in step_results:
+            all_sim_chains.add(item)
+    
+    # print('all_sim_chains', all_sim_chains)
+    # print('flat_same_answer_chains', flat_same_answer_chains)
+    # print('flat_same_answer_chains_correct', flat_same_answer_chains_correct)
+
+    total_similar_pairs_counts = []
+    different_answer_counts = []
+
+    for threshold in thresholds:
+        num_same_answer_chains = 0
+        num_same_answer_chains_correct = 0
+        total_similar_pairs = 0
+        seen_pairs = set()
+        for identifier, sim_score in all_sim_chains:
+            if identifier in seen_pairs:
+                continue
+            seen_pairs.add(identifier)
+            if sim_score >= threshold:
+                total_similar_pairs += 1
+                if identifier in flat_same_answer_chains:
+                    num_same_answer_chains += 1
+                    if identifier in flat_same_answer_chains_correct:
+                        num_same_answer_chains_correct += 1
+        same_answer_counts.append(num_same_answer_chains)
+        same_answer_correct_counts.append(num_same_answer_chains_correct)
+        total_similar_pairs_counts.append(total_similar_pairs)
+        different_answer_counts.append(total_similar_pairs - num_same_answer_chains)
+    
+    # Create the stacked bars
+    x = np.arange(len(thresholds))
+    width = 0.35
+    
+    # Plot the stacked bars - now with 4 levels
+    ax.bar(x, same_answer_correct_counts, width, label='Same Answer (Correct)', color='tab:blue')
+    ax.bar(x, [a - b for a, b in zip(same_answer_counts, same_answer_correct_counts)], 
+           width, bottom=same_answer_correct_counts, label='Same Answer (Incorrect)', color='tab:orange')
+    ax.bar(x, different_answer_counts, width, 
+           bottom=same_answer_counts, label='Different Answer', color='tab:gray')
+    # ax.bar(x, [a - b for a, b in zip(total_similar_pairs_counts, same_answer_counts + different_answer_counts)], 
+    #        width, bottom=[a + b for a, b in zip(same_answer_counts, different_answer_counts)], 
+    #        label='Not Similar', color='tab:gray')
+    
+    # Customize the plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('No. of Similar Pairs of Chains', fontsize=12)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    ax.legend(fontsize=12)
+    
+    # Add grid for better readability
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the stacked bar chart
+    stacked_bar_path = os.path.join(output_dir, f'same_answer_chains_stacked_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(stacked_bar_path)
+    plt.close()
+
+    # Create normalized stacked bar chart (percentages)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Calculate percentages
+    same_answer_correct_percentages = []
+    same_answer_incorrect_percentages = []
+    different_answer_percentages = []
+    not_similar_percentages = []
+    
+    for total, same, diff, correct in zip(total_similar_pairs_counts, same_answer_counts, 
+                                        different_answer_counts, same_answer_correct_counts):
+        if total > 0:
+            correct_pct = (correct / total) * 100
+            incorrect_pct = ((same - correct) / total) * 100
+            diff_pct = (diff / total) * 100
+            not_similar_pct = 100 - (correct_pct + incorrect_pct + diff_pct)
+        else:
+            correct_pct = incorrect_pct = diff_pct = not_similar_pct = 0
+        same_answer_correct_percentages.append(correct_pct)
+        same_answer_incorrect_percentages.append(incorrect_pct)
+        different_answer_percentages.append(diff_pct)
+        not_similar_percentages.append(not_similar_pct)
+    
+    # Create the normalized stacked bars
+    x = np.arange(len(thresholds))
+    width = 0.35
+    
+    # Plot the stacked bars - now with 4 levels
+    ax.bar(x, same_answer_correct_percentages, width, label='Same Answer (Correct)', color='tab:blue')
+    ax.bar(x, same_answer_incorrect_percentages, width, 
+           bottom=same_answer_correct_percentages, label='Same Answer (Incorrect)', color='tab:orange')
+    ax.bar(x, different_answer_percentages, width, 
+           bottom=[a + b for a, b in zip(same_answer_correct_percentages, same_answer_incorrect_percentages)], 
+           label='Different Answer', color='tab:gray')
+    # ax.bar(x, not_similar_percentages, width, 
+    #        bottom=[a + b + c for a, b, c in zip(same_answer_correct_percentages, 
+    #                                           same_answer_incorrect_percentages, 
+    #                                           different_answer_percentages)], 
+    #        label='Not Similar', color='tab:gray')
+    
+    # Customize the plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Percentage of Similar Pairs of Chains', fontsize=12)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    ax.legend(fontsize=12)
+    
+    # Set y-axis to show percentages from 0 to 100
+    ax.set_ylim(0, 100)
+    
+    # Add grid for better readability
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the normalized stacked bar chart
+    normalized_stacked_bar_path = os.path.join(output_dir, f'same_answer_chains_stacked_normalized_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(normalized_stacked_bar_path)
+    plt.close()
+
     # Create the main categories plot
     fig, ax = plt.subplots(figsize=(5, 4))
     
     # Plot main categories (all, correct, incorrect)
-    ax.plot(steps, stats['all']['median'], color='tab:blue', label='All Chains (median)', alpha=0.7)
-    ax.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='tab:blue', alpha=0.2, label='All Chains (25-75%)')
+    ax.plot(steps, stats['all']['median'], color='tab:purple', label='All Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['all']['p25'], stats['all']['p75'], color='tab:purple', alpha=0.2, label='All Chains (25-75%)')
 
-    ax.plot(steps, stats['correct']['median'], color='tab:green', label='Correct Chains (median)', alpha=0.7)
-    ax.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='tab:green', alpha=0.2, label='Correct Chains (25-75%)')
+    ax.plot(steps, stats['correct']['median'], color='tab:blue', label='Correct Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['correct']['p25'], stats['correct']['p75'], color='tab:blue', alpha=0.2, label='Correct Chains (25-75%)')
 
-    ax.plot(steps, stats['incorrect']['median'], color='tab:red', label='Incorrect Chains (median)', alpha=0.7)
-    ax.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='tab:red', alpha=0.2, label='Incorrect Chains (25-75%)')
+    ax.plot(steps, stats['incorrect']['median'], color='tab:orange', label='Incorrect Chains (median)', alpha=0.7)
+    ax.fill_between(steps, stats['incorrect']['p25'], stats['incorrect']['p75'], color='tab:orange', alpha=0.2, label='Incorrect Chains (25-75%)')
 
-    ax.set_xlabel('Processing Step')
-    ax.set_ylabel('Similarity Score')
+    ax.set_xlabel('Processing Step', fontsize=12)
+    ax.set_ylabel('Similarity Score', fontsize=12)
     ax.grid(axis='y', linestyle='--', alpha=0.7)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
-    
-    # Create a more descriptive title
-    model_name = args.model_arch
-    dataset_name = args.dataset_name
-    n_chains = args.n_chains
-    n_questions = args.num_questions
-    seed = args.seed
-    ax.set_title(
-        f'Main Category Similarity Score Distribution\n'
-        f'{model_name} on {dataset_name}\n'
-        f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
-        pad=20
-    )
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    ax.tick_params(axis='both', labelsize=12)
     
     plt.tight_layout()
     
     # Save the main categories plot
-    output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
-    os.makedirs(output_dir, exist_ok=True)
     main_plot_path = os.path.join(output_dir, f'main_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
-    plt.savefig(main_plot_path, dpi=300, bbox_inches='tight')
+    plt.savefig(main_plot_path)
     plt.close()
 
     # Create and save the cross-category plot
@@ -493,34 +659,420 @@ def main_offline_analysis(args):
     # Plot cross-category similarities using tab10 colors
     ax.plot(steps, stats['correct_to_correct']['median'], color='tab:blue', label='Correct→Correct (median)', alpha=0.7)
     ax.plot(steps, stats['correct_to_incorrect']['median'], color='tab:orange', label='Correct→Incorrect (median)', alpha=0.7)
-    ax.plot(steps, stats['incorrect_to_correct']['median'], color='tab:green', label='Incorrect→Correct (median)', alpha=0.7)
-    ax.plot(steps, stats['incorrect_to_incorrect']['median'], color='tab:red', label='Incorrect→Incorrect (median)', alpha=0.7)
+    ax.plot(steps, stats['incorrect_to_correct']['median'], color='tab:purple', label='Incorrect→Correct (median)', alpha=0.7)
+    ax.plot(steps, stats['incorrect_to_incorrect']['median'], color='tab:cyan', label='Incorrect→Incorrect (median)', alpha=0.7)
 
-    ax.set_xlabel('Processing Step')
-    ax.set_ylabel('Similarity Score')
+    ax.set_xlabel('Processing Step', fontsize=12)
+    ax.set_ylabel('Similarity Score', fontsize=12)
     ax.grid(axis='y', linestyle='--', alpha=0.7)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black')
-    
-    ax.set_title(
-        f'Cross-Category Similarity Score Distribution\n'
-        f'{model_name} on {dataset_name}\n'
-        f'Chains: {n_chains}, Questions: {n_questions}, Seed: {seed}',
-        pad=20
-    )
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    ax.tick_params(axis='both', labelsize=12)
     
     plt.tight_layout()
     
     # Save the cross-category plot
     cross_plot_path = os.path.join(output_dir, f'cross_category_similarity_scores_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
-    plt.savefig(cross_plot_path, dpi=300, bbox_inches='tight')
+    plt.savefig(cross_plot_path)
     plt.close()
+
+    # Create threshold analysis plots (proportions)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Define thresholds
+    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    
+    # Calculate proportions and counts for each threshold
+    correct_proportions = []
+    incorrect_proportions = []
+    correct_counts = []
+    incorrect_counts = []
+    
+    for threshold in thresholds:
+        # Get all similarity scores for correct and incorrect chains
+        all_correct_scores = []
+        all_incorrect_scores = []
+        
+        for step_scores in combined_scores_by_step['correct']:
+            all_correct_scores.extend([item[1] for item in step_scores])
+        for step_scores in combined_scores_by_step['incorrect']:
+            all_incorrect_scores.extend([item[1] for item in step_scores])
+            
+        # Calculate proportions and counts above threshold
+        if all_correct_scores:
+            correct_prop = sum(score >= threshold for score in all_correct_scores) / len(all_correct_scores)
+            correct_count = sum(score >= threshold for score in all_correct_scores)
+        else:
+            correct_prop = 0
+            correct_count = 0
+            
+        if all_incorrect_scores:
+            incorrect_prop = sum(score >= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
+            incorrect_count = sum(score >= threshold for score in all_incorrect_scores)
+        else:
+            incorrect_prop = 0
+            incorrect_count = 0
+            
+        correct_proportions.append(correct_prop)
+        incorrect_proportions.append(incorrect_prop)
+        correct_counts.append(correct_count)
+        incorrect_counts.append(incorrect_count)
+    
+    # Set width of bars
+    barWidth = 0.35
+    
+    # Set positions of the bars on X axis
+    r1 = np.arange(len(thresholds))
+    r2 = [x + barWidth for x in r1]
+    
+    # Create the proportion bars
+    ax.bar(r1, correct_proportions, width=barWidth, color='tab:blue', label='Correct Chains')
+    ax.bar(r2, incorrect_proportions, width=barWidth, color='tab:orange', label='Incorrect Chains')
+    
+    # Add labels for proportion plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Proportion of Chains Above Threshold', fontsize=12)
+    
+    # Set x-axis ticks for proportion plot
+    ax.set_xticks([r + barWidth/2 for r in range(len(thresholds))])
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    
+    # Add legend for proportion plot
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    
+    # Add grid for proportion plot
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the proportion plot
+    threshold_prop_plot_path = os.path.join(output_dir, f'threshold_analysis_proportions_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(threshold_prop_plot_path)
+    plt.close()
+
+    # Create threshold analysis plot (counts)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Create the count bars
+    ax.bar(r1, correct_counts, width=barWidth, color='tab:blue', label='Correct Chains')
+    ax.bar(r2, incorrect_counts, width=barWidth, color='tab:orange', label='Incorrect Chains')
+    
+    # Add labels for count plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Number of Chains Above Threshold', fontsize=12)
+    
+    # Set x-axis ticks for count plot
+    ax.set_xticks([r + barWidth/2 for r in range(len(thresholds))])
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    
+    # Add legend for count plot
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    
+    # Add grid for count plot
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the count plot
+    threshold_count_plot_path = os.path.join(output_dir, f'threshold_analysis_counts_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(threshold_count_plot_path)
+    plt.close()
+
+    # Create cross-category threshold analysis plot (proportions)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Calculate proportions and counts for each threshold
+    correct_to_correct_props = []
+    correct_to_incorrect_props = []
+    incorrect_to_correct_props = []
+    incorrect_to_incorrect_props = []
+    correct_to_correct_counts = []
+    correct_to_incorrect_counts = []
+    incorrect_to_correct_counts = []
+    incorrect_to_incorrect_counts = []
+    
+    for threshold in thresholds:
+        # Get all similarity scores for each category
+        all_correct_to_correct = []
+        all_correct_to_incorrect = []
+        all_incorrect_to_correct = []
+        all_incorrect_to_incorrect = []
+        
+        for step_scores in combined_scores_by_step['correct_to_correct']:
+            all_correct_to_correct.extend([item[1] for item in step_scores])
+        for step_scores in combined_scores_by_step['correct_to_incorrect']:
+            all_correct_to_incorrect.extend([item[1] for item in step_scores])
+        for step_scores in combined_scores_by_step['incorrect_to_correct']:
+            all_incorrect_to_correct.extend([item[1] for item in step_scores])
+        for step_scores in combined_scores_by_step['incorrect_to_incorrect']:
+            all_incorrect_to_incorrect.extend([item[1] for item in step_scores])
+            
+        # Calculate proportions and counts above threshold
+        if all_correct_to_correct:
+            correct_to_correct_prop = sum(score >= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
+            correct_to_correct_count = sum(score >= threshold for score in all_correct_to_correct)
+        else:
+            correct_to_correct_prop = 0
+            correct_to_correct_count = 0
+            
+        if all_correct_to_incorrect:
+            correct_to_incorrect_prop = sum(score >= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
+            correct_to_incorrect_count = sum(score >= threshold for score in all_correct_to_incorrect)
+        else:
+            correct_to_incorrect_prop = 0
+            correct_to_incorrect_count = 0
+            
+        if all_incorrect_to_correct:
+            incorrect_to_correct_prop = sum(score >= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
+            incorrect_to_correct_count = sum(score >= threshold for score in all_incorrect_to_correct)
+        else:
+            incorrect_to_correct_prop = 0
+            incorrect_to_correct_count = 0
+            
+        if all_incorrect_to_incorrect:
+            incorrect_to_incorrect_prop = sum(score >= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
+            incorrect_to_incorrect_count = sum(score >= threshold for score in all_incorrect_to_incorrect)
+        else:
+            incorrect_to_incorrect_prop = 0
+            incorrect_to_incorrect_count = 0
+            
+        correct_to_correct_props.append(correct_to_correct_prop)
+        correct_to_incorrect_props.append(correct_to_incorrect_prop)
+        incorrect_to_correct_props.append(incorrect_to_correct_prop)
+        incorrect_to_incorrect_props.append(incorrect_to_incorrect_prop)
+        correct_to_correct_counts.append(correct_to_correct_count)
+        correct_to_incorrect_counts.append(correct_to_incorrect_count)
+        incorrect_to_correct_counts.append(incorrect_to_correct_count)
+        incorrect_to_incorrect_counts.append(incorrect_to_incorrect_count)
+    
+    # Set width of bars
+    barWidth = 0.2
+    
+    # Set positions of the bars on X axis
+    r1 = np.arange(len(thresholds))
+    r2 = [x + barWidth for x in r1]
+    r3 = [x + barWidth for x in r2]
+    r4 = [x + barWidth for x in r3]
+    
+    # Create the proportion bars
+    ax.bar(r1, correct_to_correct_props, width=barWidth, color='tab:blue', label='Correct→Correct')
+    ax.bar(r2, correct_to_incorrect_props, width=barWidth, color='tab:orange', label='Correct→Incorrect')
+    ax.bar(r3, incorrect_to_correct_props, width=barWidth, color='tab:purple', label='Incorrect→Correct')
+    ax.bar(r4, incorrect_to_incorrect_props, width=barWidth, color='tab:cyan', label='Incorrect→Incorrect')
+    
+    # Add labels for proportion plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Proportion of Chains Above Threshold', fontsize=12)
+    
+    # Set x-axis ticks for proportion plot
+    ax.set_xticks([r + barWidth*1.5 for r in range(len(thresholds))])
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    
+    # Add legend for proportion plot
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    
+    # Add grid for proportion plot
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the cross-category proportion plot
+    cross_threshold_prop_plot_path = os.path.join(output_dir, f'cross_category_threshold_analysis_proportions_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(cross_threshold_prop_plot_path)
+    plt.close()
+
+    # Create cross-category threshold analysis plot (counts)
+    fig, ax = plt.subplots(figsize=(5, 4))
+    
+    # Create the count bars
+    ax.bar(r1, correct_to_correct_counts, width=barWidth, color='tab:blue', label='Correct→Correct')
+    ax.bar(r2, correct_to_incorrect_counts, width=barWidth, color='tab:orange', label='Correct→Incorrect')
+    ax.bar(r3, incorrect_to_correct_counts, width=barWidth, color='tab:purple', label='Incorrect→Correct')
+    ax.bar(r4, incorrect_to_incorrect_counts, width=barWidth, color='tab:cyan', label='Incorrect→Incorrect')
+    
+    # Add labels for count plot
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Number of Chains Above Threshold', fontsize=12)
+    
+    # Set x-axis ticks for count plot
+    ax.set_xticks([r + barWidth*1.5 for r in range(len(thresholds))])
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    
+    # Add legend for count plot
+    ax.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0), frameon=True, framealpha=0.9, edgecolor='black', fontsize=12)
+    
+    # Add grid for count plot
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save the cross-category count plot
+    cross_threshold_count_plot_path = os.path.join(output_dir, f'cross_category_threshold_analysis_counts_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png')
+    plt.savefig(cross_threshold_count_plot_path)
+    plt.close()
+
+    correct_correct_props = []
+    correct_incorrect_props = []
+    incorrect_incorrect_props = []
+    correct_correct_counts = []
+    correct_incorrect_counts = []
+    incorrect_incorrect_counts = []
+    
+    for threshold in thresholds:
+        # Get all similarity scores for each category
+        all_correct_correct = []
+        all_correct_incorrect = []
+        all_incorrect_incorrect = []
+        
+        seen_pairs = set()
+        for step_scores in combined_scores_by_step['correct_to_correct'][20:]:
+            for item in step_scores:
+                if item[0] in seen_pairs:
+                    continue
+                seen_pairs.add(item[0])
+                all_correct_correct.append(item[1])
+        for step_scores in combined_scores_by_step['correct_to_incorrect'][20:]:
+            for item in step_scores:
+                if item[0] in seen_pairs:
+                    continue
+                seen_pairs.add(item[0])
+                all_correct_incorrect.append(item[1])
+        for step_scores in combined_scores_by_step['incorrect_to_correct'][20:]:
+            for item in step_scores:
+                if item[0] in seen_pairs:
+                    continue
+                seen_pairs.add(item[0])
+                all_correct_incorrect.append(item[1])
+        for step_scores in combined_scores_by_step['incorrect_to_incorrect'][20:]:
+            for item in step_scores:
+                if item[0] in seen_pairs:
+                    continue
+                seen_pairs.add(item[0])
+                all_incorrect_incorrect.append(item[1])
+            
+        # Calculate proportions and counts above threshold
+        if all_correct_correct:
+            correct_correct_count = sum(score >= threshold for score in all_correct_correct)
+        else:
+            correct_correct_count = 0
+            
+        if all_correct_incorrect:
+            correct_incorrect_count = sum(score >= threshold for score in all_correct_incorrect)
+        else:
+            correct_incorrect_count = 0
+            
+        if all_incorrect_incorrect:
+            incorrect_incorrect_count = sum(score >= threshold for score in all_incorrect_incorrect)
+        else:
+            incorrect_incorrect_count = 0
+
+        total_count = correct_correct_count + correct_incorrect_count + incorrect_incorrect_count
+
+        if total_count == 0:
+            correct_correct_prop = 0
+            correct_incorrect_prop = 0
+            incorrect_incorrect_prop = 0
+        else:
+            correct_correct_prop = (correct_correct_count / total_count) * 100
+            correct_incorrect_prop = (correct_incorrect_count / total_count) * 100
+            incorrect_incorrect_prop = (incorrect_incorrect_count / total_count) * 100
+            
+        correct_correct_props.append(correct_correct_prop)
+        correct_incorrect_props.append(correct_incorrect_prop)
+        incorrect_incorrect_props.append(incorrect_incorrect_prop)
+        correct_correct_counts.append(correct_correct_count)
+        correct_incorrect_counts.append(correct_incorrect_count)
+        incorrect_incorrect_counts.append(incorrect_incorrect_count)
+
+    # make stacked bar plots. set axislabel and fontsize
+    fig, ax = plt.subplots(figsize=(5, 4))
+    # Stacked bars, not grouped
+    x = np.arange(len(thresholds))
+    width = 0.35
+    ax.bar(x, correct_correct_props, width, label='Correct-Correct', color='tab:blue')
+    ax.bar(x, correct_incorrect_props, width, bottom=correct_correct_props, label='Correct-Incorrect', color='tab:purple')
+    ax.bar(x, incorrect_incorrect_props, width, bottom=[a + b for a, b in zip(correct_correct_props, correct_incorrect_props)], label='Incorrect-Incorrect', color='tab:orange')
+    ax.set_xlabel('Similarity Threshold', fontsize=12)
+    ax.set_ylabel('Percentage of Similar Chains', fontsize=12)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=12)
+    ax.tick_params(axis='y', labelsize=12)
+    ax.legend(fontsize=12)
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f'stacked_bar_plot_{args.model_arch}_{args.dataset_name}_{args.control_run_name}.png'))
+    plt.close()
+
 
     # Save per-question and combined results to a single JSON file
     output_json = {
-        'per_question_results': all_worker_results,
-        'combined_scores_by_step': combined_scores_by_step,
-        'statistics': stats
+        # 'per_question_results': all_worker_results,
+        # 'combined_scores_by_step': combined_scores_by_step,
+        # 'statistics': stats,
+        'plot_data': {
+            # Main categories plot data
+            'main_categories': {
+                'steps': steps.tolist(),
+                'all_median': stats['all']['median'],
+                'all_p25': stats['all']['p25'],
+                'all_p75': stats['all']['p75'],
+                'correct_median': stats['correct']['median'],
+                'correct_p25': stats['correct']['p25'],
+                'correct_p75': stats['correct']['p75'],
+                'incorrect_median': stats['incorrect']['median'],
+                'incorrect_p25': stats['incorrect']['p25'],
+                'incorrect_p75': stats['incorrect']['p75']
+            },
+            # Cross-category plot data
+            'cross_category': {
+                'steps': steps.tolist(),
+                'correct_to_correct_median': stats['correct_to_correct']['median'],
+                'correct_to_incorrect_median': stats['correct_to_incorrect']['median'],
+                'incorrect_to_correct_median': stats['incorrect_to_correct']['median'],
+                'incorrect_to_incorrect_median': stats['incorrect_to_incorrect']['median']
+            },
+            # Threshold analysis data
+            'threshold_analysis': {
+                'thresholds': thresholds.tolist(),
+                'correct_proportions': correct_proportions,
+                'incorrect_proportions': incorrect_proportions,
+                'correct_counts': correct_counts,
+                'incorrect_counts': incorrect_counts,
+                'correct_to_correct_props': correct_to_correct_props,
+                'correct_to_incorrect_props': correct_to_incorrect_props,
+                'incorrect_to_correct_props': incorrect_to_correct_props,
+                'incorrect_to_incorrect_props': incorrect_to_incorrect_props,
+                'correct_to_correct_counts': correct_to_correct_counts,
+                'correct_to_incorrect_counts': correct_to_incorrect_counts,
+                'incorrect_to_correct_counts': incorrect_to_correct_counts,
+                'incorrect_to_incorrect_counts': incorrect_to_incorrect_counts
+            },
+            # Same answer chains analysis data
+            'same_answer_chains': {
+                'thresholds': thresholds.tolist(),
+                'same_answer_counts': same_answer_counts,
+                'same_answer_correct_counts': same_answer_correct_counts,
+                'total_similar_pairs_counts': total_similar_pairs_counts,
+                'different_answer_counts': different_answer_counts,
+                'same_answer_correct_percentages': same_answer_correct_percentages,
+                'same_answer_incorrect_percentages': same_answer_incorrect_percentages,
+                'different_answer_percentages': different_answer_percentages
+            },
+            'stacked_bar_plot': {
+                'thresholds': thresholds.tolist(),
+                'correct_correct_props': correct_correct_props,
+                'correct_incorrect_props': correct_incorrect_props,
+                'incorrect_incorrect_props': incorrect_incorrect_props
+            }
+        }
     }
+    
+    # Convert numpy types to Python native types before JSON serialization
+    output_json = convert_numpy_types(output_json)
+    
     with open(os.path.join(output_dir, 'sim_score_results.json'), 'w') as f:
         json.dump(output_json, f, indent=2)
 
@@ -568,7 +1120,7 @@ if __name__ == "__main__":
 
     """
         sample command
-        python sim_score_analysis.py --model_arch R1-Distill-Qwen-14B --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --dataset_name aime --control_run_name sc_16_control --n_chains 16 --tokenizer_path /home/users/ntu/colinhon/scratch/r1-distill --num_questions 30 --seed 7 --token_step_size 100 --output_dir aime_analysis
+        python sim_score_analysis.py --model_arch R1-Distill-Qwen-14B --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --dataset_name aime --control_run_name sc_64_control --n_chains 64 --tokenizer_path /home/users/ntu/colinhon/scratch/r1-distill --num_questions 30 --seed 7 --token_step_size 100 --output_dir aime_sim_score_results
     """
 
 
