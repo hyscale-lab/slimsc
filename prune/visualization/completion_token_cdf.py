@@ -154,7 +154,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    """
-    python completion_token_cdf.py --base_slimsc_dir /home/users/ntu/colinhon/slimsc --model_arch R1-Distill-Qwen-14B --dataset_name aime --control_run_name sc_16_control --output_dir plots/R1-Distill-Qwen-14B
-    """
