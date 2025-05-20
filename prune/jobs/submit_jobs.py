@@ -20,12 +20,12 @@ DEFAULT_JOBID_FILE = ".last_client_jobid"
 LOGS_DIR_NAME = "logs"
 
 # Conda configuration (adjust if necessary)
-CONDA_INIT_PATH = "/home/users/ntu/{user}/miniconda3/etc/profile.d/conda.sh"
+CONDA_INIT_PATH = "$HOME/miniconda3/etc/profile.d/conda.sh"
 CONDA_ENV_NAME = "vllm"
 # PBS Project configuration (adjust if necessary)
 PBS_PROJECT_PREFIX = "personal"
 
-LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="/home/users/ntu/{user}/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
+LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="$HOME/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
 
 # --- Helper Functions ---
 
