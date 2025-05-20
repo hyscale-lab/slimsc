@@ -30,7 +30,7 @@ except ImportError:
     )
      from slimsc.prune.utils import DatasetHandler
 
-TOKENIZER_PATH = "/home/users/ntu/colinhon/scratch/r1-distill"
+TOKENIZER_PATH = os.path.join(os.environ['HOME'], "scratch/r1-distill")
 _tokenizer_cache_offline = [None, None, None, None, None]
 tokenizer_cache_max_size = 5
 
@@ -1117,11 +1117,6 @@ if __name__ == "__main__":
     cli_args = parser.parse_args()
 
     main_offline_analysis(cli_args)
-
-    """
-        sample command
-        python sim_score_analysis.py --model_arch R1-Distill-Qwen-14B --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --dataset_name aime --control_run_name sc_64_control --n_chains 64 --tokenizer_path /home/users/ntu/colinhon/scratch/r1-distill --num_questions 30 --seed 7 --token_step_size 100 --output_dir aime_sim_score_results
-    """
 
 
     
