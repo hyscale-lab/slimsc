@@ -393,42 +393,6 @@ fi
 echo "--- PBS Server Job Finished ---"
 
 # Explicitly exit with the wait command's status (optional, trap EXIT handles cleanup)
-
-echo "[$(date)] Archiving and copying result folder..."
-
-RESULT_DIR="{quoted_model_dataset_dir}"
-ZIP_NAME="$(basename "$RESULT_DIR").zip"
-
-# Expand ~ manually inside script
-TARGET_DIR="$HOME/slimsc-results/{model_name}/{dataset_name}"
-mkdir -p "$TARGET_DIR"
-
-CSV_TO_CHECK="$RESULT_DIR/evaluation_summary.csv"
-echo "Checking for empty fields in $CSV_TO_CHECK..."
-
-python check_empty.py "$CSV_TO_CHECK"
-if [ $? -eq 1 ]; then
-    echo "Suspicious rows detected in $CSV_TO_CHECK. Aborting archive and copy."
-    exit 1
-fi
-
-cd "$(dirname "$RESULT_DIR")" || {{ echo "Error: Cannot cd to result dir parent"; exit 1; }}
-
-echo "Zipping folder $(basename "$RESULT_DIR") to $ZIP_NAME..."
-zip -r "$ZIP_NAME" "$(basename "$RESULT_DIR")"
-
-echo "Copying $ZIP_NAME to $TARGET_DIR/"
-
-module load git
-cd $TARGET_DIR/
-GIT_LFS_SKIP_SMUDGE=1 git pull
-echo "[$(date)] Archive copy complete: $TARGET_DIR/$ZIP_NAME"
-cp "$ZIP_NAME" "$TARGET_DIR/" || {{ echo "Error: Copy failed"; exit 1; }}
-ZIP_FILE_NAME="$(basename "$ZIP_NAME")"
-git add "$ZIP_FILE_NAME"
-git commit -m "Add result zip for {model_name}/{dataset_name}/{run_name}"
-git push
-
 # exit $WAIT_EXIT_CODE
 """
     # Return the path to the specific log file vLLM writes to, relative to $PBS_O_WORKDIR
