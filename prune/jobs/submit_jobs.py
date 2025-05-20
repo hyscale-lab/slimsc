@@ -953,6 +953,7 @@ def main_yaml():
         eval_threshold_schedule = None
 
         # --- Conditionally extract similarity params ---
+        eval_num_steps_to_delay_pruning = None
         eval_threshold_schedule = None # Initialize
         if eval_type == 'similarity':
             eval_pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
@@ -960,7 +961,8 @@ def main_yaml():
             eval_threshold_schedule = get_config_value(eval_cfg, ['threshold_schedule'], 'fixed')
             eval_seed = get_config_value(eval_cfg, ['seed'], None) # Default to None if not in YAML
             DEFAULT_DELAY_FOR_NAMING = 20 # Should match similarity_prune_eval.py argparse default
-            eval_num_steps_to_delay_pruning_for_naming = get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], DEFAULT_DELAY_FOR_NAMING)
+            eval_num_steps_to_delay_pruning = get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], DEFAULT_DELAY_FOR_NAMING)
+            eval_num_steps_to_delay_pruning_for_naming = eval_num_steps_to_delay_pruning
             if None in [eval_pruning_strategy, eval_n_start, eval_threshold]:
                  print(f"Error: Missing similarity params (pruning_strategy, n_start, threshold) in eval config for job '{job_name_prefix}'. Skipping.")
                  continue

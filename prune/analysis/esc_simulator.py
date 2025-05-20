@@ -46,8 +46,13 @@ def main_offline_analysis(args):
         if n_chains == 1:
             window_size = 1
 
-        # read in csv file
-        control_eval_summary = pd.read_csv(control_eval_summary_path)
+        # estimate completion time per window. by finding the average completion time of the control run where N = W
+        control_run_name_n_w = f"sc_{window_size}_control"
+        control_run_dir_n_w = os.path.join(base_results_dir, control_run_name_n_w)
+        control_eval_summary_n_w = pd.read_csv(os.path.join(control_run_dir_n_w, "evaluation_summary.csv"))
+        avg_completion_time_per_window = control_eval_summary_n_w["processing_duration_sec"].mean()
+
+        # estimate max kv cache % per window.
 
         # Flag to track if we should skip this control run
         skip_control_run = False
@@ -93,7 +98,8 @@ def main_offline_analysis(args):
                         "total_tokens_generated": total_tokens_generated,
                         "window_size": window_size,
                         "individual_answers_str": individual_answers,
-                        "correct_answer_in_chains": row["correct_answer"] in individual_answers[:num_chains_generated]
+                        "correct_answer_in_chains": row["correct_answer"] in individual_answers[:num_chains_generated],
+                        "time_taken": (num_chains_generated // window_size) * avg_completion_time_per_window
                     }, ignore_index=True)
 
             except (FileNotFoundError, KeyError) as e:
@@ -110,6 +116,7 @@ def main_offline_analysis(args):
             avg_total_tokens_generated = result_df["total_tokens_generated"].mean()
             avg_num_chains_generated = result_df["num_chains_generated"].mean()
             correct_answer_in_chains = result_df["correct_answer_in_chains"].mean()
+            avg_time_taken = result_df["time_taken"].mean()
             voting_efficiency = accuracy / correct_answer_in_chains if correct_answer_in_chains > 0 else 0.0
 
             # save aggregated metrics
@@ -121,7 +128,8 @@ def main_offline_analysis(args):
                     "correct_answer_in_chains": correct_answer_in_chains,
                     "voting_efficiency": voting_efficiency,
                     "window_size": window_size,
-                    "n_chains": n_chains
+                    "n_chains": n_chains,
+                    "avg_time_taken": avg_time_taken
                 }, f, indent=4)
 
 if __name__ == "__main__":
