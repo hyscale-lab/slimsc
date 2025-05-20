@@ -303,7 +303,7 @@ if not df_sc_melted.empty:
         # Wrap the second legend label to two lines
         handles, labels = ax.get_legend_handles_labels()
         labels = [label.replace("Correct Answer Present in Candidates", "Correct Answer Present\nin Candidates") for label in labels]
-        ax.legend(handles, labels, loc='upper left', fontsize=10.8, frameon=True, framealpha=0.9, edgecolor='black')
+        ax.legend(handles, labels, loc='lower right', fontsize=10.8, frameon=True, framealpha=0.9, edgecolor='black')
 
         ax.grid(axis='y', linestyle='--', alpha=0.7)
 
