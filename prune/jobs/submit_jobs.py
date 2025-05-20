@@ -673,7 +673,7 @@ echo "Set VLLM_URL=$VLLM_URL"
 # If the server starts fast and the client has a delay, this check might fail after the server exits.
 # We add a check to see if the server job still exists during the wait loop.
 echo "Waiting for vLLM server to be ready (checking for '{SERVER_READY_STRING}' in $SERVER_VLLM_LOG_RELPATH)..."
-MAX_LOG_WAIT_SEC=720 # 12 minutes total timeout for server to become ready
+MAX_LOG_WAIT_SEC=900 # 15 minutes total timeout for server to become ready
 LOG_WAIT_INTERVAL=30
 elapsed_log_wait=0
 server_ready=0
