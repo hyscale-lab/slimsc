@@ -19,7 +19,12 @@ from .math500_utils import (
     extract_answer_math500,
     calculate_score_math500
 )
-
+from .hmmt_utils import (
+    load_data_hmmt,
+    create_prompt_hmmt,
+    extract_answer_hmmt,
+    calculate_score_hmmt
+)
 from .aqua_rat_utils import (
     load_data_aqua_rat,
     create_prompt_aqua_rat,
@@ -32,9 +37,9 @@ class DatasetHandler:
         """Initialize dataset handler with specific type.
         
         Args:
-            dataset_type (str): Type of dataset ("gpqa_diamond", "aime", "math500", "aqua_rat")
+            dataset_name (str): Type of dataset ("gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt")
         """
-        if dataset_name not in ["gpqa_diamond", "aime", "math500", "aqua_rat"]:
+        if dataset_name not in ["gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt"]:
             raise ValueError(f"Unknown dataset type: {dataset_name}")
         self.dataset_name = dataset_name
 
@@ -48,19 +53,19 @@ class DatasetHandler:
             return load_data_aime(dataset_name=self.dataset_name, split=split)
         elif self.dataset_name == "aqua_rat":
             return load_data_aqua_rat()
+        elif self.dataset_name == "hmmt":
+            return load_data_hmmt(dataset_name=self.dataset_name, split=split)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in load_dataset method.")
 
-    def create_prompt(self, example: Dict) -> Tuple[str, List[str] | str]:
+    def create_prompt(self, example: Dict) -> Tuple[str, Union[List[str], str, Tuple[Any, ...]]]:
         """Create prompt from example.
         Returns:
-            A tuple: (prompt_string, prompt_output_details).
-            For GPQA, prompt_output_details is a tuple: (choices_list, correct_answer_letter_string).
-            For AIME/MATH, prompt_output_details is the correct_answer_string.
+            A tuple: (prompt_string, correct_answer_details).
+            For GPQA, correct_answer_details is a tuple: (choices_list, correct_answer_letter).
+            For AIME/MATH500/HMMT, correct_answer_details is the correct_answer_string.
         """
         if self.dataset_name == "gpqa_diamond":
-            # create_prompt_gpqa returns (prompt, choices, correct_letter)
-            # We pack `choices` and `correct_letter` into the second element of the return tuple.
             _prompt, _choices, _correct_letter = create_prompt_gpqa(example)
             return _prompt, (_choices, _correct_letter)
         elif self.dataset_name == "math500":
@@ -69,6 +74,8 @@ class DatasetHandler:
             return create_prompt_aime(example)
         elif self.dataset_name == "aqua_rat":
             return create_prompt_aqua_rat(example)
+        elif self.dataset_name == "hmmt":
+            return create_prompt_hmmt(example)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in create_prompt method.")
 
@@ -82,6 +89,8 @@ class DatasetHandler:
             return extract_answer_aime(content)
         elif self.dataset_name == "aqua_rat":
             return extract_answer_aqua_rat(content)
+        elif self.dataset_name == "hmmt":
+            return extract_answer_hmmt(content)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in extract_answer method.")
 
@@ -95,5 +104,7 @@ class DatasetHandler:
             return calculate_score_aime(extracted_answer, correct_answer)
         elif self.dataset_name == "aqua_rat":
             return calculate_score_aqua_rat(extracted_answer, correct_answer)
+        elif self.dataset_name == "hmmt":
+            return calculate_score_hmmt(extracted_answer, correct_answer)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in calculate_score method.")
