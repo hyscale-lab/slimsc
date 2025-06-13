@@ -21,7 +21,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 # --- Constants ---
-MAX_TOKENS_PER_STREAM = 32768 # Max completion tokens per chain
 ANALYSIS_INTERVAL_SECONDS = 3 # How often to check for new thoughts/prune
 random.seed(42) # For reproducibility
 
@@ -314,7 +313,6 @@ async def process_question_similarity_prune(
             prompt=prompt_text, vllm_url=vllm_url, model_name=model_name,
             request_id=chain_id,
             temperature=0.6,
-            max_tokens=MAX_TOKENS_PER_STREAM,
             logprobs=None
         )
         # Create and store the consumer task
