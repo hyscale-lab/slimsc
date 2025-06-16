@@ -43,11 +43,8 @@ def main_offline_analysis(args):
         # get window size. W = min(2, n_chains / 8)
         n_chains = int(control_run_name.split("_")[1])
         window_size = max(2, int(n_chains / 8))  # Ensure window_size is at least 1 and is an integer
-<<<<<<< HEAD
-=======
         if n_chains == 1:
             window_size = 1
->>>>>>> main
 
         # read in csv file
         control_eval_summary = pd.read_csv(control_eval_summary_path)
@@ -135,6 +132,7 @@ if __name__ == "__main__":
 
     cli_args = parser.parse_args()
 
+<<<<<<< HEAD
     main_offline_analysis(cli_args)
 
     """
@@ -144,3 +142,6 @@ if __name__ == "__main__":
     python esc_simulator.py --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --model_arch QwQ-32B --dataset_name aime
 >>>>>>> main
     """
+=======
+    main_offline_analysis(cli_args)
+>>>>>>> main

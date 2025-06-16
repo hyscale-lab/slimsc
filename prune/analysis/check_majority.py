@@ -308,7 +308,7 @@ def plot_comparison(results_percentages, output_filename=None):
 # --- Main execution block ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze CSV results in immediate subdirectories matching specific patterns ('sc_64', 'diversity_n64_thresh*', 'random_n64_thresh*'). Aggregates results per pattern and generates a comparison plot.")
-    parser.add_argument("root_path", help="The root directory containing the immediate subdirectories to analyze (e.g., /home/users/ntu/chong032/slimsc/prune/results/R1-Distill-Qwen-14B/gpqa_diamond)")
+    parser.add_argument("root_path", help="The root directory containing the immediate subdirectories to analyze (e.g., /<user home path>/slimsc/prune/results/R1-Distill-Qwen-14B/gpqa_diamond)")
     parser.add_argument("-o", "--output", help="Filename to save the plot (e.g., comparison_plot.png). If not provided, the plot will be displayed interactively.", default=None)
 
 
