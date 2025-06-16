@@ -28,7 +28,7 @@ def plot_stacked_bar(data, output_path):
     # Customize the plot
     ax.set_xlabel('Similarity Threshold', fontsize=11.5)
     ax.set_ylabel('Percentage of Similar Chains', fontsize=11.5)
-    ax.yaxis.set_label_coords(-0.1, 0.25)  # (x, y) in axis coordinates; adjust as needed
+    ax.yaxis.set_label_coords(-0.1, 0.27)  # (x, y) in axis coordinates; adjust as needed
     ax.set_xticks(x)
     ax.set_xticklabels([f'{t:.2f}' for t in thresholds], rotation=45, fontsize=10.8)
     ax.tick_params(axis='y', labelsize=10.8)
@@ -72,5 +72,5 @@ if __name__ == "__main__":
     main()
 
     """
-        python replot_sim_score_analysis.py --input_json="aime_n64/sim_score_results.json" --output_dir="replots" --"model_arch"="R1" --"dataset_name"="gpqa_diamond" --control_run_name="sc_64"
+        python replot_sim_score_analysis.py --input_json="gpqa_n64/sim_score_results.json" --output_dir="replots" --"model_arch"="R1" --"dataset_name"="gpqa_diamond" --control_run_name="sc_64"
     """
