@@ -988,7 +988,7 @@ def main_offline_analysis(args):
         incorrect_incorrect_counts.append(incorrect_incorrect_count)
 
     # make stacked bar plots. set axislabel and fontsize
-    fig, ax = plt.subplots(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 8))
     # Stacked bars, not grouped
     x = np.arange(len(thresholds))
     width = 0.35
