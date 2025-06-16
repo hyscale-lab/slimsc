@@ -508,6 +508,8 @@ def create_client_pbs_script(
             "--vllm_url $VLLM_URL", # Use exported variable
             f"--dataset_name {quoted_eval_args['dataset_name']}",
             f"--threshold_schedule {quoted_eval_args['threshold_schedule']}" if quoted_eval_args.get('threshold_schedule') else "",
+            f"--batch_size {quoted_eval_args['batch_size']}" if quoted_eval_args.get('batch_size') else "",
+            f"--batch_num {quoted_eval_args['batch_num']}" if quoted_eval_args.get('batch_num') else "",
         ]
         if quoted_eval_args.get('seed') is not None:
             eval_command_parts.append(f"--seed {quoted_eval_args['seed']}")
@@ -672,7 +674,7 @@ echo "Set VLLM_URL=$VLLM_URL"
 # If the server starts fast and the client has a delay, this check might fail after the server exits.
 # We add a check to see if the server job still exists during the wait loop.
 echo "Waiting for vLLM server to be ready (checking for '{SERVER_READY_STRING}' in $SERVER_VLLM_LOG_RELPATH)..."
-MAX_LOG_WAIT_SEC=720 # 12 minutes total timeout for server to become ready
+MAX_LOG_WAIT_SEC=900 # 15 minutes total timeout for server to become ready
 LOG_WAIT_INTERVAL=30
 elapsed_log_wait=0
 server_ready=0
