@@ -30,7 +30,7 @@ except ImportError:
     )
      from slimsc.prune.utils import DatasetHandler
 
-TOKENIZER_PATH = "/home/users/ntu/colinhon/scratch/r1-distill"
+TOKENIZER_PATH = os.path.join(os.environ['HOME'], "scratch/r1-distill")
 _tokenizer_cache_offline = [None, None, None, None, None]
 tokenizer_cache_max_size = 5
 
@@ -988,7 +988,7 @@ def main_offline_analysis(args):
         incorrect_incorrect_counts.append(incorrect_incorrect_count)
 
     # make stacked bar plots. set axislabel and fontsize
-    fig, ax = plt.subplots(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 8))
     # Stacked bars, not grouped
     x = np.arange(len(thresholds))
     width = 0.35
