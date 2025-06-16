@@ -21,7 +21,7 @@ async def get_aiohttp_session() -> aiohttp.ClientSession:
             total=None,          # No overall total timeout for the entire request life-cycle
             connect=60,          # Timeout for establishing connection
             sock_connect=60,     # Timeout for socket connection part
-            sock_read=2400       # Timeout for waiting for data from server AFTER connection
+            sock_read=3600       # Timeout for waiting for data from server AFTER connection
         )
         connector = aiohttp.TCPConnector(limit_per_host=100)
         _aiohttp_session = aiohttp.ClientSession(timeout=timeout_config, connector=connector)
@@ -41,10 +41,10 @@ async def stream_vllm_request(
     model_name: str,
     request_id: str, # Unique ID for logging/tracking this specific request
     temperature: float = 0.6,
-    max_tokens: int = 39000,
+    max_tokens: int = None,
     stop_sequences: Optional[List[str]] = None,
     logprobs: Optional[int] = None, # Logprobs might behave differently in stream
-    max_retries: int = 2,
+    max_retries: int = 3,
     initial_backoff: float = 1.0,
     max_backoff: float = 10.0
 ) -> AsyncGenerator[Dict, None]:

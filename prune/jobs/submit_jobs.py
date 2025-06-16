@@ -20,12 +20,12 @@ DEFAULT_JOBID_FILE = ".last_client_jobid"
 LOGS_DIR_NAME = "logs"
 
 # Conda configuration (adjust if necessary)
-CONDA_INIT_PATH = "/home/users/ntu/{user}/miniconda3/etc/profile.d/conda.sh"
+CONDA_INIT_PATH = "$HOME/miniconda3/etc/profile.d/conda.sh"
 CONDA_ENV_NAME = "vllm"
 # PBS Project configuration (adjust if necessary)
 PBS_PROJECT_PREFIX = "personal"
 
-LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="/home/users/ntu/{user}/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
+LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="$HOME/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
 
 # --- Helper Functions ---
 
@@ -110,6 +110,7 @@ def create_server_pbs_script(
     pruning_strategy: Optional[str],
     threshold: Optional[float],
     threshold_schedule: Optional[str],
+    num_steps_to_delay_pruning_for_naming: Optional[int],
 ) -> tuple[str, str, str, str]: # Return: pbs_script_content, relative_ip_file, relative_pbs_log_file, relative_vllm_serve_log_file
     """
     Creates the PBS script content for the vLLM server job.
@@ -132,11 +133,11 @@ def create_server_pbs_script(
             threshold_for_naming = 0.9 # Use fixed 0.9 for naming convention
 
         # Ensure required values are present before formatting
-        if pruning_strategy is not None and n_start is not None and threshold_for_naming is not None:
-            run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold_for_naming:.2f}"
+        if pruning_strategy is not None and n_start is not None and threshold_for_naming is not None and num_steps_to_delay_pruning_for_naming is not None:
+            run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold_for_naming:.2f}_delay{num_steps_to_delay_pruning_for_naming}"
             print(f"Constructed server run_name: {run_name}") # Add log for debugging
         else:
-            print(f"Warning: Could not construct run_name for server KVC path due to missing params (strategy={pruning_strategy}, n_start={n_start}, threshold_for_naming={threshold_for_naming}). Using 'unknown_run'.")
+            print(f"Warning: Could not construct run_name for server KVC path due to missing params (strategy={pruning_strategy}, n_start={n_start}, threshold_for_naming={threshold_for_naming}), delay_for_naming={num_steps_to_delay_pruning_for_naming}). Using 'unknown_run'.")
             run_name = "unknown_run"
 
     elif eval_type == "sc_control":
@@ -154,6 +155,7 @@ def create_server_pbs_script(
         run_name = "unknown_run"
 
     model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name if run_name else "unknown_run")
+    results_zip_path = os.path.join("~/slimsc-results", model_name, dataset_name, run_name if run_name else "unknown_run")
     target_kvc_file_path = os.path.join(model_dataset_dir, "kvcache_usages.csv")
     quoted_target_kvc_file_path = shlex.quote(target_kvc_file_path)
 
@@ -162,6 +164,7 @@ def create_server_pbs_script(
     quoted_reasoning_parser = shlex.quote(reasoning_parser) if reasoning_parser else None
     quoted_vllm_serve_log = shlex.quote(relative_vllm_serve_log_file)
     quoted_server_ip_file = shlex.quote(relative_server_ip_file)
+    quoted_model_dataset_dir = shlex.quote(model_dataset_dir)
 
     user = os.environ.get("USER", "default_user")
     conda_init_script = CONDA_INIT_PATH.format(user=user)
@@ -390,6 +393,42 @@ fi
 echo "--- PBS Server Job Finished ---"
 
 # Explicitly exit with the wait command's status (optional, trap EXIT handles cleanup)
+
+echo "[$(date)] Archiving and copying result folder..."
+
+RESULT_DIR="{quoted_model_dataset_dir}"
+ZIP_NAME="$(basename "$RESULT_DIR").zip"
+
+# Expand ~ manually inside script
+TARGET_DIR="$HOME/slimsc-results/{model_name}/{dataset_name}"
+mkdir -p "$TARGET_DIR"
+
+CSV_TO_CHECK="$RESULT_DIR/evaluation_summary.csv"
+echo "Checking for empty fields in $CSV_TO_CHECK..."
+
+python check_empty.py "$CSV_TO_CHECK"
+if [ $? -eq 1 ]; then
+    echo "Suspicious rows detected in $CSV_TO_CHECK. Aborting archive and copy."
+    exit 1
+fi
+
+cd "$(dirname "$RESULT_DIR")" || {{ echo "Error: Cannot cd to result dir parent"; exit 1; }}
+
+echo "Zipping folder $(basename "$RESULT_DIR") to $ZIP_NAME..."
+zip -r "$ZIP_NAME" "$(basename "$RESULT_DIR")"
+
+echo "Copying $ZIP_NAME to $TARGET_DIR/"
+
+module load git
+cd $TARGET_DIR/
+GIT_LFS_SKIP_SMUDGE=1 git pull
+echo "[$(date)] Archive copy complete: $TARGET_DIR/$ZIP_NAME"
+cp "$ZIP_NAME" "$TARGET_DIR/" || {{ echo "Error: Copy failed"; exit 1; }}
+ZIP_FILE_NAME="$(basename "$ZIP_NAME")"
+git add "$ZIP_FILE_NAME"
+git commit -m "Add result zip for {model_name}/{dataset_name}/{run_name}"
+git push
+
 # exit $WAIT_EXIT_CODE
 """
     # Return the path to the specific log file vLLM writes to, relative to $PBS_O_WORKDIR
@@ -449,6 +488,8 @@ def create_client_pbs_script(
     for k, v in eval_script_args.items():
         if isinstance(v, str):
             quoted_eval_args[k] = shlex.quote(v)
+        elif v is None: # if seed or num_steps_to_delay_pruning is None from YAML
+            quoted_eval_args[k] = None # Keep as None, to be skipped later
         else:
             quoted_eval_args[k] = v # Keep numbers, etc., as is
 
@@ -467,7 +508,14 @@ def create_client_pbs_script(
             "--vllm_url $VLLM_URL", # Use exported variable
             f"--dataset_name {quoted_eval_args['dataset_name']}",
             f"--threshold_schedule {quoted_eval_args['threshold_schedule']}" if quoted_eval_args.get('threshold_schedule') else "",
+            f"--batch_size {quoted_eval_args['batch_size']}" if quoted_eval_args.get('batch_size') else "",
+            f"--batch_num {quoted_eval_args['batch_num']}" if quoted_eval_args.get('batch_num') else "",
         ]
+        if quoted_eval_args.get('seed') is not None:
+            eval_command_parts.append(f"--seed {quoted_eval_args['seed']}")
+        if quoted_eval_args.get('num_steps_to_delay_pruning') is not None:
+            eval_command_parts.append(f"--num_steps_to_delay_pruning {quoted_eval_args['num_steps_to_delay_pruning']}")
+
     elif eval_type == "sc_control":
         eval_module = "slimsc.prune.evaluation.sc_control_eval"
         eval_command_parts = [
@@ -626,7 +674,7 @@ echo "Set VLLM_URL=$VLLM_URL"
 # If the server starts fast and the client has a delay, this check might fail after the server exits.
 # We add a check to see if the server job still exists during the wait loop.
 echo "Waiting for vLLM server to be ready (checking for '{SERVER_READY_STRING}' in $SERVER_VLLM_LOG_RELPATH)..."
-MAX_LOG_WAIT_SEC=720 # 12 minutes total timeout for server to become ready
+MAX_LOG_WAIT_SEC=900 # 15 minutes total timeout for server to become ready
 LOG_WAIT_INTERVAL=30
 elapsed_log_wait=0
 server_ready=0
@@ -938,6 +986,8 @@ def main_yaml():
         eval_dataset_name = get_config_value(eval_cfg, ['dataset_name'])
         eval_n_start = get_config_value(eval_cfg, ['n_start']) # Needed by both
 
+        eval_seed = None
+        eval_num_steps_to_delay_pruning = None
         eval_pruning_strategy = None
         eval_threshold = None
         eval_threshold_schedule = None
@@ -948,22 +998,28 @@ def main_yaml():
             eval_pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
             eval_threshold = get_config_value(eval_cfg, ['threshold'])
             eval_threshold_schedule = get_config_value(eval_cfg, ['threshold_schedule'], 'fixed')
+            eval_seed = get_config_value(eval_cfg, ['seed'], None) # Default to None if not in YAML
+            DEFAULT_DELAY_FOR_NAMING = 20 # Should match similarity_prune_eval.py argparse default
+            eval_num_steps_to_delay_pruning_for_naming = get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], DEFAULT_DELAY_FOR_NAMING)
             if None in [eval_pruning_strategy, eval_n_start, eval_threshold]:
                  print(f"Error: Missing similarity params (pruning_strategy, n_start, threshold) in eval config for job '{job_name_prefix}'. Skipping.")
                  continue
         elif eval_type == 'sc_control':
-             if eval_n_start is None:
-                 print(f"Error: Missing required 'n_start' in eval config for sc_control job '{job_name_prefix}'. Skipping.")
-                 continue
+            if eval_n_start is None:
+                print(f"Error: Missing required 'n_start' in eval config for sc_control job '{job_name_prefix}'. Skipping.")
+                continue
 
-             eval_threshold = None
-             eval_threshold_schedule = None
+            eval_threshold = None
+            eval_threshold_schedule = None
+            eval_num_steps_to_delay_pruning_for_naming = None
 
         print(f"--- Job Details ({job_name_prefix}) ---")
         print(f"  Model: {model_path}")
         print(f"  Server: TP={tp_size}, Hours={server_hours}, Reasoning={enable_reasoning}")
         print(f"  Client: Type={eval_type}, Hours={client_hours}, GPUs={client_gpus if eval_type != 'sc_control' else 'N/A'}, Mem={client_mem}, Initial Delay={client_initial_delay_minutes}min")
-
+        if eval_type == 'similarity':
+            print(f"    Seed: {eval_seed if eval_seed is not None else 'Default'}")
+            print(f"    Num Steps to Delay Pruning: {eval_num_steps_to_delay_pruning if eval_num_steps_to_delay_pruning is not None else 'Default (20)'}")
         # --- Create and Submit Server ---
         # print(f"Dependency for this server: {previous_client_jobid if previous_client_jobid else 'None'}")
         # Pass logs_subdir name; returns relative paths including logs_subdir
@@ -980,6 +1036,7 @@ def main_yaml():
             pruning_strategy=eval_pruning_strategy,
             threshold=eval_threshold,
             threshold_schedule=eval_threshold_schedule,
+            num_steps_to_delay_pruning_for_naming=eval_num_steps_to_delay_pruning_for_naming if eval_type == 'similarity' else None
         )
         # Write script into the logs directory
         server_pbs_path = write_pbs_script(job_name_prefix, server_pbs_content, "server", workdir, LOGS_DIR_NAME)

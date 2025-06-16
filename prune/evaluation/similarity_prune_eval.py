@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SEED = 12
+DEFAULT_SEED = 0
 
 def setup_output_directories_prune(
         base_output_dir: str,
@@ -40,11 +40,12 @@ def setup_output_directories_prune(
         n_start: int,
         threshold: float,
         pruning_strategy: str,
-        threshold_schedule: str
+        threshold_schedule: str,
+        num_steps_to_delay_pruning: int
         ) -> Dict[str, str]:
     """Creates directories for storing similarity pruning evaluation results."""
     schedule_suffix = f"_{threshold_schedule}" if threshold_schedule != 'fixed' else ""
-    run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold:.2f}"
+    run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold:.2f}_delay{num_steps_to_delay_pruning}"
     model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
     chains_output_dir = os.path.join(model_dataset_dir, "individual_chains")
     summary_output_dir = os.path.join(model_dataset_dir, "summaries")
@@ -81,6 +82,8 @@ async def run_similarity_pruning_evaluation_async(
     threshold_schedule: str,
     vllm_url: str,
     base_output_dir: str,
+    seed_for_run: int, # The actual seed value to be used
+    num_steps_to_delay_pruning: int,
     start_iteration: int = 1,
     end_iteration: Optional[int] = None,
     specific_iterations: Optional[List[int]] = None
@@ -89,12 +92,13 @@ async def run_similarity_pruning_evaluation_async(
     # Determine the threshold to use for naming based on the schedule
     threshold_for_naming = 0.9 if threshold_schedule == 'annealing' else similarity_threshold
 
-    logger.info(f"Starting Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={threshold_for_naming:.2f}, Model={model_name}")
+    logger.info(f"Starting Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={threshold_for_naming:.2f}, DelaySteps={num_steps_to_delay_pruning}, Model={model_name}")
     paths = setup_output_directories_prune(
         base_output_dir, model_name, dataset_name, n_chains_start,
         threshold=threshold_for_naming,
         pruning_strategy=pruning_strategy,
-        threshold_schedule=threshold_schedule
+        threshold_schedule=threshold_schedule,
+        num_steps_to_delay_pruning=num_steps_to_delay_pruning
     )
 
     # Pre-load embedding model
@@ -221,7 +225,8 @@ async def run_similarity_pruning_evaluation_async(
             similarity_threshold=similarity_threshold,
             pruning_strategy=pruning_strategy,
             threshold_schedule=threshold_schedule,
-            dataset_name=dataset_name
+            dataset_name=dataset_name,
+            num_steps_to_delay_pruning=num_steps_to_delay_pruning
         )
         if result:
             results_list.append(result)
@@ -340,7 +345,8 @@ async def run_similarity_pruning_evaluation_async(
                 "threshold_schedule": threshold_schedule,
                 "pruning_strategy": pruning_strategy,
                 "iterations_selected_by": "specific_list" if specific_iterations is not None else "range",
-                "random_seed": DEFAULT_SEED if specific_iterations is not None and any(specific_iterations) and hasattr(random, 'getstate') else None
+                "random_seed": seed_for_run if specific_iterations is not None and any(specific_iterations) else None,
+                "num_steps_to_delay_pruning": num_steps_to_delay_pruning,
             },
             "metrics": {
                 "num_qns_processed": num_processed_questions,
@@ -435,7 +441,7 @@ def main():
     parser.add_argument('--output_dir', type=str, default=os.path.join(home, "slimsc/prune/results"),
                         help='Base directory to save evaluation results.')
     parser.add_argument('--num_qns', type=int, default=None,
-                        help=f'Number of random questions to run from the dataset. If specified, overrides --start, --end, and --iterations. Uses random seed {DEFAULT_SEED} for selection.')
+                        help=f'Number of random questions to run from the dataset. If specified, overrides --start, --end, and --iterations. Uses the provided --seed or internal default seed for selection.')
     parser.add_argument('--start', type=int, default=1,
                         help='Starting iteration (1-indexed). Used only if --num_qns and --iterations are not specified.')
     parser.add_argument('--end', type=int, default=None,
@@ -444,12 +450,20 @@ def main():
                         help='Comma-separated list of specific iterations (e.g., "1,5,10-12"). If specified, overrides --start and --end. Overridden by --num_qns.')
     parser.add_argument('--threshold_schedule', type=str, default='fixed', choices=['fixed', 'annealing'],
                     help='How the similarity threshold is determined: "fixed" uses the --threshold value, "annealing" decays it exponentially.')
+    parser.add_argument('--seed', type=int, default=None,
+                        help=f'Random seed for question selection (if --num_qns is used) and other random operations. Overrides internal default seed ({DEFAULT_SEED}).')
+    parser.add_argument('--num_steps_to_delay_pruning', type=int, default=20,
+                        help='Number of analysis steps to wait before pruning based on similarity can begin (default: 20).')
+    parser.add_argument('--batch_size', type=int, default=None)
+    parser.add_argument('--batch_num', type=int, default=None)
     args = parser.parse_args()
 
     # Validate threshold
     if not (0.0 < args.threshold <= 1.0):
         logger.error("[red]Similarity threshold must be between 0.0 (exclusive) and 1.0 (inclusive).[/red]")
         return
+    
+    actual_seed_for_run = args.seed if args.seed is not None else DEFAULT_SEED
 
     # Log if annealing is used, potentially mentioning the initial threshold from the formula
     if args.threshold_schedule == 'annealing':
@@ -483,12 +497,18 @@ def main():
             num_to_select = args.num_qns
 
         # Generate random selection
-        random.seed(DEFAULT_SEED) # Set the seed
+        random.seed(actual_seed_for_run)
         all_possible_iterations = list(range(1, total_examples + 1))
         # random.sample is generally preferred over shuffle[:n] for large lists if memory is a concern,
         # but shuffle is fine here. Let's use shuffle then slice/sort.
         random.shuffle(all_possible_iterations)
         specific_iterations_list = sorted(all_possible_iterations[:num_to_select])
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         logger.info(f"Selected {num_to_select} random questions using seed {DEFAULT_SEED}.")
         if num_to_select < 20: # Avoid printing huge lists
@@ -517,6 +537,12 @@ def main():
                     logger.warning(f"[yellow]Invalid iteration number format '{part}'. Skipping.[/yellow]")
 
         specific_iterations_list = sorted(list(set(specific_iterations_list))) # Remove duplicates and sort
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         if not specific_iterations_list:
              logger.error("[red]--iterations argument provided, but no valid iterations were parsed.[/red]")
@@ -545,7 +571,9 @@ def main():
             specific_iterations=specific_iterations_list,
             # Pass start/end as fallback if specific_iterations is None
             start_iteration=args.start,
-            end_iteration=args.end
+            end_iteration=args.end,
+            seed_for_run=actual_seed_for_run,
+            num_steps_to_delay_pruning=args.num_steps_to_delay_pruning
         ))
     except KeyboardInterrupt:
         logger.exception("[red]\nEvaluation interrupted by user.[/red]")

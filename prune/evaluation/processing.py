@@ -100,7 +100,7 @@ async def process_question_sc_stream(
             model_name=model_name,
             request_id=request_id,
             temperature=0.6,
-            max_tokens=39000,
+            max_tokens=32768,
             logprobs=None
         )
         # Create a task that consumes the generator and processes chunks
