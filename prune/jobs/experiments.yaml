@@ -89,3 +89,23 @@ jobs:
   #     dataset_name: "gpqa_diamond"
   #     start: 1 # Example using start/end instead of num_qns
   #     end: 3
+  - name_prefix: "final_r_n64_t0.95"
+    model_path: "<MODEL PATH>"
+    server:
+      tensor_parallel_size: 2
+      hours: 20
+      enable_reasoning: true
+      reasoning_parser: "deepseek_r1"
+    client:
+      hours: 20
+      gpus: 1
+      initial_delay_minutes: 8
+    eval:
+      type: "similarity"
+      n_start: 64
+      threshold: 0.95
+      pruning_strategy: "random"
+      model_name: "R1-Distill-Qwen-14B" # Unique name for outputs
+      model_identifier: "<MODEL PATH>"
+      tokenizer_path: "<MODEL PATH>"
+      dataset_name: "gpqa_diamond"

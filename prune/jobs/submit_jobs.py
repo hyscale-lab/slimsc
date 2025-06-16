@@ -20,12 +20,12 @@ DEFAULT_JOBID_FILE = ".last_client_jobid"
 LOGS_DIR_NAME = "logs"
 
 # Conda configuration (adjust if necessary)
-CONDA_INIT_PATH = "/home/users/ntu/{user}/miniconda3/etc/profile.d/conda.sh"
+CONDA_INIT_PATH = "$HOME/miniconda3/etc/profile.d/conda.sh"
 CONDA_ENV_NAME = "vllm"
 # PBS Project configuration (adjust if necessary)
 PBS_PROJECT_PREFIX = "personal"
 
-LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="/home/users/ntu/{user}/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
+LD_LIBRARY_EXPORT_COMMAND_TEMPLATE = 'export LD_LIBRARY_PATH="$HOME/miniconda3/envs/' + CONDA_ENV_NAME + '/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
 
 # --- Helper Functions ---
 
@@ -418,13 +418,14 @@ echo "Zipping folder $(basename "$RESULT_DIR") to $ZIP_NAME..."
 zip -r "$ZIP_NAME" "$(basename "$RESULT_DIR")"
 
 echo "Copying $ZIP_NAME to $TARGET_DIR/"
-cp "$ZIP_NAME" "$TARGET_DIR/" || {{ echo "Error: Copy failed"; exit 1; }}
-
-echo "[$(date)] Archive copy complete: $TARGET_DIR/$ZIP_NAME"
 
 module load git
 cd $TARGET_DIR/
-git add "$ZIP_NAME"
+GIT_LFS_SKIP_SMUDGE=1 git pull
+echo "[$(date)] Archive copy complete: $TARGET_DIR/$ZIP_NAME"
+cp "$ZIP_NAME" "$TARGET_DIR/" || {{ echo "Error: Copy failed"; exit 1; }}
+ZIP_FILE_NAME="$(basename "$ZIP_NAME")"
+git add "$ZIP_FILE_NAME"
 git commit -m "Add result zip for {model_name}/{dataset_name}/{run_name}"
 git push
 

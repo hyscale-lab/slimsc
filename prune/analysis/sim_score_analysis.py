@@ -30,7 +30,7 @@ except ImportError:
     )
      from slimsc.prune.utils import DatasetHandler
 
-TOKENIZER_PATH = "/home/users/ntu/chiraag0/scratch/r1-distill"
+TOKENIZER_PATH = os.path.join(os.environ['HOME'], "scratch/r1-distill")
 _tokenizer_cache_offline = [None, None, None, None, None]
 tokenizer_cache_max_size = 5
 
