@@ -10,8 +10,8 @@ import warnings
 # --- Configuration ---
 user = os.environ.get("USER", "default_user")
 BASE_RESULTS_PATH = Path("/home/users/ntu/{user}/slimsc/prune/results".format(user=user))
-MODELS_TO_PROCESS = ["QwQ-32B"]
-DATASETS_TO_PROCESS = ["aqua_rat", "aime", "gpqa_diamond"]
+MODELS_TO_PROCESS = ["R1-Distill-Qwen-14B", "QwQ-32B"]
+DATASETS_TO_PROCESS = ["hmmt"]
 OUTPUT_FILENAME = "precomputed_mean_gpu_cache_perc.txt"
 SUMMARIES_DIR = "summaries"
 SUMMARY_FILE_PATTERN = "question_*_summary.json"
