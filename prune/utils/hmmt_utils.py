@@ -2,8 +2,8 @@
 import re
 from datasets import load_dataset
 from typing import List, Dict, Tuple, Optional
-
 import logging
+import sympy
 
 logger = logging.getLogger(__name__)
 
@@ -50,90 +50,66 @@ def create_prompt_hmmt(example: Dict) -> Tuple[str, str]:
 
 
 def extract_answer_hmmt(content: Optional[str]) -> Optional[str]:
-    """Extracts the answer from the model's response using a brace-matching algorithm.
-    
-    This is robust for answers containing nested LaTeX like fractions.
-    
-    Args:
-        content (Optional[str]): The model's response text.
-        
-    Returns:
-        Optional[str]: The extracted answer, or None if no valid answer is found.
+    """
+    Extracts the answer(s) from the model's response.
+    Handles single or multiple \boxed{} expressions by finding all instances.
     """
     if content is None:
         logger.error("[red]HMMT extract_answer: Content is None.[/red]")
         return None
 
-    # Use a brace-matching algorithm to properly extract nested LaTeX from \boxed{}
-    if content:
-        matches = []
-        i = 0
-        while i < len(content):
-            boxed_start = content.find('\\boxed{', i)
-            if boxed_start == -1:
-                break
+    # Use a brace-matching algorithm to properly extract nested LaTeX from all \boxed{} instances
+    matches = []
+    i = 0
+    while i < len(content):
+        boxed_start = content.find('\\boxed{', i)
+        if boxed_start == -1:
+            break
 
-            # Start searching for the closing brace after the opening one
-            open_brace_pos = boxed_start + 7  # Length of '\boxed{'
-            brace_counter = 1
-            close_brace_pos = None
-            
-            for j in range(open_brace_pos, len(content)):
-                if content[j] == '{':
-                    brace_counter += 1
-                elif content[j] == '}':
-                    brace_counter -= 1
-                    if brace_counter == 0:
-                        close_brace_pos = j
-                        break
-            
-            if close_brace_pos is not None:
-                extracted = content[open_brace_pos:close_brace_pos]
-                matches.append(extracted)
-                i = close_brace_pos + 1
-            else:
-                i = boxed_start + 1
-    
-        if matches:
-            # Return the last match, which is most likely the final answer
-            return matches[-1].strip()
-    
-    # Fallback to simple regex if brace-matching fails
-    logger.warning(f"[yellow]Brace-matching for HMMT failed, trying regex fallbacks.[/yellow]")
-    
-    BOXED_PATTERN = r'\\boxed\{([^{}]+)\}'
-    match = re.search(BOXED_PATTERN, content)
-    if match:
-        return match.group(1).strip()
+        open_brace_pos = boxed_start + len('\\boxed{')
+        brace_counter = 1
+        close_brace_pos = -1
+        
+        for j in range(open_brace_pos, len(content)):
+            if content[j] == '{':
+                brace_counter += 1
+            elif content[j] == '}':
+                brace_counter -= 1
+                if brace_counter == 0:
+                    close_brace_pos = j
+                    break
+        
+        if close_brace_pos != -1:
+            extracted = content[open_brace_pos:close_brace_pos].strip()
+            matches.append(extracted)
+            i = close_brace_pos + 1
+        else:
+            # Avoid infinite loop if a closing brace is not found
+            i = boxed_start + 1
 
-    logger.error(f"[red]No \\boxed{{}} answer found in content for HMMT.[/red]")
-    return None
+    if not matches:
+        logger.error(f"[red]No \\boxed{{}} answer found in content for HMMT.[/red]")
+        return None
+    
+    # Join multiple answers with a comma, return single answer as is.
+    return ", ".join(matches)
 
 
 def normalize_latex_expression(latex_expr: str) -> str:
-    """Normalizes LaTeX expressions to enable fair comparison regardless of styling.
-    
-    This function is a general-purpose utility and remains unchanged from the original.
-    
-    Args:
-        latex_expr (str): LaTeX expression to normalize.
-        
-    Returns:
-        str: Normalized LaTeX expression.
+    """
+    Normalizes LaTeX expressions to enable fair comparison regardless of styling.
     """
     if not latex_expr:
         return ""
     
-    # Basic normalization: strip whitespace and convert to lowercase
-    normalized = latex_expr.strip().lower()
+    # Basic normalization: strip whitespace
+    normalized = latex_expr.strip()
 
     # Remove comma separators in numbers (e.g., 10,080 -> 10080)
-    # This regex avoids changing commas in sets or coordinates.
     normalized = re.sub(r'(?<=\d),(?=\d{3})', '', normalized)
     
     # Remove LaTeX-specific spacing commands
     normalized = re.sub(r'\\,|\\:|\\;|\\!|\\quad|\\qquad|~', '', normalized)
-    normalized = re.sub(r'\s+', '', normalized) # Remove all whitespace
     
     # Standardize fraction commands
     normalized = re.sub(r'\\dfrac', r'\\frac', normalized)
@@ -156,42 +132,83 @@ def normalize_latex_expression(latex_expr: str) -> str:
     
     # Normalize multiplication symbols
     normalized = re.sub(r'\\cdot', r'\\times', normalized)
+    
+    # Remove all whitespace
+    normalized = re.sub(r'\s+', '', normalized)
 
     return normalized
 
 
-def calculate_score_hmmt(extracted_answer: Optional[str], correct_answer: str) -> int:
-    """Calculates the score for a HMMT problem (1 for correct, 0 for incorrect).
-    
-    Args:
-        extracted_answer (Optional[str]): The extracted answer from the model's response.
-        correct_answer (str): The correct answer for the problem.
+def to_sympy(latex_expr: str) -> Optional[sympy.Expr]:
+    """Convert a LaTeX expression to a sympy expression."""
+    try:
+        parsable_str = latex_expr
+
+        # Iteratively apply replacements for nested LaTeX functions.
+        for _ in range(10):  # Limit iterations to prevent infinite loops
+            original_str = parsable_str
+            parsable_str = re.sub(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', r'(\1)/(\2)', parsable_str)
+            parsable_str = re.sub(r'\\sqrt\{([^{}]+)\}', r'sqrt(\1)', parsable_str)
+            if parsable_str == original_str:
+                break
+        else:
+            logger.warning(f"Expression might not be fully parsed: {latex_expr}")
+
+        parsable_str = re.sub(r'\^\{?([^{}]+)\}?', r'**(\1)', parsable_str)
+        parsable_str = re.sub(r'\\cdot|\\times', '*', parsable_str)
+        parsable_str = re.sub(r'\\pi', 'pi', parsable_str)
         
-    Returns:
-        int: 1 if the answers match after normalization, 0 otherwise.
+        parsable_str = parsable_str.replace('{', '').replace('}', '')
+
+        parsable_str = re.sub(r'(\d)([a-zA-Z(])', r'\1*\2', parsable_str)
+        parsable_str = re.sub(r'(\))([a-zA-Z(])', r'\1*\2', parsable_str)
+
+        expr = sympy.sympify(parsable_str, locals={"sqrt": sympy.sqrt, "pi": sympy.pi})
+        return expr
+    except (sympy.SympifyError, SyntaxError, TypeError, Exception) as e:
+        logger.debug(f"Failed to convert '{latex_expr}' (as '{parsable_str}') to sympy expression: {e}")
+        return None
+
+def is_equivalent(expr1: str, expr2: str) -> bool:
+    """Check if two LaTeX expressions are mathematically equivalent."""
+    norm_expr1 = normalize_latex_expression(expr1)
+    norm_expr2 = normalize_latex_expression(expr2)
+
+    if ',' in norm_expr1 or ',' in norm_expr2:
+        parts1 = sorted([p.strip() for p in norm_expr1.split(',')])
+        parts2 = sorted([p.strip() for p in norm_expr2.split(',')])
+        if len(parts1) != len(parts2):
+            return False
+        return all(is_equivalent(p1, p2) for p1, p2 in zip(parts1, parts2))
+
+    if norm_expr1 == norm_expr2:
+        return True
+
+    sympy_expr1 = to_sympy(norm_expr1)
+    sympy_expr2 = to_sympy(norm_expr2)
+
+    if sympy_expr1 is not None and sympy_expr2 is not None:
+        try:
+            # Expand and simplify the difference. If it's zero, they are equivalent.
+            if sympy.simplify(sympy.expand(sympy_expr1) - sympy.expand(sympy_expr2)) == 0:
+                return True
+        except (TypeError, AttributeError, Exception) as e:
+            logger.error(f"Error comparing sympy expressions '{sympy_expr1}' and '{sympy_expr2}': {e}")
+    
+    return False
+
+def calculate_score_hmmt(extracted_answer: Optional[str], correct_answer: str) -> int:
+    """
+    Calculates the score for a HMMT problem (1 for correct, 0 for incorrect)
+    using mathematical equivalence.
     """
     if extracted_answer is None:
         logger.error(f"[red]No valid HMMT answer found in extracted_answer.[/red]")
         return 0
         
-    # Normalize both answers for a fair comparison
-    extracted_norm = normalize_latex_expression(extracted_answer)
-    correct_norm = normalize_latex_expression(correct_answer)
-    
-    # Direct match check
-    if extracted_norm == correct_norm:
+    if is_equivalent(extracted_answer, correct_answer):
         return 1
-    
-    # Handle answers with multiple solutions (e.g., from quadratic equations)
-    # The order of solutions should not matter.
-    if ',' in correct_norm and ',' in extracted_norm:
-        # Split by comma, strip whitespace from each part, and sort
-        correct_parts = sorted([p.strip() for p in correct_norm.split(',')])
-        extracted_parts = sorted([p.strip() for p in extracted_norm.split(',')])
-        if correct_parts == extracted_parts:
-            return 1
             
-    # If all checks fail, the answers do not match
     return 0
 
 
@@ -218,7 +235,6 @@ if __name__ == "__main__":
             raise ValueError("No examples loaded.")
     except Exception as e:
         print(f"Dataset loading failed: {e}")
-        # Create a dummy sample for continued testing
         sample_problem = {
             "question": "Find all real solutions to $x^2+x-4=0$.",
             "answer": "\\frac{-1+\\sqrt{17}}{2}, \\frac{-1-\\sqrt{17}}{2}"
@@ -239,6 +255,8 @@ if __name__ == "__main__":
         "So we get \\boxed{2^{25} \\cdot 26!}",
         "So the answer must be \\boxed{20}.",
         "Invalid response",
+        r"The solutions are \boxed{6} \quad \text{and} \quad \boxed{-9}",
+        r"The roots are \boxed{\dfrac{-1 + \sqrt{17}}{2}} \quad \text{and} \quad \boxed{\dfrac{-1 - \sqrt{17}}{2}}",
     ]
     
     for i, response in enumerate(test_responses):
@@ -250,19 +268,26 @@ if __name__ == "__main__":
     # Test 4: Scoring and normalization
     print("\n=== Testing HMMT Scoring & Normalization ===")
     test_pairs = [
-        # Correct cases
+        # Normalization cases
         ("\\frac{-1+\\sqrt{17}}{2}", "\\dfrac{-1+\\sqrt{17}}{2}", 1),
         ("1 - \\frac{2}{\\pi}", "1-\\frac{2}{\\pi}", 1),
-        ("2^{25} \\cdot 26!", "2^{25} \\times 26!", 1),
+        ("2^{25} \\cdot 26!}", "2^{25} \\times 26!", 1),
         # Order-agnostic multiple answers
         ("\\frac{-1-\\sqrt{17}}{2}, \\frac{-1+\\sqrt{17}}{2}", "\\frac{-1+\\sqrt{17}}{2},\\frac{-1-\\sqrt{17}}{2}", 1),
+        # Sympy equivalence
+        ("x*y", "y*x", 1),
+        ("1/2", "0.5", 1),
+        ("\\frac{\\sqrt{4}}{2}", "1", 1),
+        # Multiple boxed answers equivalence
+        (r"\dfrac{-1 + \sqrt{17}}{2}, \dfrac{-1 - \sqrt{17}}{2}", "\\frac{-1-\\sqrt{17}}{2}, \\frac{-1+\\sqrt{17}}{2}", 1),
+        ("6, -9", "-9, 6", 1),
         # Incorrect case
         ("20", "21", 0)
     ]
     
     for i, (ans1, ans2, expected_score) in enumerate(test_pairs):
-        score = calculate_score_hmmt(ans1, ans2)
         print(f"\nTest {i+1}: Comparing '{ans1}' and '{ans2}'")
+        score = calculate_score_hmmt(ans1, ans2)
         print(f"Calculated Score: {score}, Expected: {expected_score}")
         assert score == expected_score, f"Test failed for pair {i+1}"
         print("✓ Test Passed")
