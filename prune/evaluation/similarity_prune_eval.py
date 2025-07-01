@@ -428,8 +428,11 @@ def main():
     parser.add_argument('--n_start', type=int, required=True, help='Initial number of chains (N_start).')
     parser.add_argument('--threshold', type=float, required=True,
                         help='Cosine similarity threshold for pruning (e.g., 0.85).')
-    parser.add_argument('--pruning_strategy', type=str, required=True, choices=['fewest_thoughts', 'diversity', 'most_thoughts', 'random'],
-                        help='Strategy to use for pruning decision: "fewest_thoughts", "most_thoughts", "diversity", or "random".')
+    parser.add_argument('--pruning_strategy', type=str, required=True, 
+                        choices=['fewest_thoughts', 'diversity', 'most_thoughts', 'random', 'prune_farthest', 'random_after_delay'],
+                        help='Strategy for pruning: "fewest_thoughts", "diversity", "most_thoughts", "random" '
+                             '(for similar pairs), "prune_farthest" (prunes one from the most dissimilar pair), '
+                             'or "random_after_delay" (randomly prunes one chain per interval after a delay).')
     parser.add_argument('--vllm_url', type=str, default="http://localhost:8000",
                         help='URL of the vLLM server OpenAI-compatible endpoint.')
     parser.add_argument('--model_name', type=str, required=True,
@@ -459,11 +462,12 @@ def main():
     args = parser.parse_args()
 
     # Validate threshold
-    if not (0.0 < args.threshold <= 1.0):
-        logger.error("[red]Similarity threshold must be between 0.0 (exclusive) and 1.0 (inclusive).[/red]")
+    if not (0.0 <= args.threshold <= 1.0):
+        logger.error("[red]Similarity threshold must be between 0.0 (inclusive) and 1.0 (inclusive).[/red]")
         return
     
     actual_seed_for_run = args.seed if args.seed is not None else DEFAULT_SEED
+    random.seed(actual_seed_for_run)
 
     # Log if annealing is used, potentially mentioning the initial threshold from the formula
     if args.threshold_schedule == 'annealing':
@@ -473,6 +477,9 @@ def main():
         threshold_for_naming = 0.9
     else:
         threshold_for_naming = args.threshold
+
+    if args.pruning_strategy == 'random_after_delay':
+        logger.info(f"[yellow]Using 'random_after_delay' strategy. The --threshold value ({args.threshold}) will be ignored.[/yellow]")
 
     specific_iterations_list: Optional[List[int]] = None
 
