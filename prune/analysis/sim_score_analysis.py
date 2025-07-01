@@ -156,6 +156,7 @@ def process_single_question_offline_sync(
     token_step_size: int,
     worker_idx: int,
     chain_extracted_answers: Dict[str, str],
+    similarity_mode: str,
 ) -> List[float]:
     """
     Process a single question offline and return a list of similarity scores.
@@ -253,7 +254,10 @@ def process_single_question_offline_sync(
             can_potentially_prune = (thought_idx >= 2 and index_manager.get_num_embeddings() > 0)
 
             if can_potentially_prune:
-                neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
+                if similarity_mode == 'similarity':
+                    neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
+                else:
+                    neighbor_result = index_manager.search_farthest_neighbor(embedding, chain_id)
                 if neighbor_result:
                     sim_score, neighbor_chain_id, _, _ = neighbor_result
                     identifier = [chain_id, neighbor_chain_id]
@@ -363,7 +367,8 @@ def process_question_worker(chosen_question_iterations, worker_idx, sampled_df, 
             chain_correctness=chain_correctness, n_chains=n_chains_sc,
             token_step_size=args.token_step_size,
             worker_idx=worker_idx,
-            chain_extracted_answers=individual_chain_answers
+            chain_extracted_answers=individual_chain_answers,
+            similarity_mode=args.similarity_mode
         )
         worker_results.append(question_results)
         per_question_results[str(iteration_num)] = question_results
@@ -1113,6 +1118,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=7, help="Random seed for sampling questions.")
     parser.add_argument('--token_step_size', type=int, default=100, help="Token interval for pruning simulation steps.")
     parser.add_argument('--output_dir', type=str, default='sim_score_results', help="Directory to save similarity score results.")
+    parser.add_argument('--similarity_mode', type=str, default='similarity', help="Similarity mode (similarity or dissimilarity).")
 
     cli_args = parser.parse_args()
 
