@@ -207,9 +207,9 @@ async def process_question_similarity_prune(
         max_analysis_steps: Maximum number of analysis intervals
     """
     # Validate strategy
-    if pruning_strategy not in ["fewest_thoughts", "most_thoughts", "diversity", "random"]:
-        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be 'fewest_thoughts', 'most_thoughts', 'diversity' or 'random'.[/red]")
-        # You might want to raise an error or return None here depending on desired behavior
+    valid_strategies = ["fewest_thoughts", "most_thoughts", "diversity", "random", "prune_farthest", "random_after_delay"]
+    if pruning_strategy not in valid_strategies:
+        logger.error(f"[red]Invalid pruning strategy: {pruning_strategy}. Must be one of {valid_strategies}.[/red]")
         raise ValueError(f"Invalid pruning strategy: {pruning_strategy}")
 
     logger.info(f"--- Processing Question {iteration} (N={n_chains_start}, SimPrune-{pruning_strategy} Thresh={similarity_threshold}) ---")
@@ -269,7 +269,9 @@ async def process_question_similarity_prune(
 
     try:
         embedding_model = get_embedding_model()
-        index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension())
+        search_mode = 'dissimilarity' if pruning_strategy == 'prune_farthest' else 'similarity'
+        dim = embedding_model.get_sentence_embedding_dimension()
+        index_manager = FaissIndexManager(dimension=dim, search_mode=search_mode)
     except Exception as e:
         logger.exception(f"[red]Failed init embedding/FAISS[/red]");
         # Save failure summary for this question
@@ -329,115 +331,136 @@ async def process_question_similarity_prune(
         analysis_step += 1
         logger.info(f"[bold cyan][Q{iteration} Analysis Interval {analysis_step}] Checking chains...[/bold cyan]")
 
-        if threshold_schedule == "annealing":
-            current_dynamic_threshold = 0.9 * np.exp((analysis_step - 1) * -0.02197)
-            # Ensure threshold doesn't go below zero due to extreme steps/float issues
-            threshold_to_use_this_step = max(0.1, current_dynamic_threshold)
-            logger.debug(f"[Annealing Schedule] Step {analysis_step}: Using dynamic threshold {threshold_to_use_this_step:.4f}")
-        else: # Default 'fixed' schedule
-            threshold_to_use_this_step = similarity_threshold # Use the fixed threshold passed in
-
-        # --- Identify chains needing analysis/pruning checks ---
-        # These are chains that are still marked active AND whose worker isn't finished yet,
-        # AND are still in the reasoning phase.
-        chains_eligible_for_pruning_check = {
-            cid: state for cid, state in active_chains.items()
-            if state["is_active"] and not state["finished"] and not state["reasoning_complete"]
-        }
-
         # --- OPTIMIZATION CHECK ---
-        # Stop analysis loop early if:
-        # 1. Only one chain is left that is eligible for pruning.
-        # 2. OR, if ALL chains that are still running (not finished) have completed their reasoning phase.
-        running_chains = {cid: state for cid, state in active_chains.items() if not state["finished"]}
-        all_running_chains_reasoning_complete = all(state.get("reasoning_complete", False) for state in running_chains.values()) if running_chains else True # True if no running chains
-
-        if len(chains_eligible_for_pruning_check) <= 1 or all_running_chains_reasoning_complete:
-            status_msg = ""
-            if len(chains_eligible_for_pruning_check) <= 1:
-                 status_msg += f"Only {len(chains_eligible_for_pruning_check)} chain(s) left eligible for pruning."
-            if all_running_chains_reasoning_complete:
-                 if status_msg: 
-                    status_msg += " AND All remaining running chains completed reasoning."
-
-            logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] {status_msg} Halting periodic analysis for pruning decisions.")
-            # Break analysis loop, but still need to wait for remaining tasks to truly finish
+        # Stop analysis loop early if only one active chain is left.
+        # This check is now simpler and more general for all strategies.
+        num_active_chains = sum(1 for state in active_chains.values() if state["is_active"] and not state["finished"])
+        if num_active_chains <= 1:
+            logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] Only {num_active_chains} chain(s) left active. Halting periodic analysis.")
             break
 
         # If no chains are left in any state (all finished), break
-        if not running_chains: # This check is slightly redundant with the while loop condition but clearer
+        if not any(not state["finished"] for state in active_chains.values()):
             logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] No running chains remain. Stopping analysis.")
             break
-
-        # --- Continue with analysis/pruning if conditions met ---
-        all_new_thoughts_data: List[Tuple[str, int, str]] = [] # (chain_id, thought_idx, text)
-
-        # Only analyze chains that are still active and in the reasoning phase
-        for chain_id, chain_state in chains_eligible_for_pruning_check.items():
-             new_segments, updated_boundaries = find_newly_completed_thoughts(
-                chain_state["full_text"],
-                chain_state["processed_boundaries"],
-                tokenizer_path,
-                target_phrases=TARGET_PHRASES, # Corrected variable name
-                min_segment_tokens=MIN_SEGMENT_TOKENS
-             )
-             if new_segments:
-                logger.debug(f"Chain {chain_id}: Found {len(new_segments)} new completed thoughts in interval {analysis_step}.")
-                for start_idx, end_idx, text in new_segments:
-                    thought_idx = chain_state["completed_thought_count"]
-                    all_new_thoughts_data.append((chain_id, thought_idx, text))
-                    chain_state["completed_thought_count"] += 1
-                chain_state["processed_boundaries"] = updated_boundaries
-
-        # --- Embed new thoughts AND Store Them ---
-        newly_completed_thoughts_for_faiss: List[Tuple[str, int, str, np.ndarray]] = []
-        if all_new_thoughts_data:
-            texts_only = [t[2] for t in all_new_thoughts_data]
-            embeddings = embed_segments(texts_only)
-            if embeddings is None or len(embeddings) != len(all_new_thoughts_data):
-                logger.error("[red]Embedding failed or returned incorrect number. Skipping analysis this interval.[/red]")
-            else:
-                embedding_idx = 0
-                for chain_id, thought_idx, text in all_new_thoughts_data:
-                    # Ensure chain still exists and is active before appending
-                    if chain_id in active_chains and active_chains[chain_id]["is_active"]:
-                         current_embedding = embeddings[embedding_idx]
-                         # STORE the embedding in the chain's state
-                         active_chains[chain_id]["embeddings"].append(current_embedding)
-                         # Prepare data needed for FAISS check/add
-                         newly_completed_thoughts_for_faiss.append((chain_id, thought_idx, text, current_embedding))
-                    embedding_idx += 1
-
-        # --- Check Similarity and Prune ---
-        chains_to_prune_this_interval: Set[str] = set()
-        embeddings_to_add_to_faiss: List[Tuple[np.ndarray, str, int, str]] = []
-        # Store pruning step info temporarily AND who pruned whom
-        # Format: {loser_id: (analysis_step, winner_id)}
-        pruning_info_this_interval: Dict[str, Tuple[int, str]] = {}
-
-        # The FAISS index should only contain embeddings from chains that are currently active
-        # We don't need to rebuild the index, but the search must filter results
-        # based on the current `active_chains` status before comparing similarity scores.
-        # The `FaissIndexManager.search_nearest_neighbor` needs to be aware of which chains are active.
-        # We remove embeddings for inactive chains from the FAISS index itself using remove_ids.
-        # So, we just need to ensure we only search against embeddings that are still logically in the index (represented in metadata_map).
-        # The search method already checks `if faiss_id in self.metadata_map`.
         
-        num_chains_in_index = index_manager.get_num_active_chains() # Active chains in FAISS metadata
+        # --- MODIFICATION: Diverge logic based on pruning strategy ---
+        chains_to_prune_this_interval: Set[str] = set()
+        pruning_info_this_interval: Dict[str, Tuple[int, str]] = {}
+        
+        if pruning_strategy == 'random_after_delay':
+            # --- New Strategy: Randomly prune one active chain after delay ---
+            if analysis_step > num_steps_to_delay_pruning:
+                eligible_for_random_prune = [
+                    cid for cid, state in active_chains.items()
+                    if state["is_active"] and not state["finished"]
+                ]
+                
+                if len(eligible_for_random_prune) > 1:
+                    loser_id = random.choice(eligible_for_random_prune)
+                    chains_to_prune_this_interval.add(loser_id)
+                    
+                    # Set info for logging and final summary
+                    pruning_info_this_interval[loser_id] = (analysis_step, "random_system")
+                    if loser_id in active_chains:
+                        active_chains[loser_id]["pruned_by"] = "random_system"
 
-        # Use the newly_completed_thoughts_for_faiss list which contains the actual embeddings
-        if newly_completed_thoughts_for_faiss:
-            logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_faiss)} new thoughts using '{pruning_strategy}' strategy.")
+                    logger.warning(
+                        f"[bold yellow]RANDOM PRUNING (after delay)[/bold yellow] "
+                        f"Step {analysis_step} > {num_steps_to_delay_pruning}. "
+                        f"Randomly chose to prune: {loser_id}"
+                    )
+            else:
+                logger.info(f"[Q{iteration} Int {analysis_step}] Delay step <= {num_steps_to_delay_pruning}. Skipping random pruning.")
+        
+        else:
+            # --- Existing similarity-based strategies ---
+            if threshold_schedule == "annealing":
+                current_dynamic_threshold = 0.9 * np.exp((analysis_step - 1) * -0.02197)
+                threshold_to_use_this_step = max(0.1, current_dynamic_threshold)
+                logger.debug(f"[Annealing Schedule] Step {analysis_step}: Using dynamic threshold {threshold_to_use_this_step:.4f}")
+            else:
+                threshold_to_use_this_step = similarity_threshold
 
-            # Iterate through thoughts that were successfully embedded
-            for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
-                # Double-check eligibility (might have been pruned already in this loop by another thought)
-                if chain_id not in chains_to_prune_this_interval:
-                    chain_state_for_faiss_add = active_chains.get(chain_id)
-                    if chain_state_for_faiss_add and \
-                       chain_state_for_faiss_add.get("is_active") and \
-                       not chain_state_for_faiss_add.get("finished"):
-                        index_manager.add_embedding(embedding, chain_id, thought_idx, text)
+            chains_eligible_for_pruning_check = {
+                cid: state for cid, state in active_chains.items()
+                if state["is_active"] and not state["finished"] and not state["reasoning_complete"]
+            }
+            
+            # Additional check: if all remaining chains are out of reasoning phase, stop pruning checks
+            if not chains_eligible_for_pruning_check:
+                logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] No chains eligible for similarity pruning (all completed reasoning or finished). Halting analysis.")
+                break
+
+            all_new_thoughts_data: List[Tuple[str, int, str]] = []
+            for chain_id, chain_state in chains_eligible_for_pruning_check.items():
+                new_segments, updated_boundaries = find_newly_completed_thoughts(
+                    chain_state["full_text"],
+                    chain_state["processed_boundaries"],
+                    tokenizer_path,
+                    target_phrases=TARGET_PHRASES,
+                    min_segment_tokens=MIN_SEGMENT_TOKENS
+                )
+                if new_segments:
+                    logger.debug(f"Chain {chain_id}: Found {len(new_segments)} new thoughts in interval {analysis_step}.")
+                    for start_idx, end_idx, text in new_segments:
+                        thought_idx = chain_state["completed_thought_count"]
+                        all_new_thoughts_data.append((chain_id, thought_idx, text))
+                        chain_state["completed_thought_count"] += 1
+                    chain_state["processed_boundaries"] = updated_boundaries
+
+            newly_completed_thoughts_for_faiss: List[Tuple[str, int, str, np.ndarray]] = []
+            if all_new_thoughts_data:
+                texts_only = [t[2] for t in all_new_thoughts_data]
+                embeddings = embed_segments(texts_only)
+                if embeddings is not None and len(embeddings) == len(all_new_thoughts_data):
+                    for i, (chain_id, thought_idx, text) in enumerate(all_new_thoughts_data):
+                        if chain_id in active_chains and active_chains[chain_id]["is_active"]:
+                            current_embedding = embeddings[i]
+                            active_chains[chain_id]["embeddings"].append(current_embedding)
+                            newly_completed_thoughts_for_faiss.append((chain_id, thought_idx, text, current_embedding))
+                else:
+                    logger.error("[red]Embedding failed or returned incorrect number. Skipping analysis this interval.[/red]")
+
+            embeddings_to_add_to_faiss: List[Tuple[np.ndarray, str, int, str]] = []
+            num_chains_in_index = index_manager.get_num_active_chains()
+
+            # (The existing pruning logic for prune_farthest, random, diversity, etc. remains here)
+            # This logic block correctly populates `chains_to_prune_this_interval` and `pruning_info_this_interval`
+            # For brevity, this large block is represented by the original code. The key is that it's now in an 'else' branch.
+            # --- START of original similarity-based pruning logic ---
+            if newly_completed_thoughts_for_faiss and pruning_strategy == 'prune_farthest':
+                logger.info(f"[Q{iteration} Int {analysis_step}] Finding most dissimilar thought using 'prune_farthest' strategy.")
+                for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
+                    index_manager.add_embedding(embedding, chain_id, thought_idx, text)
+                max_dist_found = -1.0
+                most_dissimilar_pair = None
+                for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
+                    neighbor_result = index_manager.search_farthest_neighbor(embedding, chain_id)
+                    if neighbor_result:
+                        dist, neighbor_chain_id, _, _ = neighbor_result
+                        if dist > max_dist_found:
+                            max_dist_found = dist
+                            most_dissimilar_pair = (chain_id, neighbor_chain_id)
+                if most_dissimilar_pair:
+                    loser_candidate_A, loser_candidate_B = most_dissimilar_pair
+                    potential_loser_id = random.choice([loser_candidate_A, loser_candidate_B])
+                    actual_winner_id = loser_candidate_B if potential_loser_id == loser_candidate_A else loser_candidate_A
+                    logger.warning(f"[bold yellow]PRUNING CONDITION (FARTHEST)![/bold yellow] Farthest pair: {loser_candidate_A} and {loser_candidate_B} (Dist={max_dist_found:.4f}). Randomly chose to prune: {potential_loser_id}")
+                    num_active_before_this_prune = sum(1 for st in active_chains.values() if st['is_active'])
+                    if num_active_before_this_prune > 1:
+                        chains_to_prune_this_interval.add(potential_loser_id)
+                        pruning_info_this_interval[potential_loser_id] = (analysis_step, actual_winner_id)
+                    else:
+                        logger.warning(f"--> Skipped pruning Chain {potential_loser_id}. Would leave 0 active chains.")
+
+            elif newly_completed_thoughts_for_faiss:
+                logger.info(f"[Q{iteration} Int {analysis_step}] Checking similarity for {len(newly_completed_thoughts_for_faiss)} new thoughts using '{pruning_strategy}' strategy.")
+                for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
+                    if chain_id not in chains_to_prune_this_interval:
+                        chain_state_for_faiss_add = active_chains.get(chain_id)
+                        if chain_state_for_faiss_add and chain_state_for_faiss_add.get("is_active") and not chain_state_for_faiss_add.get("finished"):
+                            index_manager.add_embedding(embedding, chain_id, thought_idx, text)
 
                 # Pruning check conditions:
                 # 1. Thought index is > 20 (allow first 20 thoughts)
@@ -595,92 +618,49 @@ async def process_question_similarity_prune(
         # --- Apply Pruning and Update FAISS ---
         if chains_to_prune_this_interval:
             for prune_id in chains_to_prune_this_interval:
-                # Only prune if it hasn't already been marked inactive (e.g. due to error or earlier prune)
                 if active_chains.get(prune_id, {}).get("is_active", False):
-                    logger.debug(f"Marking chain {prune_id} as inactive/pruned due to similarity.")
+                    logger.debug(f"Marking chain {prune_id} as inactive/pruned.")
                     active_chains[prune_id]["is_active"] = False
-                    # We do not mark 'finished' here. 'finished' means the worker task is done.
-                    # We need to cancel the worker task, which will set 'finished' in its finally block.
-                    # We also set the finish_reason here for clarity in logs/summary
-                    active_chains[prune_id]["finish_reason"] = active_chains[prune_id].get("finish_reason", "pruned_similarity")
+                    active_chains[prune_id]["finish_reason"] = "pruned"
 
-                    # Store pruning step and who pruned it, if info available
                     prune_info = pruning_info_this_interval.get(prune_id)
                     if prune_info:
                          active_chains[prune_id]["pruned_at_step"] = prune_info[0]
 
-                    # Cancel the worker task associated with the pruned chain
                     task_to_cancel = consumer_tasks.get(prune_id)
                     if task_to_cancel and not task_to_cancel.done():
                         logger.debug(f"Cancelling worker task for pruned chain {prune_id}")
                         task_to_cancel.cancel()
-                    elif not task_to_cancel:
-                        logger.warning(f"Worker task for chain {prune_id} not found or already done when trying to cancel.")
 
-                    # Remove from FAISS index immediately to prevent it being a neighbor for future searches
-                    index_manager.remove_chain_embeddings(prune_id)
+                    if pruning_strategy != 'random_after_delay':
+                        index_manager.remove_chain_embeddings(prune_id)
                 else:
-                    logger.debug(f"Chain {prune_id} was marked for pruning but was already inactive. Skipping cancellation/removal.")
+                    logger.debug(f"Chain {prune_id} was marked for pruning but was already inactive.")
 
-
-        # Add embeddings for chains that were not pruned in this interval
-        # And ensure these chains are still active and not finished
-        valid_embeddings_to_add = [
-             (emb, cid, tidx, txt) for emb, cid, tidx, txt in embeddings_to_add_to_faiss
-             if active_chains.get(cid, {}).get("is_active", False) and not active_chains.get(cid, {}).get("finished", True)
-        ]
-        for emb, cid, tidx, txt in valid_embeddings_to_add:
-            index_manager.add_embedding(emb, cid, tidx, txt)
-            # logger.debug(f"Added embedding for Chain {cid} (T{tidx}) to FAISS.") # Very verbose
-
-        # Update the number of chains in the index count after pruning and adding
-        num_chains_in_index = index_manager.get_num_active_chains()
-        logger.debug(f"FAISS index now contains embeddings from {num_chains_in_index} chains.")
-
-         # --- Wait for next interval or task completion ---
-        # Wait until at least one task finishes OR the timeout occurs.
-        # This prevents busy-waiting if no new text comes in for a while.
-        # It also ensures we don't miss tasks finishing naturally.
-        all_tasks_done_event.clear() # Clear the event before waiting
-
-        # We need to wait for tasks that were active at the start of the interval and are still running.
-        # It's okay if new tasks become done during the wait. The event mechanism handles this.
+        # --- Wait for next interval or task completion ---
+        all_tasks_done_event.clear()
         tasks_currently_running = [t for t in consumer_tasks.values() if not t.done()]
-
         if not tasks_currently_running:
             logger.info("No running consumer tasks left. Exiting analysis loop.")
-            break # All tasks are finished, exit the analysis loop
-
+            break
         try:
-            # Wait for any of the currently running tasks to complete or for the timeout
-            # The all_tasks_done_event will be set by any worker completing.
-            # Waiting on the event itself is sufficient to wake up when at least one task finishes.
-            # Using asyncio.wait_for with event.wait() is the standard way to do this with a timeout.
             await asyncio.wait_for(all_tasks_done_event.wait(), timeout=ANALYSIS_INTERVAL_SECONDS)
             logger.debug(f"Woke up from wait: Event was set (a task finished).")
         except asyncio.TimeoutError:
             logger.debug(f"Woke up from wait: Timeout reached.")
-            # If timeout, clear event again before next wait (handled by loop start) and continue analysis
-            pass # Just continue the loop to the next analysis step
+            pass
         except asyncio.CancelledError:
             logger.info("Analysis loop wait was cancelled.")
-            break # Exit loop if analysis itself is cancelled (e.g., Ctrl+C)
+            break
 
-
-    # --- Analysis loop finished (either by max_steps, no chains left, or only one left) ---
+    # --- Analysis loop finished ---
     logger.info(f"Analysis loop concluded after {analysis_step} intervals.")
 
     # --- Ensure all tasks are truly finished ---
-    # This is crucial. We need to wait for all consumer tasks to finish their execution,
-    # including the ones that were cancelled. Their finally blocks need to run to set `finished=True`.
     logger.info(f"Waiting for all {len(consumer_tasks)} worker tasks to finalize...")
     try:
-        # Wait for all tasks to be done. return_exceptions=True ensures we don't crash if one task had an unhandled error.
         await asyncio.gather(*consumer_tasks.values(), return_exceptions=True)
         logger.info("All worker tasks finalized.")
-    except asyncio.CancelledError:
-        # If this gather is cancelled, something higher up is cancelling.
-        logger.warning("[yellow]Final worker task gather was cancelled.[/yellow]")
     except Exception as e:
         logger.exception("[red]Error during final worker task gather.[/red]")
 
