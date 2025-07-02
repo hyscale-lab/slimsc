@@ -162,7 +162,7 @@ def process_single_question_offline_sync(
     Process a single question offline and return a list of similarity scores.
     """
     embedding_model = get_embedding_model_optimized(model_idx=worker_idx)
-    index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension())
+    index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension(), search_mode=similarity_mode)
     chain_states = {}
     max_tokens_across_all_chains = 0
 
@@ -390,7 +390,7 @@ def convert_numpy_types(obj):
 
 def main_offline_analysis(args):
     if args.similarity_mode == 'dissimilarity':
-        thresholds = np.arange(0.02, 0.2 + 0.02, 0.02)  # Stop at 0.2 inclusive
+        thresholds = np.arange(0.05, 0.5 + 0.05, 0.05)  # Stop at 0.2 inclusive
     else:
         thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
 
