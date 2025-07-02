@@ -252,6 +252,7 @@ def create_server_pbs_script(
 
 
 def create_client_pbs_script(
+    sif_image_path: str,
     job_name_prefix: str,
     server_job_id: str,
     relative_server_ip_file: str, # Relative to $PBS_O_WORKDIR (includes logs_subdir)
@@ -309,6 +310,12 @@ def create_client_pbs_script(
         else:
             quoted_eval_args[k] = v # Keep numbers, etc., as is
 
+    singularity_command_parts = [
+        "singularity", "exec", "--nv", 
+        "-B", f'{logs_subdir}:{logs_subdir}', # Bind logs subdir
+        "-B", f'{os.path.abspath(PROJECT_ROOT_REL_PATH)}:{os.path.abspath(PROJECT_ROOT_REL_PATH)}', # Bind project root
+    ]
+    quoted_sif_image_path = shlex.quote(os.path.expandvars(sif_image_path))
     eval_command_parts = []
     # Build command using quoted args
     if eval_type == "similarity":
@@ -358,7 +365,7 @@ def create_client_pbs_script(
         if quoted_eval_args.get("end"):
             eval_command_parts.append(f"--end {quoted_eval_args['end']}")
 
-    eval_command = " ".join(eval_command_parts)
+    eval_command = " ".join(singularity_command_parts) + sif_image_path + " ".join(eval_command_parts)
     template_vars = {
         "gpu_request_line": gpu_request_line,
         "client_hours": client_hours,
@@ -617,7 +624,7 @@ def main_yaml():
         # Extract parameters (using defaults where appropriate)
         model_path = get_config_value(job_config, ['model_path']) # Already validated
         server_cfg = job_config.get('server', {})
-        sif_image_path = get_config_value(server_cfg, ['sif_image_path'])
+        server_sif_image_path = get_config_value(server_cfg, ['sif_image_path'])
         tp_size = get_config_value(server_cfg, ['tensor_parallel_size'], 2)
         server_hours = get_config_value(server_cfg, ['hours'], 8)
         gpu_mem_util = get_config_value(server_cfg, ['gpu_memory_utilization']) # Allow None default
@@ -632,6 +639,7 @@ def main_yaml():
         client_mem = get_config_value(client_cfg, ['mem'], "8gb")
         client_initial_delay_minutes = get_config_value(client_cfg, ['initial_delay_minutes'], 0) # Default 0
         client_initial_wait_seconds = int(client_initial_delay_minutes * 60)
+        client_sif_image_path = get_config_value(client_cfg, ['sif_image_path'])
 
         # --- Extract eval params needed for KVC path ---
         eval_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
@@ -677,7 +685,7 @@ def main_yaml():
         # print(f"Dependency for this server: {previous_client_jobid if previous_client_jobid else 'None'}")
         # Pass logs_subdir name; returns relative paths including logs_subdir
         server_pbs_content, rel_server_ip_file, rel_pbs_server_log, rel_vllm_serve_log = create_server_pbs_script(
-            sif_image_path,
+            server_sif_image_path,
             job_name_prefix, model_path, tp_size, server_hours, gpu_mem_util,
             enable_reasoning, reasoning_parser, vllm_use_v1,
             dependency_job_id=None,
@@ -704,6 +712,7 @@ def main_yaml():
         # --- Create and Submit Client ---
         # Pass the relative vllm_serve_log file path (returned above) to the client script creator
         client_pbs_content = create_client_pbs_script(
+            client_sif_image_path,
             job_name_prefix, server_job_id,
             rel_server_ip_file, # Pass relative path
             rel_vllm_serve_log, # Pass relative path
