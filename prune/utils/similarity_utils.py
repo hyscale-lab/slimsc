@@ -339,6 +339,65 @@ class FaissIndexManager:
                     return float(l2_distance), neighbor_chain_id, neighbor_thought_idx, neighbor_text
 
         return None # No valid neighbor from a different chain found
+    
+    def search_farthest_neighbor_return_sim_score(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
+        """
+        Searches for the farthest neighbor (maximum L2 distance)
+        EXCLUDING embeddings from the query_chain_id.
+        Returns (similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text).
+        """
+        if self.search_mode != 'dissimilarity':
+            logger.error("`search_farthest_neighbor` called but manager not in 'dissimilarity' mode.")
+            return None
+        if self.index.ntotal == 0:
+            return None
+        if query_embedding.ndim == 1: query_embedding = query_embedding.reshape(1, -1)
+
+        # Augment query and calculate its norm for distance correction
+        augmented_query = self._augment_for_query(query_embedding)
+        query_norm_sq = (query_embedding ** 2).sum()
+
+        k = min(max(1, self.index.ntotal), 10)
+        try:
+            # D_aug is the augmented inner product: -2<q,x> + ||x||^2
+            D_aug, I = self.index.search(augmented_query, k)
+        except Exception as e:
+            logger.exception(f"[red]FAISS farthest neighbor search failed: {e}[/red]")
+            return None
+
+        for i in range(I.shape[1]):
+            faiss_id = I[0, i]
+            if faiss_id == -1: continue
+
+            if faiss_id in self.metadata_map:
+                neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
+                if neighbor_chain_id != query_chain_id:
+                    # Correct the distance: L2_sq = ||q-x||^2 = ||q||^2 - 2<q,x> + ||x||^2
+                    # The augmented search returns D_aug = -2<q,x> + ||x||^2
+                    # So, L2_sq = ||q||^2 + D_aug
+                    l2_dist_sq = query_norm_sq + D_aug[0, i]
+                    # Return the actual L2 distance, not squared
+                    l2_distance = np.sqrt(max(0, l2_dist_sq)) # max(0,...) for float stability
+
+                    try:
+                        D, K = self.index.search(query_embedding, k)
+                    except Exception as e:
+                        logger.exception(f"[red]FAISS search failed for query_chain_id={query_chain_id}: {e}[/red]")
+                        return None
+                    
+                    for i in range(K.shape[1]):
+                        faiss_id = K[0, i]
+                        if faiss_id == -1: continue
+                        if faiss_id in self.metadata_map:
+                            neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
+                            if neighbor_chain_id != query_chain_id:
+                                similarity_score = float(D[0, i])
+                                similarity_score = np.clip(similarity_score, -1.0, 1.0)
+                                return similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text
+
+                    return None
+
+        return None # No valid neighbor from a different chain found
 
     def search_nearest_neighbor(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
         """

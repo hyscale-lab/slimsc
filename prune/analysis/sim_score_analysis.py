@@ -257,7 +257,7 @@ def process_single_question_offline_sync(
                 if similarity_mode == 'similarity':
                     neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
                 else:
-                    neighbor_result = index_manager.search_farthest_neighbor(embedding, chain_id)
+                    neighbor_result = index_manager.search_farthest_neighbor_return_sim_score(embedding, chain_id)
                 if neighbor_result:
                     sim_score, neighbor_chain_id, _, _ = neighbor_result
                     identifier = [chain_id, neighbor_chain_id]
@@ -389,6 +389,11 @@ def convert_numpy_types(obj):
     return obj
 
 def main_offline_analysis(args):
+    if args.similarity_mode == 'dissimilarity':
+        thresholds = np.arange(0.02, 0.2 + 0.02, 0.02)  # Stop at 0.2 inclusive
+    else:
+        thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+
     # Create output directory at the start
     output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
     os.makedirs(output_dir, exist_ok=True)
@@ -495,7 +500,7 @@ def main_offline_analysis(args):
     fig, ax = plt.subplots(figsize=(5, 4))
     
     # Calculate data for each threshold
-    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    # thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
     # print('same_answer_chains', combined_scores_by_step['same_answer_chains'])
     same_answer_counts = []
     same_answer_correct_counts = []
@@ -528,7 +533,7 @@ def main_offline_analysis(args):
             if identifier in seen_pairs:
                 continue
             seen_pairs.add(identifier)
-            if sim_score >= threshold:
+            if (args.similarity_mode == 'dissimilarity' and sim_score <= threshold) or (args.similarity_mode != 'dissimilarity' and sim_score >= threshold):
                 total_similar_pairs += 1
                 if identifier in flat_same_answer_chains:
                     num_same_answer_chains += 1
@@ -684,7 +689,7 @@ def main_offline_analysis(args):
     fig, ax = plt.subplots(figsize=(5, 4))
     
     # Define thresholds
-    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    # thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
     
     # Calculate proportions and counts for each threshold
     correct_proportions = []
@@ -704,15 +709,23 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_scores:
-            correct_prop = sum(score >= threshold for score in all_correct_scores) / len(all_correct_scores)
-            correct_count = sum(score >= threshold for score in all_correct_scores)
+            if args.similarity_mode == 'dissimilarity':
+                correct_prop = sum(score <= threshold for score in all_correct_scores) / len(all_correct_scores)
+                correct_count = sum(score <= threshold for score in all_correct_scores)
+            else:
+                correct_prop = sum(score >= threshold for score in all_correct_scores) / len(all_correct_scores)
+                correct_count = sum(score >= threshold for score in all_correct_scores)
         else:
             correct_prop = 0
             correct_count = 0
             
         if all_incorrect_scores:
-            incorrect_prop = sum(score >= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
-            incorrect_count = sum(score >= threshold for score in all_incorrect_scores)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_prop = sum(score <= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
+                incorrect_count = sum(score <= threshold for score in all_incorrect_scores)
+            else:
+                incorrect_prop = sum(score >= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
+                incorrect_count = sum(score >= threshold for score in all_incorrect_scores)
         else:
             incorrect_prop = 0
             incorrect_count = 0
@@ -815,29 +828,45 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_to_correct:
-            correct_to_correct_prop = sum(score >= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
-            correct_to_correct_count = sum(score >= threshold for score in all_correct_to_correct)
+            if args.similarity_mode == 'dissimilarity':
+                correct_to_correct_prop = sum(score <= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
+                correct_to_correct_count = sum(score <= threshold for score in all_correct_to_correct)
+            else:
+                correct_to_correct_prop = sum(score >= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
+                correct_to_correct_count = sum(score >= threshold for score in all_correct_to_correct)
         else:
             correct_to_correct_prop = 0
             correct_to_correct_count = 0
             
         if all_correct_to_incorrect:
-            correct_to_incorrect_prop = sum(score >= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
-            correct_to_incorrect_count = sum(score >= threshold for score in all_correct_to_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                correct_to_incorrect_prop = sum(score <= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
+                correct_to_incorrect_count = sum(score <= threshold for score in all_correct_to_incorrect)
+            else:
+                correct_to_incorrect_prop = sum(score >= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
+                correct_to_incorrect_count = sum(score >= threshold for score in all_correct_to_incorrect)
         else:
             correct_to_incorrect_prop = 0
             correct_to_incorrect_count = 0
             
         if all_incorrect_to_correct:
-            incorrect_to_correct_prop = sum(score >= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
-            incorrect_to_correct_count = sum(score >= threshold for score in all_incorrect_to_correct)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_to_correct_prop = sum(score <= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
+                incorrect_to_correct_count = sum(score <= threshold for score in all_incorrect_to_correct)
+            else:
+                incorrect_to_correct_prop = sum(score >= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
+                incorrect_to_correct_count = sum(score >= threshold for score in all_incorrect_to_correct)
         else:
             incorrect_to_correct_prop = 0
             incorrect_to_correct_count = 0
             
         if all_incorrect_to_incorrect:
-            incorrect_to_incorrect_prop = sum(score >= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
-            incorrect_to_incorrect_count = sum(score >= threshold for score in all_incorrect_to_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_to_incorrect_prop = sum(score <= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
+                incorrect_to_incorrect_count = sum(score <= threshold for score in all_incorrect_to_incorrect)
+            else:
+                incorrect_to_incorrect_prop = sum(score >= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
+                incorrect_to_incorrect_count = sum(score >= threshold for score in all_incorrect_to_incorrect)
         else:
             incorrect_to_incorrect_prop = 0
             incorrect_to_incorrect_count = 0
@@ -960,17 +989,26 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_correct:
-            correct_correct_count = sum(score >= threshold for score in all_correct_correct)
+            if args.similarity_mode == 'dissimilarity':
+                correct_correct_count = sum(score <= threshold for score in all_correct_correct)
+            else:
+                correct_correct_count = sum(score >= threshold for score in all_correct_correct)
         else:
             correct_correct_count = 0
             
         if all_correct_incorrect:
-            correct_incorrect_count = sum(score >= threshold for score in all_correct_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                correct_incorrect_count = sum(score <= threshold for score in all_correct_incorrect)
+            else:
+                correct_incorrect_count = sum(score >= threshold for score in all_correct_incorrect)
         else:
             correct_incorrect_count = 0
             
         if all_incorrect_incorrect:
-            incorrect_incorrect_count = sum(score >= threshold for score in all_incorrect_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_incorrect_count = sum(score <= threshold for score in all_incorrect_incorrect)
+            else:
+                incorrect_incorrect_count = sum(score >= threshold for score in all_incorrect_incorrect)
         else:
             incorrect_incorrect_count = 0
 
