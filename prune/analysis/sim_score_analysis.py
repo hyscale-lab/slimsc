@@ -156,12 +156,13 @@ def process_single_question_offline_sync(
     token_step_size: int,
     worker_idx: int,
     chain_extracted_answers: Dict[str, str],
+    similarity_mode: str,
 ) -> List[float]:
     """
     Process a single question offline and return a list of similarity scores.
     """
     embedding_model = get_embedding_model_optimized(model_idx=worker_idx)
-    index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension())
+    index_manager = FaissIndexManager(dimension=embedding_model.get_sentence_embedding_dimension(), search_mode=similarity_mode)
     chain_states = {}
     max_tokens_across_all_chains = 0
 
@@ -253,7 +254,10 @@ def process_single_question_offline_sync(
             can_potentially_prune = (thought_idx >= 2 and index_manager.get_num_embeddings() > 0)
 
             if can_potentially_prune:
-                neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
+                if similarity_mode == 'similarity':
+                    neighbor_result = index_manager.search_nearest_neighbor(embedding, chain_id)
+                else:
+                    neighbor_result = index_manager.search_farthest_neighbor_return_sim_score(embedding, chain_id)
                 if neighbor_result:
                     sim_score, neighbor_chain_id, _, _ = neighbor_result
                     identifier = [chain_id, neighbor_chain_id]
@@ -363,7 +367,8 @@ def process_question_worker(chosen_question_iterations, worker_idx, sampled_df, 
             chain_correctness=chain_correctness, n_chains=n_chains_sc,
             token_step_size=args.token_step_size,
             worker_idx=worker_idx,
-            chain_extracted_answers=individual_chain_answers
+            chain_extracted_answers=individual_chain_answers,
+            similarity_mode=args.similarity_mode
         )
         worker_results.append(question_results)
         per_question_results[str(iteration_num)] = question_results
@@ -384,6 +389,11 @@ def convert_numpy_types(obj):
     return obj
 
 def main_offline_analysis(args):
+    if args.similarity_mode == 'dissimilarity':
+        thresholds = np.arange(0.05, 0.5 + 0.05, 0.05)  # Stop at 0.2 inclusive
+    else:
+        thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+
     # Create output directory at the start
     output_dir = args.output_dir if hasattr(args, 'output_dir') else 'sim_score_results'
     os.makedirs(output_dir, exist_ok=True)
@@ -490,7 +500,7 @@ def main_offline_analysis(args):
     fig, ax = plt.subplots(figsize=(5, 4))
     
     # Calculate data for each threshold
-    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    # thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
     # print('same_answer_chains', combined_scores_by_step['same_answer_chains'])
     same_answer_counts = []
     same_answer_correct_counts = []
@@ -523,7 +533,7 @@ def main_offline_analysis(args):
             if identifier in seen_pairs:
                 continue
             seen_pairs.add(identifier)
-            if sim_score >= threshold:
+            if (args.similarity_mode == 'dissimilarity' and sim_score <= threshold) or (args.similarity_mode != 'dissimilarity' and sim_score >= threshold):
                 total_similar_pairs += 1
                 if identifier in flat_same_answer_chains:
                     num_same_answer_chains += 1
@@ -679,7 +689,7 @@ def main_offline_analysis(args):
     fig, ax = plt.subplots(figsize=(5, 4))
     
     # Define thresholds
-    thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
+    # thresholds = np.arange(0.8, 0.98 + 0.02, 0.02)  # Stop at 0.98 inclusive
     
     # Calculate proportions and counts for each threshold
     correct_proportions = []
@@ -699,15 +709,23 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_scores:
-            correct_prop = sum(score >= threshold for score in all_correct_scores) / len(all_correct_scores)
-            correct_count = sum(score >= threshold for score in all_correct_scores)
+            if args.similarity_mode == 'dissimilarity':
+                correct_prop = sum(score <= threshold for score in all_correct_scores) / len(all_correct_scores)
+                correct_count = sum(score <= threshold for score in all_correct_scores)
+            else:
+                correct_prop = sum(score >= threshold for score in all_correct_scores) / len(all_correct_scores)
+                correct_count = sum(score >= threshold for score in all_correct_scores)
         else:
             correct_prop = 0
             correct_count = 0
             
         if all_incorrect_scores:
-            incorrect_prop = sum(score >= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
-            incorrect_count = sum(score >= threshold for score in all_incorrect_scores)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_prop = sum(score <= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
+                incorrect_count = sum(score <= threshold for score in all_incorrect_scores)
+            else:
+                incorrect_prop = sum(score >= threshold for score in all_incorrect_scores) / len(all_incorrect_scores)
+                incorrect_count = sum(score >= threshold for score in all_incorrect_scores)
         else:
             incorrect_prop = 0
             incorrect_count = 0
@@ -810,29 +828,45 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_to_correct:
-            correct_to_correct_prop = sum(score >= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
-            correct_to_correct_count = sum(score >= threshold for score in all_correct_to_correct)
+            if args.similarity_mode == 'dissimilarity':
+                correct_to_correct_prop = sum(score <= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
+                correct_to_correct_count = sum(score <= threshold for score in all_correct_to_correct)
+            else:
+                correct_to_correct_prop = sum(score >= threshold for score in all_correct_to_correct) / len(all_correct_to_correct)
+                correct_to_correct_count = sum(score >= threshold for score in all_correct_to_correct)
         else:
             correct_to_correct_prop = 0
             correct_to_correct_count = 0
             
         if all_correct_to_incorrect:
-            correct_to_incorrect_prop = sum(score >= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
-            correct_to_incorrect_count = sum(score >= threshold for score in all_correct_to_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                correct_to_incorrect_prop = sum(score <= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
+                correct_to_incorrect_count = sum(score <= threshold for score in all_correct_to_incorrect)
+            else:
+                correct_to_incorrect_prop = sum(score >= threshold for score in all_correct_to_incorrect) / len(all_correct_to_incorrect)
+                correct_to_incorrect_count = sum(score >= threshold for score in all_correct_to_incorrect)
         else:
             correct_to_incorrect_prop = 0
             correct_to_incorrect_count = 0
             
         if all_incorrect_to_correct:
-            incorrect_to_correct_prop = sum(score >= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
-            incorrect_to_correct_count = sum(score >= threshold for score in all_incorrect_to_correct)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_to_correct_prop = sum(score <= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
+                incorrect_to_correct_count = sum(score <= threshold for score in all_incorrect_to_correct)
+            else:
+                incorrect_to_correct_prop = sum(score >= threshold for score in all_incorrect_to_correct) / len(all_incorrect_to_correct)
+                incorrect_to_correct_count = sum(score >= threshold for score in all_incorrect_to_correct)
         else:
             incorrect_to_correct_prop = 0
             incorrect_to_correct_count = 0
             
         if all_incorrect_to_incorrect:
-            incorrect_to_incorrect_prop = sum(score >= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
-            incorrect_to_incorrect_count = sum(score >= threshold for score in all_incorrect_to_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_to_incorrect_prop = sum(score <= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
+                incorrect_to_incorrect_count = sum(score <= threshold for score in all_incorrect_to_incorrect)
+            else:
+                incorrect_to_incorrect_prop = sum(score >= threshold for score in all_incorrect_to_incorrect) / len(all_incorrect_to_incorrect)
+                incorrect_to_incorrect_count = sum(score >= threshold for score in all_incorrect_to_incorrect)
         else:
             incorrect_to_incorrect_prop = 0
             incorrect_to_incorrect_count = 0
@@ -955,17 +989,26 @@ def main_offline_analysis(args):
             
         # Calculate proportions and counts above threshold
         if all_correct_correct:
-            correct_correct_count = sum(score >= threshold for score in all_correct_correct)
+            if args.similarity_mode == 'dissimilarity':
+                correct_correct_count = sum(score <= threshold for score in all_correct_correct)
+            else:
+                correct_correct_count = sum(score >= threshold for score in all_correct_correct)
         else:
             correct_correct_count = 0
             
         if all_correct_incorrect:
-            correct_incorrect_count = sum(score >= threshold for score in all_correct_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                correct_incorrect_count = sum(score <= threshold for score in all_correct_incorrect)
+            else:
+                correct_incorrect_count = sum(score >= threshold for score in all_correct_incorrect)
         else:
             correct_incorrect_count = 0
             
         if all_incorrect_incorrect:
-            incorrect_incorrect_count = sum(score >= threshold for score in all_incorrect_incorrect)
+            if args.similarity_mode == 'dissimilarity':
+                incorrect_incorrect_count = sum(score <= threshold for score in all_incorrect_incorrect)
+            else:
+                incorrect_incorrect_count = sum(score >= threshold for score in all_incorrect_incorrect)
         else:
             incorrect_incorrect_count = 0
 
@@ -988,7 +1031,7 @@ def main_offline_analysis(args):
         incorrect_incorrect_counts.append(incorrect_incorrect_count)
 
     # make stacked bar plots. set axislabel and fontsize
-    fig, ax = plt.subplots(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 8))
     # Stacked bars, not grouped
     x = np.arange(len(thresholds))
     width = 0.35
@@ -1113,10 +1156,16 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=7, help="Random seed for sampling questions.")
     parser.add_argument('--token_step_size', type=int, default=100, help="Token interval for pruning simulation steps.")
     parser.add_argument('--output_dir', type=str, default='sim_score_results', help="Directory to save similarity score results.")
+    parser.add_argument('--similarity_mode', type=str, default='similarity', help="Similarity mode (similarity or dissimilarity).")
 
     cli_args = parser.parse_args()
 
     main_offline_analysis(cli_args)
+
+    """
+        sample command
+        python sim_score_analysis.py --model_arch R1-Distill-Qwen-14B --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --dataset_name aime --control_run_name sc_64_control --n_chains 64 --tokenizer_path /home/users/ntu/colinhon/scratch/r1-distill --num_questions 30 --seed 7 --token_step_size 100 --output_dir aime_sim_score_results
+    """
 
 
     

@@ -428,8 +428,11 @@ def main():
     parser.add_argument('--n_start', type=int, required=True, help='Initial number of chains (N_start).')
     parser.add_argument('--threshold', type=float, required=True,
                         help='Cosine similarity threshold for pruning (e.g., 0.85).')
-    parser.add_argument('--pruning_strategy', type=str, required=True, choices=['fewest_thoughts', 'diversity', 'most_thoughts', 'random'],
-                        help='Strategy to use for pruning decision: "fewest_thoughts", "most_thoughts", "diversity", or "random".')
+    parser.add_argument('--pruning_strategy', type=str, required=True, 
+                        choices=['fewest_thoughts', 'diversity', 'most_thoughts', 'random', 'prune_farthest', 'random_after_delay'],
+                        help='Strategy for pruning: "fewest_thoughts", "diversity", "most_thoughts", "random" '
+                             '(for similar pairs), "prune_farthest" (prunes one from the most dissimilar pair), '
+                             'or "random_after_delay" (randomly prunes one chain per interval after a delay).')
     parser.add_argument('--vllm_url', type=str, default="http://localhost:8000",
                         help='URL of the vLLM server OpenAI-compatible endpoint.')
     parser.add_argument('--model_name', type=str, required=True,
@@ -454,14 +457,17 @@ def main():
                         help=f'Random seed for question selection (if --num_qns is used) and other random operations. Overrides internal default seed ({DEFAULT_SEED}).')
     parser.add_argument('--num_steps_to_delay_pruning', type=int, default=20,
                         help='Number of analysis steps to wait before pruning based on similarity can begin (default: 20).')
+    parser.add_argument('--batch_size', type=int, default=None)
+    parser.add_argument('--batch_num', type=int, default=None)
     args = parser.parse_args()
 
     # Validate threshold
-    if not (0.0 < args.threshold <= 1.0):
-        logger.error("[red]Similarity threshold must be between 0.0 (exclusive) and 1.0 (inclusive).[/red]")
+    if not (0.0 <= args.threshold <= 1.0):
+        logger.error("[red]Similarity threshold must be between 0.0 (inclusive) and 1.0 (inclusive).[/red]")
         return
     
     actual_seed_for_run = args.seed if args.seed is not None else DEFAULT_SEED
+    random.seed(actual_seed_for_run)
 
     # Log if annealing is used, potentially mentioning the initial threshold from the formula
     if args.threshold_schedule == 'annealing':
@@ -471,6 +477,9 @@ def main():
         threshold_for_naming = 0.9
     else:
         threshold_for_naming = args.threshold
+
+    if args.pruning_strategy == 'random_after_delay':
+        logger.info(f"[yellow]Using 'random_after_delay' strategy. The --threshold value ({args.threshold}) will be ignored.[/yellow]")
 
     specific_iterations_list: Optional[List[int]] = None
 
@@ -501,6 +510,12 @@ def main():
         # but shuffle is fine here. Let's use shuffle then slice/sort.
         random.shuffle(all_possible_iterations)
         specific_iterations_list = sorted(all_possible_iterations[:num_to_select])
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         logger.info(f"Selected {num_to_select} random questions using seed {DEFAULT_SEED}.")
         if num_to_select < 20: # Avoid printing huge lists
@@ -529,6 +544,12 @@ def main():
                     logger.warning(f"[yellow]Invalid iteration number format '{part}'. Skipping.[/yellow]")
 
         specific_iterations_list = sorted(list(set(specific_iterations_list))) # Remove duplicates and sort
+        
+        if (args.batch_size is not None and args.batch_num is not None):
+            print(specific_iterations_list)
+            specific_iterations_list = specific_iterations_list[args.batch_size*args.batch_num : args.batch_size*(args.batch_num+1)]
+            print("after")
+            print(specific_iterations_list  )
 
         if not specific_iterations_list:
              logger.error("[red]--iterations argument provided, but no valid iterations were parsed.[/red]")

@@ -251,30 +251,139 @@ def extract_final_thought(
 # --- FaissIndexManager Class ---
 class FaissIndexManager:
     """Manages a FAISS index for similarity checking during pruning."""
-    def __init__(self, dimension: int):
-        self.dimension = dimension
-        self.index = faiss.IndexFlatIP(dimension) # IP for normalized embeddings = Cosine
-        # Map FAISS vector IDs to (chain_id, thought_index, text_segment)
+    def __init__(self, dimension: int, search_mode: str = 'similarity'):
+        self.original_dimension = dimension
+        self.search_mode = search_mode
+
+        if self.search_mode == 'dissimilarity':
+            # For farthest neighbor search, augment dimension by 1
+            self.index_dimension = self.original_dimension + 1
+            logger.info(f"FaissIndexManager initialized in 'dissimilarity' mode (dim={self.index_dimension}).")
+        else: # Default 'similarity' mode
+            self.index_dimension = self.original_dimension
+            logger.info(f"FaissIndexManager initialized in 'similarity' mode (dim={self.index_dimension}).")
+
+        self.index = faiss.IndexFlatIP(self.index_dimension)
         self.metadata_map: Dict[int, Tuple[str, int, str]] = {}
         self.next_id = 0
+        self.original_embeddings: Dict[int, np.ndarray] = {}  # Store original embeddings for cosine similarity
+
+    def _augment_for_database(self, xb: np.ndarray) -> np.ndarray:
+        """Augments database vectors for farthest neighbor search. x' = [-2x, ||x||^2]"""
+        norms_sq = (xb ** 2).sum(axis=1)
+        return np.hstack((-2 * xb, norms_sq[:, np.newaxis])).astype(np.float32)
+
+    def _augment_for_query(self, xq: np.ndarray) -> np.ndarray:
+        """Augments query vectors for farthest neighbor search. q' = [q, 1]"""
+        extra_column = np.ones((len(xq), 1), dtype=xq.dtype)
+        return np.hstack((xq, extra_column)).astype(np.float32)
 
     def add_embedding(self, embedding: np.ndarray, chain_id: str, thought_index: int, text_segment: str):
         """Adds a single embedding and its metadata to the index."""
         if embedding.ndim == 1: embedding = embedding.reshape(1, -1)
-        if embedding.shape[1] != self.dimension:
-             logger.error(f"Embedding dim mismatch: expected {self.dimension}, got {embedding.shape[1]}. Skip add.")
+        if embedding.shape[1] != self.original_dimension:
+             logger.error(f"Embedding dim mismatch: expected {self.original_dimension}, got {embedding.shape[1]}. Skip add.")
              return
+
+        if self.search_mode == 'dissimilarity':
+            embedding_to_add = self._augment_for_database(embedding)
+        else:
+            embedding_to_add = embedding
 
         faiss_id = self.next_id
         try:
-             # Ensure embedding is contiguous and correct dtype for FAISS
-             embedding = np.ascontiguousarray(embedding, dtype=np.float32)
-             self.index.add(embedding)
+             embedding_to_add = np.ascontiguousarray(embedding_to_add, dtype=np.float32)
+             self.index.add(embedding_to_add)
              self.metadata_map[faiss_id] = (chain_id, thought_index, text_segment)
+             self.original_embeddings[faiss_id] = embedding[0].copy()  # Store the original embedding
              self.next_id += 1
-             # logger.debug(f"Added faiss_id={faiss_id} for chain={chain_id}, thought={thought_index}")
         except Exception as e:
              logger.exception(f"[red]FAISS add failed for chain={chain_id}, thought={thought_index}: {e}[/red]")
+
+    def search_farthest_neighbor(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
+        """
+        Searches for the farthest neighbor (maximum L2 distance)
+        EXCLUDING embeddings from the query_chain_id.
+        Returns (l2_distance, neighbor_chain_id, neighbor_thought_idx, neighbor_text).
+        """
+        if self.search_mode != 'dissimilarity':
+            logger.error("`search_farthest_neighbor` called but manager not in 'dissimilarity' mode.")
+            return None
+        if self.index.ntotal == 0:
+            return None
+        if query_embedding.ndim == 1: query_embedding = query_embedding.reshape(1, -1)
+
+        # Augment query and calculate its norm for distance correction
+        augmented_query = self._augment_for_query(query_embedding)
+        query_norm_sq = (query_embedding ** 2).sum()
+
+        k = min(max(1, self.index.ntotal), 10)
+        try:
+            # D_aug is the augmented inner product: -2<q,x> + ||x||^2
+            D_aug, I = self.index.search(augmented_query, k)
+        except Exception as e:
+            logger.exception(f"[red]FAISS farthest neighbor search failed: {e}[/red]")
+            return None
+
+        for i in range(I.shape[1]):
+            faiss_id = I[0, i]
+            if faiss_id == -1: continue
+
+            if faiss_id in self.metadata_map:
+                neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
+                if neighbor_chain_id != query_chain_id:
+                    # Correct the distance: L2_sq = ||q-x||^2 = ||q||^2 - 2<q,x> + ||x||^2
+                    # The augmented search returns D_aug = -2<q,x> + ||x||^2
+                    # So, L2_sq = ||q||^2 + D_aug
+                    l2_dist_sq = query_norm_sq + D_aug[0, i]
+                    # Return the actual L2 distance, not squared
+                    l2_distance = np.sqrt(max(0, l2_dist_sq)) # max(0,...) for float stability
+                    return float(l2_distance), neighbor_chain_id, neighbor_thought_idx, neighbor_text
+
+        return None # No valid neighbor from a different chain found
+    
+    def search_farthest_neighbor_return_sim_score(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
+        """
+        Searches for the farthest neighbor (maximum L2 distance)
+        EXCLUDING embeddings from the query_chain_id.
+        Returns (cosine_similarity, neighbor_chain_id, neighbor_thought_idx, neighbor_text).
+        """
+        if self.search_mode != 'dissimilarity':
+            logger.error("`search_farthest_neighbor` called but manager not in 'dissimilarity' mode.")
+            return None
+        if self.index.ntotal == 0:
+            return None
+        if query_embedding.ndim == 1: query_embedding = query_embedding.reshape(1, -1)
+
+        # Augment query and calculate its norm for distance correction
+        augmented_query = self._augment_for_query(query_embedding)
+        query_norm_sq = (query_embedding ** 2).sum()
+
+        k = min(max(1, self.index.ntotal), 10)
+        try:
+            D_aug, I = self.index.search(augmented_query, k)
+        except Exception as e:
+            logger.exception(f"[red]FAISS farthest neighbor search failed: {e}[/red]")
+            return None
+
+        for i in range(I.shape[1]):
+            faiss_id = I[0, i]
+            if faiss_id == -1: continue
+
+            if faiss_id in self.metadata_map:
+                neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
+                if neighbor_chain_id != query_chain_id:
+                    # Get the original embedding of the neighbor
+                    neighbor_embedding = self.original_embeddings[faiss_id]
+                    # Compute cosine similarity
+                    q = query_embedding[0]
+                    n = neighbor_embedding
+                    cosine_sim = float(np.dot(q, n) / (np.linalg.norm(q) * np.linalg.norm(n) + 1e-8))
+                    cosine_sim = np.clip(cosine_sim, -1.0, 1.0)
+                    cosine_sim = (cosine_sim + 1) / 2  # Rescale to [0, 1]
+                    return cosine_sim, neighbor_chain_id, neighbor_thought_idx, neighbor_text
+
+        return None  # No valid neighbor from a different chain found
 
     def search_nearest_neighbor(self, query_embedding: np.ndarray, query_chain_id: str) -> Optional[Tuple[float, str, int, str]]:
         """
@@ -282,21 +391,21 @@ class FaissIndexManager:
         EXCLUDING embeddings from the query_chain_id.
         Returns (similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text).
         """
+        if self.search_mode != 'similarity':
+            logger.error("`search_nearest_neighbor` called but manager not in 'similarity' mode.")
+            return None
         if self.index.ntotal == 0:
             logger.debug("FAISS index is empty, cannot search.")
             return None
         if query_embedding.ndim == 1: query_embedding = query_embedding.reshape(1, -1)
-        if query_embedding.shape[1] != self.dimension:
-             logger.error(f"Query dim mismatch: expected {self.dimension}, got {query_embedding.shape[1]}. Skip search.")
+        if query_embedding.shape[1] != self.original_dimension:
+             logger.error(f"Query dim mismatch: expected {self.original_dimension}, got {query_embedding.shape[1]}. Skip search.")
              return None
 
-        # Ensure query embedding is contiguous and correct dtype for FAISS
         query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
 
-        # Search more neighbors (e.g., top 10) to increase the chance of finding one from a different chain,
-        # as the top neighbor might be from the query chain.
-        k = min(max(1, self.index.ntotal), 10) # Search up to 10 neighbors or total if less than 10
-        if k == 0: # Should be caught by index.ntotal check, but defensive
+        k = min(max(1, self.index.ntotal), 10)
+        if k == 0:
             logger.debug("FAISS index size is 0, cannot search.")
             return None
 
@@ -306,73 +415,36 @@ class FaissIndexManager:
             logger.exception(f"[red]FAISS search failed for query_chain_id={query_chain_id}: {e}[/red]")
             return None
 
-        # Iterate through the results to find the first valid neighbor from a different chain
         for i in range(I.shape[1]):
             faiss_id = I[0, i]
-            # FAISS can return -1 if fewer than k neighbors were found
             if faiss_id == -1: continue
-
-            # Check if the ID exists in our authoritative metadata map
-            # (It might be stale if remove_ids was called but the underlying index hasn't fully updated,
-            # or if we filter metadata without rebuilding/compacting the index).
             if faiss_id in self.metadata_map:
                 neighbor_chain_id, neighbor_thought_idx, neighbor_text = self.metadata_map[faiss_id]
-                # Check if the neighbor belongs to a different chain
                 if neighbor_chain_id != query_chain_id:
                     similarity_score = float(D[0, i])
-                    # Clamp score between -1 and 1 in case of float inaccuracies
                     similarity_score = np.clip(similarity_score, -1.0, 1.0)
-                    # Found a valid neighbor from another chain
                     return similarity_score, neighbor_chain_id, neighbor_thought_idx, neighbor_text
-                # else: This neighbor is from the same chain, continue searching
-
-            # If faiss_id is not in metadata_map, it's a stale reference. Log and skip.
-            # logger.debug(f"FAISS ID {faiss_id} returned by search not in metadata_map (stale?). Skipping.")
-
-
-        # If we exit the loop, no valid neighbor from a different chain was found among the top k results
-        # logger.debug(f"No valid neighbor found for {query_chain_id} from other chains among the top {k} results.")
-        return None # No neighbor found from a different chain
-
+        return None
 
     def remove_chain_embeddings(self, chain_id_to_remove: str):
         """Removes all embeddings associated with a given chain ID."""
-        # Find all FAISS IDs associated with the chain_id_to_remove in our metadata map
-        ids_to_remove = [faiss_id for faiss_id, meta in list(self.metadata_map.items()) if meta[0] == chain_id_to_remove] # Use list() to avoid modifying during iteration
+        ids_to_remove = [faiss_id for faiss_id, meta in list(self.metadata_map.items()) if meta[0] == chain_id_to_remove]
 
         if not ids_to_remove:
-            # logger.debug(f"No embeddings found in metadata for chain {chain_id_to_remove} to remove.") # Too noisy
             return
 
         try:
-            # Create an ID selector from the list of IDs to remove
             remove_selector = faiss.IDSelectorBatch(np.array(ids_to_remove, dtype='int64'))
-
-            # Use remove_ids method. This operation might be slow or impact search performance
-            # depending on the FAISS index type and library version.
-            # It marks IDs for removal; actual removal might be deferred (e.g., until index is rebuilt).
-            # We don't need the return value (num_removed) unless for specific debugging.
             self.index.remove_ids(remove_selector)
 
-
-            # Update our metadata map immediately to reflect the logical state
-            # This must happen *after* creating the selector, but before subsequent searches.
             for faiss_id in ids_to_remove:
                  if faiss_id in self.metadata_map:
                       del self.metadata_map[faiss_id]
-                 else:
-                      # This shouldn't happen if ids_to_remove was built from metadata_map
-                      logger.warning(f"Attempted to delete FAISS ID {faiss_id} from metadata_map but it wasn't found.")
-
 
             logger.info(f"Removed embeddings from FAISS for pruned chain {chain_id_to_remove}. "
-                        f"({len(ids_to_remove)} embeddings requested for removal)") # num_removed might differ slightly
-
-
+                        f"({len(ids_to_remove)} embeddings requested for removal)")
         except Exception as e:
              logger.exception(f"[red]Failed to remove embeddings for chain {chain_id_to_remove}: {e}[/red]")
-             # If FAISS removal failed, our metadata map might be out of sync with the index.
-             # The search method has logic to skip IDs not in the metadata map, which mitigates this.
 
 
     def get_num_embeddings(self) -> int:
