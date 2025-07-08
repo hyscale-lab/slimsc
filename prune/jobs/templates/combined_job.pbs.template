@@ -1,0 +1,196 @@
+#!/bin/bash
+#PBS -l {GPU_REQUEST_LINE}
+#PBS -l walltime={SERVER_HOURS}:00:00
+#PBS -P {PBS_PROJECT}
+#PBS -q normal
+#PBS -N {JOB_NAME}
+#PBS -j oe
+#PBS -o {PBS_LOG_FILE}
+
+# --- Shared Setup ---
+set -e # Exit immediately if a command exits with a non-zero status.
+VLLM_PID=""
+EVAL_EXIT_CODE=1 # Default to failure
+
+# --- Cleanup Function ---
+cleanup() {{
+    echo "[$(date)] Caught signal or exiting, attempting cleanup..."
+    # If this is the server node, try to kill the server
+    if [[ -n "$VLLM_PID" ]] && ps -p $VLLM_PID > /dev/null; then
+        echo "Terminating vLLM server process group (PID: -$VLLM_PID)..."
+        kill -TERM -$VLLM_PID && sleep 5
+        ps -p $VLLM_PID > /dev/null && kill -KILL -$VLLM_PID
+    fi
+
+    # Final log file cleanup
+    echo "Cleaning up temporary log files..."
+    rm -f "{SERVER_IP_FILE}"
+    # To be safe, don't delete the vllm log if the main log is small (indicates an early error)
+    if [[ -f "{PBS_LOG_FILE}" ]] && [[ $(wc -c <"{PBS_LOG_FILE}") -gt 1024 ]]; then
+        rm -f "{VLLM_SERVE_LOG_FILE}"
+        echo "Removed temporary logs."
+    else
+        echo "Warning: Main PBS log is small or non-existent. Preserving vLLM log for debugging."
+    fi
+
+    echo "Cleanup function finished."
+}}
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
+
+# --- Main Logic ---
+echo "--- PBS Job Start ({JOB_NAME}) ---"
+echo "Workdir: $PBS_O_WORKDIR"
+cd "$PBS_O_WORKDIR" || exit 1
+source "{CONDA_INIT_PATH}" && conda activate "{CONDA_ENV_NAME}"
+
+# --- Common Server Setup Logic ---
+start_vllm_server() {{
+    echo "[$(date)] Setting up and starting vLLM server..."
+    export KVC_USAGE_FILE={TARGET_KVC_FILE_PATH}
+    {LD_LIBRARY_EXPORT_COMMAND}
+    mkdir -p "$(dirname "$KVC_USAGE_FILE")"
+    
+    # Use the provided HOST_IP, which is determined based on single/multi-node case
+    PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
+    PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
+    if [ -z "$PORT" ]; then echo "No free port found!"; exit 1; fi
+    export PORT
+    
+    echo "$HOST_IP:$PORT" > "{SERVER_IP_FILE}"
+    export VLLM_URL="http://${{HOST_IP}}:${{PORT}}"
+    
+    echo "Server using CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+    echo "Starting vLLM server on $VLLM_URL in background..."
+    setsid {VLLM_EXEC_COMMAND}
+    VLLM_PID=$!
+    sleep 5
+    if ! ps -p $VLLM_PID > /dev/null; then echo "vLLM server failed to start!"; exit 1; fi
+}}
+
+# --- Common Server Wait Logic ---
+wait_for_server() {{
+    echo "[$(date)] Waiting for server to become ready..."
+    local MAX_WAIT_SEC=900; local INTERVAL=30; local elapsed=0
+    local SERVER_READY_STRING="Application startup complete."
+    while ! grep -qF "$SERVER_READY_STRING" "{VLLM_SERVE_LOG_FILE}"; do
+        if ! ps -p $VLLM_PID > /dev/null; then echo "Server process died. Aborting."; exit 1; fi
+        if [ $elapsed -ge $MAX_WAIT_SEC ]; then echo "Timeout waiting for server. Aborting."; exit 1; fi
+        sleep $INTERVAL; elapsed=$((elapsed + INTERVAL))
+        echo "Waited $elapsed/$MAX_WAIT_SEC seconds..."
+    done
+    echo "[$(date)] Server is ready."
+}}
+
+# --- Node-Specific Execution ---
+if [ "{IS_MULTI_NODE}" = "true" ]; then
+    # ============================
+    # ===== MULTI-NODE LOGIC =====
+    # ============================
+    echo "Multi-node job detected. Parsing node file..."
+    SERVER_NODE=$(sort -u $PBS_NODEFILE | head -n 1)
+    CLIENT_NODE=$(sort -u $PBS_NODEFILE | tail -n 1)
+    if [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then exit 1; fi
+    echo "Server Node: $SERVER_NODE, Client Node: $CLIENT_NODE"
+
+    # --- 1. Start Server on Server Node ---
+    export CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
+    HOST_IP=$(getent hosts "$SERVER_NODE" | awk '{{print $1}}')
+    start_vllm_server
+
+    # --- 2. Wait for Server to be Ready ---
+    wait_for_server
+
+    # --- 3. Run Client on Client Node with SSH Tunnel ---
+    echo "[$(date)] Setting up and running evaluation client on $CLIENT_NODE..."
+    CLIENT_COMMAND=$(cat <<'EOF'
+# Define a cleanup function for the remote script to kill the tunnel
+TUNNEL_PID=""
+remote_cleanup() {{
+    echo "[Remote] Cleaning up SSH tunnel..."
+    if [[ -n "$TUNNEL_PID" ]] && ps -p $TUNNEL_PID > /dev/null; then
+        kill $TUNNEL_PID
+    fi
+}}
+trap remote_cleanup EXIT
+
+# Go to the submission directory, which is a known shared path
+cd "$PBS_O_WORKDIR"
+
+# CORRECTLY calculate the absolute path to the project root for PYTHONPATH
+PROJECT_ROOT_ABS_PATH=$(cd "{PROJECT_ROOT_REL_PATH}" && pwd)
+export PYTHONPATH="$PROJECT_ROOT_ABS_PATH:$PYTHONPATH"
+
+# Set up the Conda environment
+source "{CONDA_INIT_PATH}" && conda activate "{CONDA_ENV_NAME}"
+
+# Extract server details from the full URL provided by the main script
+SERVER_URL_FULL="{{VLLM_URL_VAR}}"
+SERVER_IP_PORT=$(echo "$SERVER_URL_FULL" | sed -e 's%http://%%g')
+SERVER_IP=$(echo "$SERVER_IP_PORT" | cut -d: -f1)
+SERVER_PORT=$(echo "$SERVER_IP_PORT" | cut -d: -f2)
+
+# Set up the SSH tunnel in the background
+# The client will connect to localhost:$SERVER_PORT, and ssh will forward it to $SERVER_IP:$SERVER_PORT
+echo "[Remote] Creating SSH tunnel from localhost:$SERVER_PORT to $SERVER_IP_PORT"
+ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE &
+TUNNEL_PID=$!
+sleep 2 # Give the tunnel a moment to establish
+
+# The client now connects to localhost, via the tunnel
+export VLLM_URL="http://localhost:$SERVER_PORT"
+export CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_MULTI_NODE}"
+
+# Log debugging information
+echo "Client remote execution started on $(hostname)."
+echo "Client PYTHONPATH is: $PYTHONPATH"
+echo "Client using CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+echo "Client connecting to local tunnel endpoint at $VLLM_URL"
+
+# Now execute the Python command
+echo "Running Evaluation Command: {EVAL_COMMAND}"
+{EVAL_COMMAND}
+EOF
+)
+    # Fill the placeholders in the command string with the shell variables from the main script
+    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
+    # Pass SERVER_NODE so the remote script knows where to tunnel to
+    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE/$SERVER_NODE}}"
+    
+    echo "Executing remote client command on $CLIENT_NODE..."
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" "bash -c '$CLIENT_COMMAND_FILLED'"
+    EVAL_EXIT_CODE=$?
+
+else
+    # ============================
+    # ===== SINGLE-NODE LOGIC ====
+    # ============================
+    echo "Single-node job detected."
+    
+    # --- 1. Start Server on the single node ---
+    export CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
+    HOST_IP=$(getent hosts "$(hostname -s)" | awk '{{print $1}}' || hostname -i)
+    start_vllm_server
+
+    # --- 2. Wait for Server to be Ready ---
+    wait_for_server
+
+    # --- 3. Run Client on the same node ---
+    echo "[$(date)] Setting up and running evaluation client..."
+    # For single node, we must cd to the project root for 'python -m' to work reliably.
+    cd "{PROJECT_ROOT_REL_PATH}" || exit 1
+    
+    if [ "{EVAL_TYPE}" = "similarity" ]; then
+        export CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_SINGLE_NODE}"
+        echo "Client using CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+    else # sc_control
+        echo "Client using available CPUs."
+    fi
+    
+    echo "Running Evaluation Command: {EVAL_COMMAND}"
+    {EVAL_COMMAND}
+    EVAL_EXIT_CODE=$?
+fi
+
+echo "[$(date)] Evaluation script exited with code: $EVAL_EXIT_CODE"
+echo "--- PBS Job Finished ---"
+exit $EVAL_EXIT_CODE
