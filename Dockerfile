@@ -5,6 +5,10 @@ WORKDIR /app
 COPY requirements/ ./requirements
 RUN pip install --no-cache-dir -r requirements/requirements.txt
 
-COPY . .
+RUN mkdir -p slimsc
 
-ENTRYPOINT ["python", "-m", "slimsc.prune.evaluation.sc_control_eval"]
+COPY . slimsc
+
+RUN mkdir -p slimsc/prune/results
+
+CMD ["/bin/bash"]
