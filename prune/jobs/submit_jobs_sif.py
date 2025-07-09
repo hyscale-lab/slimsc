@@ -282,6 +282,7 @@ def create_client_pbs_script(
 
     user = os.environ.get("USER", "default_user")
     pbs_project = f"{PBS_PROJECT_PREFIX}-{user}"
+    quoted_sif_image_path = shlex.quote(os.path.expandvars(sif_image_path))
 
     # --- Determine Resource Request ---
     # (Resource request logic remains the same)
@@ -315,7 +316,6 @@ def create_client_pbs_script(
         "-B", f'{logs_subdir}:{logs_subdir}', # Bind logs subdir
         "-B", f'{os.path.abspath(PROJECT_ROOT_REL_PATH)}:{os.path.abspath(PROJECT_ROOT_REL_PATH)}', # Bind project root
     ]
-    quoted_sif_image_path = shlex.quote(os.path.expandvars(sif_image_path))
     eval_command_parts = []
     # Build command using quoted args
     if eval_type == "similarity":
@@ -365,7 +365,7 @@ def create_client_pbs_script(
         if quoted_eval_args.get("end"):
             eval_command_parts.append(f"--end {quoted_eval_args['end']}")
 
-    eval_command = " ".join(singularity_command_parts) + sif_image_path + " ".join(eval_command_parts)
+    eval_command = " ".join(singularity_command_parts) + quoted_sif_image_path + " ".join(eval_command_parts)
     template_vars = {
         "gpu_request_line": gpu_request_line,
         "client_hours": client_hours,
