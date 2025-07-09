@@ -172,8 +172,8 @@ def create_server_pbs_script(
 
     # Construct vLLM Command
     singularity_command_parts = [
-        "singularity", "exec", "--nv", 
-        "-B", f'{model_dataset_dir}:{model_dataset_dir}', # bind kv cache usage output directory
+        "singularity", "exec", "--nv",
+        "-B", f'{base_output_dir}:{base_output_dir}', # bind kv cache usage output directory
         "-B", f'{logs_subdir}:{logs_subdir}', # bind logs subdir
     ]
     vllm_command_parts = [
