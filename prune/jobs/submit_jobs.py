@@ -1,3 +1,4 @@
+# slimsc/prune/jobs/submit_jobs.py
 import subprocess
 import os
 import sys
@@ -49,6 +50,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     pbs_log_file = os.path.join(logs_dir, f"{job_name_prefix}.log")
     vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
     server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
+    client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
     
     # --- Primary Parameters ---
     model_path = job_config['model_path']
@@ -119,6 +121,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "PBS_LOG_FILE": shlex.quote(pbs_log_file),
         "VLLM_SERVE_LOG_FILE": shlex.quote(vllm_serve_log_file),
         "SERVER_IP_FILE": shlex.quote(server_ip_file),
+        "CLIENT_DONE_FILE": shlex.quote(client_done_file),
     }
 
     # Node-dependent variables
