@@ -1,15 +1,10 @@
-# slimsc/prune/jobs/submit_jobs.py
-import subprocess
+# slimsc/prune/jobs/generate_jobs_sif.py
 import os
 import sys
 import argparse
-import textwrap
-import time
 import yaml
 import shlex
-from typing import Optional, Dict
-
-from slimsc.prune.jobs.submit_jobs import get_config_value
+from typing import Dict
 
 # --- Configuration ---
 PROJECT_ROOT_REL_PATH = "../../.."
