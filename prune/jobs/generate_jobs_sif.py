@@ -213,16 +213,16 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
         print(f"Error: Missing eval args for '{job_name_prefix}': {missing}. Skipping."); return False
     return True
 
-def output_pbs_script_path(job_uuid: str, pbs_script_path: str):
+def output_pbs_script_path(job_uuid: str, host_log_dir: str, pbs_script_path: str):
     log_path_base = os.path.dirname(pbs_script_path)
-    print(f"PBS script created at: {pbs_script_path}")
-    print(f"Logs will be saved in: {log_path_base}")
+    print(f"PBS script created at: {pbs_script_path} (host dir: {host_log_dir})")
+    print(f"Logs will be saved in: {log_path_base} (host dir: {host_log_dir})")
     print(f"To submit the job, run: qsub {os.path.basename(pbs_script_path)}")
     # write into a file for access from nscc
     output_file = os.path.join(log_path_base, f"{job_uuid}_pbs_scripts.txt")
     try:
         with open(output_file, "a") as f:
-            f.write(pbs_script_path + "\n")
+            f.write(os.path.join(host_log_dir, os.path.basename(pbs_script_path)) + "\n")
         print(f"PBS script path saved to: {output_file}")
     except IOError as e:
         print(f"Error writing PBS script path to {output_file}: {e}")
