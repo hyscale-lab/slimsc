@@ -214,6 +214,16 @@ def main_yaml():
     for i, job_config in enumerate(jobs_to_process):
         current_job_index = start_index + i
         print(f"\n===== Processing Job {current_job_index + 1}/{len(all_jobs)} =====")
+        
+        model_unified_path = job_config.get('model_path')
+        if model_unified_path:
+            # Ensure the 'eval' dictionary exists
+            if 'eval' not in job_config:
+                job_config['eval'] = {}
+            
+            # Use setdefault to add keys ONLY if they are not already present.
+            job_config['eval'].setdefault('model_identifier', model_unified_path)
+            job_config['eval'].setdefault('tokenizer_path', model_unified_path)
 
         job_name_prefix = get_config_value(job_config, ['name_prefix'], f"yaml_job_{current_job_index+1}")
         eval_cfg = job_config.get('eval', {})
