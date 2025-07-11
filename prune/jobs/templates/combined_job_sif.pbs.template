@@ -15,7 +15,7 @@ EVAL_EXIT_CODE=1 # Default to failure
 # --- Cleanup Function ---
 cleanup() {{
     echo "[$(date)] Caught signal or exiting, attempting cleanup..."
-    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || true
+    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
     echo "Server terminated."
 
     echo "Cleaning up temporary files..."
@@ -128,6 +128,8 @@ echo "Client remote execution started on $(hostname)."; echo "Running Evaluation
 EVAL_EXIT_CODE=$?
 echo "[Remote] Client finished with exit code $EVAL_EXIT_CODE. Creating done file."
 echo $EVAL_EXIT_CODE > "{CLIENT_DONE_FILE}"
+singularity instance stop {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[Remote] Client instance stop command failed, but continuing."
+echo "[Remote] Client instance stopped."
 EOF
 )
     CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
@@ -158,7 +160,7 @@ EOF
     echo "[$(date)] Remote client evaluation finished with exit code: $EVAL_EXIT_CODE"
 
     echo "[$(date)] Client has finished. Shutting down vLLM server."
-    singularity instance stop --all
+    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
     echo "[$(date)] Server shutdown complete."
 else
     # ============================
@@ -183,6 +185,15 @@ else
     echo "Running Evaluation Command: {EVAL_COMMAND}"
     {EVAL_COMMAND}
     EVAL_EXIT_CODE=$?
+    echo "[$(date)] Client evaluation finished with exit code: $EVAL_EXIT_CODE"
+
+    echo "[$(date)] Shutting down client instance."
+    singularity instance stop {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Client instance stop command failed, but continuing."
+    echo "[$(date)] Client shutdown complete."
+
+    echo "[$(date)] Shutting down vLLM server."
+    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
+    echo "[$(date)] Server shutdown complete."
 fi
 
 echo "[$(date)] Evaluation script exited with code: $EVAL_EXIT_CODE"
