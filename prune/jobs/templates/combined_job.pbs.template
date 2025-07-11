@@ -98,9 +98,24 @@ if [ "{IS_MULTI_NODE}" = "true" ]; then
     # ===== MULTI-NODE LOGIC =====
     # ============================
     echo "Multi-node job detected. Parsing node file..."
-    SERVER_NODE=$(sort -u $PBS_NODEFILE | head -n 1)
-    CLIENT_NODE=$(sort -u $PBS_NODEFILE | tail -n 1)
-    if [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then echo "Error: Multi-node job assigned to a single node. Aborting."; exit 1; fi
+    
+    # --- Definitive Node Assignment ---
+    # This logic identifies the server as the node where the PBS script itself is
+    # executed, which corresponds to the first chunk in the `-l select` statement.
+    # The client is the other unique node found in the $PBS_NODEFILE. This is
+    # more reliable than counting entries.
+    SERVER_NODE=$(hostname -s)
+    CLIENT_NODE=$(sort -u $PBS_NODEFILE | grep -v "^${{SERVER_NODE}}$" | head -n 1)
+    # --- End of Definitive Node Assignment ---
+
+    if [ -z "$CLIENT_NODE" ] || [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then 
+        echo "Error: Could not determine distinct server and client nodes. Aborting."
+        echo "SERVER_NODE: $SERVER_NODE"
+        echo "CLIENT_NODE: $CLIENT_NODE"
+        echo "PBS_NODEFILE contents:"
+        cat $PBS_NODEFILE
+        exit 1; 
+    fi
     echo "Server Node: $SERVER_NODE, Client Node: $CLIENT_NODE"
 
     export CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
@@ -132,10 +147,16 @@ echo $EVAL_EXIT_CODE > "{CLIENT_DONE_FILE}"
 EOF
 )
     CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE/$SERVER_NODE}}"
+    # Use the full hostname for SSH, not the short name
+    CLIENT_NODE_FQDN=$(getent hosts "$CLIENT_NODE" | awk '{{print $2}}' | head -n 1)
+    if [ -z "$CLIENT_NODE_FQDN" ]; then CLIENT_NODE_FQDN=$CLIENT_NODE; fi
+    SERVER_NODE_FQDN=$(getent hosts "$SERVER_NODE" | awk '{{print $2}}' | head -n 1)
+    if [ -z "$SERVER_NODE_FQDN" ]; then SERVER_NODE_FQDN=$SERVER_NODE; fi
     
-    echo "Executing remote client command on $CLIENT_NODE in the background..."
-    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" "bash -c '$CLIENT_COMMAND_FILLED'" &
+    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE/$SERVER_NODE_FQDN}}"
+
+    echo "Executing remote client command on $CLIENT_NODE_FQDN in the background..."
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE_FQDN" "bash -c '$CLIENT_COMMAND_FILLED'" &
     CLIENT_SSH_PID=$!
     
     echo "[$(date)] Main script now waiting for client to finish by polling for the done file..."
