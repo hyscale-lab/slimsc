@@ -50,9 +50,15 @@ source "{CONDA_INIT_PATH}" && conda activate "{CONDA_ENV_NAME}"
 # --- Common Server Setup Logic ---
 start_vllm_server() {{
     echo "[$(date)] Setting up and starting vLLM server..."
+    # Set the environment variable for the KVC usage file path
     export KVC_USAGE_FILE={TARGET_KVC_FILE_PATH}
     {LD_LIBRARY_EXPORT_COMMAND}
-    mkdir -p "$(dirname "$KVC_USAGE_FILE")"
+    
+    # Ensure the directory for the KVC usage file exists before starting the server
+    local kvc_dir
+    kvc_dir=$(dirname "$KVC_USAGE_FILE")
+    echo "Ensuring KVC usage directory exists: $kvc_dir"
+    mkdir -p "$kvc_dir"
     
     PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
     PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
@@ -64,6 +70,8 @@ start_vllm_server() {{
     
     echo "Server using CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
     echo "Starting vLLM server on $VLLM_URL in background..."
+    echo "vLLM will log KV cache usage to: $KVC_USAGE_FILE"
+    
     setsid {VLLM_EXEC_COMMAND}
     VLLM_PID=$!
     sleep 5
@@ -92,7 +100,7 @@ if [ "{IS_MULTI_NODE}" = "true" ]; then
     echo "Multi-node job detected. Parsing node file..."
     SERVER_NODE=$(sort -u $PBS_NODEFILE | head -n 1)
     CLIENT_NODE=$(sort -u $PBS_NODEFILE | tail -n 1)
-    if [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then exit 1; fi
+    if [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then echo "Error: Multi-node job assigned to a single node. Aborting."; exit 1; fi
     echo "Server Node: $SERVER_NODE, Client Node: $CLIENT_NODE"
 
     export CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
