@@ -51,9 +51,9 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     logs_dir = os.path.join(workdir, LOGS_DIR_NAME)
     host_logs_dir = expandvars(get_config_value(eval_cfg, ['host_logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
     pbs_log_file = os.path.join(host_logs_dir, f"{job_name_prefix}.log")
-    vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
-    server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
-    client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
+    vllm_serve_log_file = os.path.join(host_logs_dir, f"{job_name_prefix}_vllm_serve.log")
+    server_ip_file = os.path.join(host_logs_dir, f"{job_name_prefix}_server_ip.txt")
+    client_done_file = os.path.join(host_logs_dir, f"{job_name_prefix}_client.done")
     base_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
     host_output_dir = expandvars(get_config_value(eval_cfg, ['host_output_dir'], os.path.join(os.path.expanduser("~"), "/slimsc/prune/results")))
 
@@ -94,7 +94,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         vllm_parts.append("--enable-reasoning")
     if get_config_value(server_cfg, ['reasoning_parser']):
         vllm_parts.append(f'--reasoning-parser {shlex.quote(server_cfg["reasoning_parser"])}')
-    vllm_exec_command = " ".join(vllm_singularity_exec_command_parts) + " ".join(vllm_parts) + f" > >(tee -a {shlex.quote(vllm_serve_log_file)}) 2>&1 &"
+    vllm_exec_command = " ".join(vllm_singularity_exec_command_parts) + " " + " ".join(vllm_parts) + f" > >(tee -a {shlex.quote(vllm_serve_log_file)}) 2>&1 &"
 
     # Client Evaluation Command
     client_singularity_start_command_parts = [
@@ -126,7 +126,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
-    eval_command = " ".join(client_singularity_exec_command_parts) + " ".join(filter(None, eval_parts))
+    eval_command = " ".join(client_singularity_exec_command_parts) + " " + " ".join(filter(None, eval_parts))
 
     # --- Prepare All Template Variables in a Single Dictionary ---
     pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
