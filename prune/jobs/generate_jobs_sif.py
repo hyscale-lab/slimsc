@@ -109,7 +109,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     client_instance_name = f"client_{job_name_prefix}"
     client_start_instance_command = " ".join(client_singularity_start_command_parts) + f" {client_sif_path} {client_instance_name}"
 
-    q_args = {k: shlex.quote(str(v)) if isinstance(v, str) else v for k, v in eval_cfg.items()}
+    q_args = {k: shlex.quote(str(os.path.expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     client_singularity_exec_command_parts = [
         "singularity", "exec", "--nv", "--no-home",
         f'instance://{client_instance_name}',
@@ -121,9 +121,9 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         if q_args.get('num_steps_to_delay_pruning') is not None: eval_parts.append(f"--num_steps_to_delay_pruning {q_args['num_steps_to_delay_pruning']}")
     elif eval_type == "sc_control":
         eval_parts = ["python -m slimsc.prune.evaluation.sc_control_eval", f"--n_start {q_args['n_start']}"]
-        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {os.path.expandvars(q_args['tokenizer_path'])}")
+        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
 
-    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {os.path.expandvars(q_args['model_identifier'])}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
+    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
     eval_command = " ".join(client_singularity_exec_command_parts) + " " + " ".join(filter(None, eval_parts))
