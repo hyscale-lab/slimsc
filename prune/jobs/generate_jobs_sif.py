@@ -50,7 +50,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     workdir = os.path.dirname(os.path.abspath(__file__))
     logs_dir = os.path.join(workdir, LOGS_DIR_NAME)
     host_logs_dir = expandvars(get_config_value(eval_cfg, ['host_logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
-    pbs_log_file = os.path.join(logs_dir, f"{job_name_prefix}.log")
+    pbs_log_file = os.path.join(host_logs_dir, f"{job_name_prefix}.log")
     vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
     server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
     client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
