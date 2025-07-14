@@ -42,7 +42,7 @@ cd "$PBS_O_WORKDIR" || exit 1
 start_vllm_server() {{
     echo "[$(date)] Setting up and starting vLLM server..."
     export SINGULARITYENV_KVC_USAGE_FILE={TARGET_KVC_FILE_PATH}
-    mkdir -p "$(dirname "$KVC_USAGE_FILE")"
+    mkdir -p "$(dirname "{HOST_KVC_FILE_PATH}")"
     
     PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
     PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
@@ -68,11 +68,12 @@ wait_for_server() {{
     # ping vllm server to ensure it starts correctly
     retries=30 # 5 minutes total wait time
     interval=10
+    attempt=0
     while ! curl -s "$VLLM_URL/ping"; do
         if [ $retries -le 0 ]; then echo "Failed to start vLLM server after multiple attempts!"; exit 1; fi
-        echo "Waiting for vLLM server to start... ($((10 - retries + 1))/$retries attempts)"
+        echo "Waiting for vLLM server to start... ($((attempt + 1))/$retries attempts)"
         sleep $interval
-        retries=$((retries - 1))
+        attempt=$((attempt + 1))
     done
     echo "[$(date)] Server is ready."
 }}
@@ -181,6 +182,7 @@ else
         echo "Client using available CPUs."
     fi
     echo "Starting client singularity instance"
+    export SINGULARITYENV_HF_HOME="{HF_HOME}"
     {CLIENT_START_INSTANCE_COMMAND}
     echo "Running Evaluation Command: {EVAL_COMMAND}"
     {EVAL_COMMAND}

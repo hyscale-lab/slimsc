@@ -55,7 +55,8 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     server_ip_file = os.path.join(host_logs_dir, f"{job_name_prefix}_server_ip.txt")
     client_done_file = os.path.join(host_logs_dir, f"{job_name_prefix}_client.done")
     base_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
-    host_output_dir = expandvars(get_config_value(eval_cfg, ['host_output_dir'], os.path.join(os.path.expanduser("~"), "/slimsc/prune/results")))
+    host_output_dir = expandvars(get_config_value(eval_cfg, ['host_output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results")))
+    hf_home = expandvars(get_config_value(eval_cfg, ['hf_home'], os.path.join(os.path.expanduser("~"), ".cache/huggingface")))
 
     # --- Primary Parameters ---
     model_path = job_config['model_path']
@@ -98,8 +99,8 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # Client Evaluation Command
     client_singularity_start_command_parts = [
-        "singularity", "instance", "start", "--nv",
-        "--no-home", "--home", "/slimsc",
+        "singularity", "instance", "start", "--nv", "--no-home",
+        "-B", f'{hf_home}:{hf_home}', # bind hf_home
         "-B", f'{model_path}:{model_path}', # bind model path
         "-B", f'{host_output_dir}:{base_output_dir}', # bind kv cache usage output directory
         "-B", f'{host_logs_dir}:{logs_dir}', # bind logs subdir
@@ -110,8 +111,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     q_args = {k: shlex.quote(str(v)) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     client_singularity_exec_command_parts = [
-        "singularity", "exec", "--nv",
-        "--home", "/slimsc",
+        "singularity", "exec", "--nv", "--no-home",
         f'instance://{client_instance_name}',
     ]
     eval_parts = []
@@ -121,9 +121,9 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         if q_args.get('num_steps_to_delay_pruning') is not None: eval_parts.append(f"--num_steps_to_delay_pruning {q_args['num_steps_to_delay_pruning']}")
     elif eval_type == "sc_control":
         eval_parts = ["python -m slimsc.prune.evaluation.sc_control_eval", f"--n_start {q_args['n_start']}"]
-        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
-    
-    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
+        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {os.path.expandvars(q_args['tokenizer_path'])}")
+
+    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {os.path.expandvars(q_args['model_identifier'])}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
     eval_command = " ".join(client_singularity_exec_command_parts) + " " + " ".join(filter(None, eval_parts))
@@ -141,7 +141,8 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
     model_dataset_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
-    
+    host_dataset_dir = os.path.join(host_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
+
     template_vars = {
         "JOB_NAME": job_name_prefix,
         "SERVER_HOURS": get_config_value(server_cfg, ['hours'], 8),
@@ -157,6 +158,8 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "SERVER_GPU_INDICES": ",".join(map(str, range(tensor_parallel_size))),
         "IS_MULTI_NODE": "true" if is_multi_node else "false",
         "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(model_dataset_dir, "kvcache_usages.csv")),
+        "HOST_KVC_FILE_PATH": shlex.quote(os.path.join(host_dataset_dir, "kvcache_usages.csv")),
+        "HF_HOME": shlex.quote(hf_home),
         # Add path variables directly
         "PBS_LOG_FILE": shlex.quote(pbs_log_file),
         "VLLM_SERVE_LOG_FILE": shlex.quote(vllm_serve_log_file),
