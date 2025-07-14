@@ -273,8 +273,9 @@ def main_yaml():
         except ValueError as e:
             print(f"Error creating script for '{job_name_prefix}': {e}. Skipping job."); continue
 
+        host_log_dir = expandvars(get_config_value(eval_cfg, ['host_logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
         pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
-        output_pbs_script_path(job_uuid, pbs_script_path)
+        output_pbs_script_path(job_uuid, host_log_dir, pbs_script_path)
 
     print("\n===== YAML Job PBS Script Creation Finished =====")
 
