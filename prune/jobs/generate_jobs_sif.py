@@ -89,7 +89,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "singularity", "exec", "--nv",
         f'instance://{vllm_instance_name}'
     ]
-    vllm_parts = ["vllm", "serve", shlex.quote(model_path), f"--tensor-parallel-size {tensor_parallel_size}", "--port $PORT", "--seed 42"]
+    vllm_parts = ["vllm", "serve", model_path, f"--tensor-parallel-size {tensor_parallel_size}", "--port $PORT", "--seed 42"]
     if get_config_value(server_cfg, ['gpu_memory_utilization']):
         vllm_parts.append(f"--gpu-memory-utilization {server_cfg['gpu_memory_utilization']}")
     if get_config_value(server_cfg, ['enable_reasoning'], False):
