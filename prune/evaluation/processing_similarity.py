@@ -312,9 +312,12 @@ async def process_question_similarity_prune(
         }
         # Create the long-running stream request
         stream_generator = stream_vllm_request(
-            prompt=prompt_text, vllm_url=vllm_url, model_name=model_name,
+            prompt=prompt_text,
+            vllm_url=vllm_url,
+            model_name=model_name,
             request_id=chain_id,
             temperature=0.6,
+            max_tokens=32768,
             logprobs=None
         )
         # Create and store the consumer task
