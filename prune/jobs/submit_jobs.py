@@ -8,6 +8,7 @@ import time
 import yaml
 import shlex
 from typing import Optional, Dict
+import copy
 
 # --- Configuration ---
 PROJECT_ROOT_REL_PATH = "../../.."
@@ -43,6 +44,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     client_cfg = job_config.get('client', {})
     eval_cfg = job_config.get('eval', {})
     eval_type = eval_cfg['type']
+    run_index = job_config.get('run_index', 1)
 
     # --- Define File Paths early ---
     workdir = os.path.dirname(os.path.abspath(__file__))
@@ -83,7 +85,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         eval_parts = ["python -m slimsc.prune.evaluation.sc_control_eval", f"--n_start {q_args['n_start']}"]
         if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
     
-    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
+    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}", f"--run_index {run_index}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
     eval_command = " ".join(filter(None, eval_parts))
@@ -101,8 +103,10 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         run_name = f"{pruning_strategy}{schedule_suffix}_n{eval_cfg['n_start']}_thresh{threshold_for_naming:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
-    model_dataset_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
     
+    # The run-specific output directory, where this run's results will be stored.
+    run_specific_output_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run", f"run{run_index}")
+
     template_vars = {
         "JOB_NAME": job_name_prefix,
         "SERVER_HOURS": get_config_value(server_cfg, ['hours'], 8),
@@ -116,7 +120,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "LD_LIBRARY_EXPORT_COMMAND": LD_LIBRARY_EXPORT_COMMAND,
         "SERVER_GPU_INDICES": ",".join(map(str, range(tensor_parallel_size))),
         "IS_MULTI_NODE": "true" if is_multi_node else "false",
-        "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(model_dataset_dir, "kvcache_usages.csv")),
+        "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(run_specific_output_dir, "kvcache_usages.csv")),
         # Add path variables directly
         "PBS_LOG_FILE": shlex.quote(pbs_log_file),
         "VLLM_SERVE_LOG_FILE": shlex.quote(vllm_serve_log_file),
@@ -191,8 +195,8 @@ def main_yaml():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(description="Submit optimized PBS tasks from a YAML file using a template.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--config", "-c", default="experiments.yaml", help="Path to the YAML configuration file.")
-    parser.add_argument("--start_job_index", type=int, default=0, help="0-based index of the job to start from.")
-    parser.add_argument("--max_jobs", type=int, default=None, help="Max number of jobs to process.")
+    parser.add_argument("--start_job_index", type=int, default=0, help="0-based index of the job in the YAML to start from.")
+    parser.add_argument("--max_jobs", type=int, default=None, help="Max number of YAML job definitions to process.")
     cli_args = parser.parse_args()
 
     config_path = os.path.join(script_dir, cli_args.config)
@@ -208,48 +212,69 @@ def main_yaml():
     jobs_to_process = all_jobs[start_index:end_index]
     if not jobs_to_process:
         print("No jobs selected to process."); sys.exit(0)
-    print(f"Processing {len(jobs_to_process)} jobs (index {start_index} to {end_index - 1}).")
+    print(f"Processing {len(jobs_to_process)} job definitions (index {start_index} to {end_index - 1}).")
 
     workdir = script_dir
-    for i, job_config in enumerate(jobs_to_process):
-        current_job_index = start_index + i
-        print(f"\n===== Processing Job {current_job_index + 1}/{len(all_jobs)} =====")
+    submission_count = 0
+    for i, base_job_config in enumerate(jobs_to_process):
+        current_job_yaml_index = start_index + i
         
-        model_unified_path = job_config.get('model_path')
-        if model_unified_path:
-            # Ensure the 'eval' dictionary exists
-            if 'eval' not in job_config:
-                job_config['eval'] = {}
+        # Determine the runs to generate for this job definition
+        num_runs = base_job_config.get('num_runs', 1)
+        run_indices_to_process = []
+        if 'run_index' in base_job_config:
+            # User wants to run a single, specific index manually
+            run_indices_to_process = [base_job_config['run_index']]
+        else:
+            # User specified num_runs, so we generate them all
+            run_indices_to_process = range(1, num_runs + 1)
             
-            # Use setdefault to add keys ONLY if they are not already present.
-            job_config['eval'].setdefault('model_identifier', model_unified_path)
-            job_config['eval'].setdefault('tokenizer_path', model_unified_path)
+        print(f"\n===== Processing YAML Job {current_job_yaml_index + 1}/{len(all_jobs)} (will generate {len(run_indices_to_process)} submission(s)) =====")
 
-        job_name_prefix = get_config_value(job_config, ['name_prefix'], f"yaml_job_{current_job_index+1}")
-        eval_cfg = job_config.get('eval', {})
-        eval_type = get_config_value(eval_cfg, ['type'])
+        for run_idx in run_indices_to_process:
+            submission_count += 1
+            print(f"--- Submitting Run {run_idx}/{num_runs if 'run_index' not in base_job_config else 1} ---")
+            
+            # Create a deep copy to ensure runs are isolated
+            job_config = copy.deepcopy(base_job_config)
+            job_config['run_index'] = run_idx
+            
+            # Use a descriptive and unique name for this specific run
+            base_name_prefix = get_config_value(job_config, ['name_prefix'], f"yaml_job_{current_job_yaml_index+1}")
+            job_name_prefix = f"{base_name_prefix}_run{run_idx}"
+            job_config['name_prefix'] = job_name_prefix
+            
+            model_unified_path = job_config.get('model_path')
+            if model_unified_path:
+                if 'eval' not in job_config: job_config['eval'] = {}
+                job_config['eval'].setdefault('model_identifier', model_unified_path)
+                job_config['eval'].setdefault('tokenizer_path', model_unified_path)
 
-        if eval_type not in ['similarity', 'sc_control']:
-            print(f"Error: Invalid 'eval.type' for '{job_name_prefix}'. Skipping."); continue
-        if not validate_job_config(job_config, job_name_prefix, eval_type): continue
-        if not check_existing_files(job_name_prefix, workdir):
-             print(f"Skipping job '{job_name_prefix}' due to existing files."); continue
+            eval_cfg = job_config.get('eval', {})
+            eval_type = get_config_value(eval_cfg, ['type'])
 
-        try:
-            pbs_script_content = create_pbs_script_from_template(job_config, job_name_prefix)
-        except ValueError as e:
-            print(f"Error creating script for '{job_name_prefix}': {e}. Skipping job."); continue
+            if eval_type not in ['similarity', 'sc_control']:
+                print(f"Error: Invalid 'eval.type' for '{job_name_prefix}'. Skipping run."); continue
+            if not validate_job_config(job_config, job_name_prefix, eval_type): continue
+            if not check_existing_files(job_name_prefix, workdir):
+                 print(f"Skipping run '{job_name_prefix}' due to existing files."); continue
 
-        pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
-        new_job_id = submit_pbs_job(pbs_script_path)
+            try:
+                # Pass the run-specific config and unique name
+                pbs_script_content = create_pbs_script_from_template(job_config, job_name_prefix)
+            except ValueError as e:
+                print(f"Error creating script for '{job_name_prefix}': {e}. Skipping run."); continue
 
-        if not new_job_id:
-            print(f"Error submitting job '{job_name_prefix}'. Stopping further processing."); break
+            pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
+            new_job_id = submit_pbs_job(pbs_script_path)
 
-        print(f"Successfully submitted job for '{job_name_prefix}': Job ID = {new_job_id}")
-        time.sleep(1)
+            if not new_job_id:
+                print(f"Error submitting job '{job_name_prefix}'. Stopping further processing."); break
 
-    print("\n===== YAML Job Submission Finished =====")
+            print(f"Successfully submitted job for '{job_name_prefix}': Job ID = {new_job_id}")
+            time.sleep(1)
+
+    print(f"\n===== YAML Job Submission Finished ({submission_count} total jobs submitted) =====")
 
 if __name__ == "__main__":
     main_yaml()

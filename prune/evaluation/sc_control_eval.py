@@ -7,6 +7,9 @@ import time
 import json
 import random
 import asyncio
+import glob
+import numpy as np
+import collections.abc
 from typing import List, Dict, Optional, Set
 
 from ..clients import close_aiohttp_session
@@ -19,28 +22,104 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SEED = 12
+DEFAULT_SEED = 0
 
 
-def setup_output_directories(base_output_dir: str, model_name: str, dataset_name: str, sc_value: int) -> Dict[str, str]:
+def flatten_dict(d, parent_key='', sep='_'):
+    """ Flattens a nested dictionary. """
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.abc.MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def calculate_and_save_mean_stats(base_run_dir: str):
+    """
+    Finds all aggregated_metrics.json files in run* subdirectories,
+    calculates the mean and std dev, and saves to mean_aggregated_metrics.json.
+    """
+    logger.info(f"Recalculating mean stats in parent directory: {base_run_dir}")
+    run_dirs = glob.glob(os.path.join(base_run_dir, "run*"))
+    
+    all_metrics_data = []
+    first_run_config = None
+    for run_dir in sorted(run_dirs):
+        metrics_file = os.path.join(run_dir, "aggregated_metrics.json")
+        if os.path.exists(metrics_file):
+            try:
+                with open(metrics_file, 'r') as f:
+                    data = json.load(f)
+                    if 'metrics' in data and isinstance(data['metrics'], dict):
+                        if first_run_config is None and 'config' in data:
+                            first_run_config = data.get('config')
+                        
+                        flat_metrics = flatten_dict(data['metrics'])
+                        all_metrics_data.append(flat_metrics)
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(f"Could not read or parse {metrics_file}: {e}")
+    
+    if not all_metrics_data:
+        logger.warning("No valid aggregated_metrics.json files found to average. Skipping.")
+        return
+
+    df = pd.DataFrame(all_metrics_data)
+    
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    if not numeric_cols:
+        logger.warning("No numeric metrics found to average. Skipping.")
+        return
+
+    mean_stats = df[numeric_cols].mean().to_dict()
+    std_stats = df[numeric_cols].std().to_dict()
+
+    if 'mean_mean_kv_cache_usage_per_question_perc' in mean_stats:
+        mean_stats['mean_mean_mean_kv_cache_usage_per_question_perc'] = mean_stats.pop('mean_mean_kv_cache_usage_per_question_perc')
+    if 'mean_max_kv_cache_usage_per_question_perc' in mean_stats:
+        mean_stats['mean_mean_max_kv_cache_usage_per_question_perc'] = mean_stats.pop('mean_max_kv_cache_usage_per_question_perc')
+    
+    final_mean_metrics = {
+        "num_runs_aggregated": len(df),
+        "mean": {k: v for k, v in mean_stats.items() if pd.notna(v)},
+        "std_dev": {f"{k}_std": v for k, v in std_stats.items() if pd.notna(v)},
+        "config": first_run_config
+    }
+
+    output_path = os.path.join(base_run_dir, "mean_aggregated_metrics.json")
+    try:
+        with open(output_path, 'w') as f:
+            json.dump(final_mean_metrics, f, indent=2)
+        logger.info(f"[bold blue]Successfully saved mean stats for {len(df)} runs to {output_path}[/bold blue]")
+    except (IOError, TypeError) as e:
+        logger.error(f"Failed to save mean stats to {output_path}: {e}")
+
+
+def setup_output_directories(base_output_dir: str, model_name: str, dataset_name: str, sc_value: int, run_index: int) -> Dict[str, str]:
     """Creates directories for storing evaluation results."""
-    run_name = f"sc_{sc_value}_control" # Added stream suffix
-    model_dataset_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
-    chains_output_dir = os.path.join(model_dataset_dir, "individual_chains")
-    summary_output_dir = os.path.join(model_dataset_dir, "summaries")
-    results_csv_path = os.path.join(model_dataset_dir, "evaluation_summary.csv")
-    kvcache_usages_dir = os.path.join(model_dataset_dir, "kvcache_usages")
-    aggregated_metrics_path = os.path.join(model_dataset_dir, "aggregated_metrics.json")
+    run_name = f"sc_{sc_value}_control"
+    
+    # Parent directory for all runs of this configuration
+    base_run_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
+    # Specific subdirectory for this individual run
+    run_specific_dir = os.path.join(base_run_dir, f"run{run_index}")
 
-    os.makedirs(model_dataset_dir, exist_ok=True)
+    chains_output_dir = os.path.join(run_specific_dir, "individual_chains")
+    summary_output_dir = os.path.join(run_specific_dir, "summaries")
+    results_csv_path = os.path.join(run_specific_dir, "evaluation_summary.csv")
+    kvcache_usages_dir = os.path.join(run_specific_dir, "kvcache_usages")
+    aggregated_metrics_path = os.path.join(run_specific_dir, "aggregated_metrics.json")
+
+    os.makedirs(run_specific_dir, exist_ok=True)
     os.makedirs(chains_output_dir, exist_ok=True)
     os.makedirs(summary_output_dir, exist_ok=True)
     os.makedirs(kvcache_usages_dir, exist_ok=True)
 
-    source_kv_file = os.path.join(model_dataset_dir, "kvcache_usages.csv")
+    source_kv_file = os.path.join(run_specific_dir, "kvcache_usages.csv")
 
     return {
-        "base": model_dataset_dir,
+        "base": run_specific_dir,
         "chains": chains_output_dir,
         "summaries": summary_output_dir,
         "csv": results_csv_path,
@@ -50,7 +129,6 @@ def setup_output_directories(base_output_dir: str, model_name: str, dataset_name
     }
 
 
-# --- run_sc_evaluation_async needs to call process_question_sc_stream ---
 async def run_sc_evaluation_async(
     dataset_name: str,
     model_name: str,
@@ -59,15 +137,16 @@ async def run_sc_evaluation_async(
     n_chains: int,
     vllm_url: str,
     base_output_dir: str,
+    run_index: int,
     start_iteration: int = 1,
     end_iteration: Optional[int] = None,
     specific_iterations: Optional[List[int]] = None
 ):
     """Runs the Self-Consistency evaluation loop using streaming."""
-    logger.info(f"Starting Async SC Streaming Eval w/ Token Counting: N={n_chains}, Model={model_name}")
+    logger.info(f"Starting Run {run_index} - Async SC Streaming Eval: N={n_chains}, Model={model_name}")
     if tokenizer_path is None:
         logger.warning("[yellow]--tokenizer_path not provided. Reasoning/Non-reasoning token counts will not be calculated.[/yellow]")
-    paths = setup_output_directories(base_output_dir, model_name, dataset_name, n_chains)
+    paths = setup_output_directories(base_output_dir, model_name, dataset_name, n_chains, run_index)
 
     clear_source_kv_cache(paths.get("source_usage_file"))
 
@@ -228,33 +307,26 @@ async def run_sc_evaluation_async(
              logger.exception(f"[red]\nError performing final save to CSV[/red]")
 
         # --- Calculate and Save Aggregated Metrics ---
-        logger.info("Calculating overall aggregated metrics...")
+        logger.info("Calculating overall aggregated metrics for this run...")
         num_processed_questions = len(final_df)
-        # Calculate score-based metrics only for questions where a score was successfully recorded
         num_questions_with_score = final_df['final_score'].dropna().shape[0]
 
-        # Calculate required aggregates, handling potential NaNs (dropna) and ensuring non-zero division (num_processed_questions > 0)
         overall_accuracy = final_df['final_score'].dropna().mean() if num_questions_with_score > 0 else None
-
         mean_total_completion_tokens = final_df['total_completion_tokens'].dropna().mean() if num_processed_questions > 0 else None
         max_total_completion_tokens = final_df['total_completion_tokens'].dropna().max() if num_processed_questions > 0 else None
-
+        
         mean_max_kv_usage = final_df['max_kv_cache_usage'].dropna().mean() if num_processed_questions > 0 else None
+        mean_mean_kv_usage = final_df['avg_kv_cache_usage'].dropna().mean() if num_processed_questions > 0 else None
         max_max_kv_usage = final_df['max_kv_cache_usage'].dropna().max() if num_processed_questions > 0 else None
 
         mean_processing_duration = final_df['processing_duration_sec'].dropna().mean() if num_processed_questions > 0 else None
         max_processing_duration = final_df['processing_duration_sec'].dropna().max() if num_processed_questions > 0 else None
-
-        # Include token counting stats if tokenizer was available
         mean_total_reasoning_tokens = final_df['total_reasoning_tokens'].dropna().mean() if tokenizer_path and num_processed_questions > 0 else None
         max_total_reasoning_tokens = final_df['total_reasoning_tokens'].dropna().max() if tokenizer_path and num_processed_questions > 0 else None
         mean_total_non_reasoning_tokens = final_df['total_non_reasoning_tokens'].dropna().mean() if tokenizer_path and num_processed_questions > 0 else None
         max_total_non_reasoning_tokens = final_df['total_non_reasoning_tokens'].dropna().max() if tokenizer_path and num_processed_questions > 0 else None
-
-        # Also include average chains requested and received
         mean_chains_requested = final_df['n_chains_requested'].dropna().mean() if num_processed_questions > 0 else None
         mean_chains_received = final_df['n_chains_received'].dropna().mean() if num_processed_questions > 0 else None
-
 
         aggregated_metrics = {
             "dataset": dataset_name,
@@ -264,42 +336,42 @@ async def run_sc_evaluation_async(
                 "n_chains": n_chains,
                 "tokenizer_path_provided": tokenizer_path is not None,
                 "iterations_selected_by": "specific_list" if specific_iterations is not None else "range",
-                "random_seed": DEFAULT_SEED if specific_iterations is not None and any(specific_iterations) and hasattr(random, 'getstate') else None # Show seed if random was likely used
+                "random_seed": DEFAULT_SEED if specific_iterations is not None and any(specific_iterations) and hasattr(random, 'getstate') else None
             },
             "metrics": {
                 "num_questions_processed": num_processed_questions,
-                "num_questions_with_score": num_questions_with_score, # Number of questions where a score could be calculated
-                "overall_accuracy": f'{overall_accuracy:.2f}' if overall_accuracy is not None else None,
-
-                "mean_total_completion_tokens_per_question": f'{mean_total_completion_tokens:.1f}' if mean_total_completion_tokens is not None else None,
-                "max_total_completion_tokens_per_question": f'{max_total_completion_tokens:.1f}' if max_total_completion_tokens is not None else None,
-
-                "mean_max_kv_cache_usage_per_question_perc": f'{mean_max_kv_usage:.4f}' if mean_max_kv_usage is not None else None,
-                "max_max_kv_cache_usage_across_all_questions_perc": f'{max_max_kv_usage:.4f}' if max_max_kv_usage is not None else None,
-
-                "mean_processing_duration_sec_per_question": f'{mean_processing_duration:.2f}' if mean_processing_duration is not None else None,
-                "max_processing_duration_sec_per_question": f'{max_processing_duration:.2f}' if max_processing_duration is not None else None,
-
-                "mean_chains_requested_per_question": f'{mean_chains_requested:.2f}' if mean_chains_requested is not None else None,
-                "mean_chains_received_per_question": f'{mean_chains_received:.2f}' if mean_chains_received is not None else None,
-
-                 "counted_tokens_aggregated": {
-                     "mean_total_reasoning_tokens_per_question": f'{mean_total_reasoning_tokens:.1f}' if mean_total_reasoning_tokens is not None else None,
-                     "max_total_reasoning_tokens_per_question": f'{max_total_reasoning_tokens:.1f}' if max_total_reasoning_tokens is not None else None,
-                     "mean_total_non_reasoning_tokens_per_question": f'{mean_total_non_reasoning_tokens:.1f}' if mean_total_non_reasoning_tokens is not None else None,
-                     "max_total_non_reasoning_tokens_per_question": f'{max_total_non_reasoning_tokens:.1f}' if max_total_non_reasoning_tokens is not None else None,
-                 } if tokenizer_path else None,
+                "num_questions_with_score": num_questions_with_score,
+                "overall_accuracy": float(overall_accuracy) if overall_accuracy is not None else None,
+                "mean_total_completion_tokens_per_question": float(mean_total_completion_tokens) if mean_total_completion_tokens is not None else None,
+                "max_total_completion_tokens_per_question": float(max_total_completion_tokens) if max_total_completion_tokens is not None else None,
+                
+                "mean_mean_kv_cache_usage_per_question_perc": float(mean_mean_kv_usage) if mean_mean_kv_usage is not None else None,
+                "mean_max_kv_cache_usage_per_question_perc": float(mean_max_kv_usage) if mean_max_kv_usage is not None else None,
+                "max_max_kv_cache_usage_across_all_questions_perc": float(max_max_kv_usage) if max_max_kv_usage is not None else None,
+                
+                "mean_processing_duration_sec_per_question": float(mean_processing_duration) if mean_processing_duration is not None else None,
+                "max_processing_duration_sec_per_question": float(max_processing_duration) if max_processing_duration is not None else None,
+                "mean_chains_requested_per_question": float(mean_chains_requested) if mean_chains_requested is not None else None,
+                "mean_chains_received_per_question": float(mean_chains_received) if mean_chains_received is not None else None,
+                "counted_tokens_aggregated": {
+                    "mean_total_reasoning_tokens_per_question": float(mean_total_reasoning_tokens) if mean_total_reasoning_tokens is not None else None,
+                    "max_total_reasoning_tokens_per_question": float(max_total_reasoning_tokens) if max_total_reasoning_tokens is not None else None,
+                    "mean_total_non_reasoning_tokens_per_question": float(mean_total_non_reasoning_tokens) if mean_total_non_reasoning_tokens is not None else None,
+                    "max_total_non_reasoning_tokens_per_question": float(max_total_non_reasoning_tokens) if max_total_non_reasoning_tokens is not None else None,
+                } if tokenizer_path else None,
             }
         }
 
         try:
             with open(paths["aggregated_metrics_json"], "w", encoding='utf-8') as f:
                 json.dump(aggregated_metrics, f, indent=2)
-            logger.info(f"[bold green]Aggregated metrics saved to {paths['aggregated_metrics_json']}[/bold green]")
-        except IOError as e:
-            logger.exception(f"[red]Error writing aggregated metrics file {paths['aggregated_metrics_json']}[/red]")
-        except TypeError as e:
-             logger.exception(f"[red]Error serializing aggregated metrics data to JSON: {e}[/red]")
+            logger.info(f"[bold green]Aggregated metrics for run {run_index} saved to {paths['aggregated_metrics_json']}[/bold green]")
+            
+            base_run_dir = os.path.dirname(paths['base'])
+            calculate_and_save_mean_stats(base_run_dir)
+
+        except (IOError, TypeError) as e:
+            logger.exception(f"[red]Error writing metrics or mean stats file[/red]")
 
 
         # Print summary stats (optional, as they are in the JSON file now)
@@ -326,6 +398,9 @@ async def run_sc_evaluation_async(
                  logger.info(f"[green]Avg Reasoning Tokens per Question (counted): {mean_total_reasoning_tokens:.1f}[/green]")
              if mean_total_non_reasoning_tokens is not None:
                  logger.info(f"[green]Avg Non-Reasoning Tokens per Question (counted): {mean_total_non_reasoning_tokens:.1f}[/green]")
+        
+        if mean_mean_kv_usage is not None:
+             logger.info(f"[green]Avg Mean KV Cache Usage per Question (%): {mean_mean_kv_usage:.4f}[/green]")
 
     else:
         logger.warning("[yellow]No results were processed or loaded for aggregation.[/yellow]")
@@ -363,6 +438,7 @@ def main():
     parser.add_argument('--start', type=int, default=1, help='Starting iteration (1-indexed). Used only if --num_qns and --iterations are not specified.')
     parser.add_argument('--end', type=int, default=None, help='Ending iteration (inclusive). Used only if --num_qns and --iterations are not specified.')
     parser.add_argument('--iterations', type=str, default=None, help='Comma-separated list of specific iterations (e.g., "1,5,10-12"). Overridden by --num_qns.')
+    parser.add_argument('--run_index', type=int, default=1, help='The index of this run, used for creating run-specific output subdirectories.')
     args = parser.parse_args()
 
     if args.tokenizer_path is None:
@@ -447,6 +523,7 @@ def main():
             n_chains=args.n_start,
             vllm_url=args.vllm_url,
             base_output_dir=args.output_dir,
+            run_index=args.run_index,
             start_iteration=args.start,
             end_iteration=args.end,
             specific_iterations=specific_iterations_list
