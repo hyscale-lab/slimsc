@@ -38,11 +38,28 @@ echo "--- PBS Job Start ({JOB_NAME}) ---"
 echo "Workdir: $PBS_O_WORKDIR"
 cd "$PBS_O_WORKDIR" || exit 1
 
+# --- Get Secret ---
+get_secret() {{
+    HAS_SECRET={HAS_SECRET}
+    if [ -z $HAS_SECRET ]; then
+        echo "[$(date)] No secret path provided, skipping secret loading."
+    else
+        echo "[$(date)] Loading secret from {SECRET_PATH}..."
+        if [ ! -f "{SECRET_PATH}" ]; then
+            echo "Error: Secret file not found at {SECRET_PATH}!"
+            exit 1
+        else
+            export $(xargs -a "{SECRET_PATH}")
+            echo "Secret loaded successfully."
+        fi
+    fi
+}}
+
 # --- Common Server Setup Logic ---
 start_vllm_server() {{
     echo "[$(date)] Setting up and starting vLLM server..."
-    export SINGULARITYENV_KVC_USAGE_FILE={TARGET_KVC_FILE_PATH}
-    mkdir -p "$(dirname "{HOST_KVC_FILE_PATH}")"
+    export SINGULARITYENV_KVC_USAGE_FILE={KVC_FILE_PATH}
+    mkdir -p "$(dirname "{KVC_FILE_PATH}")"
     
     PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
     PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
@@ -122,6 +139,8 @@ SERVER_URL_FULL="{{VLLM_URL_VAR}}"; SERVER_IP_PORT=$(echo "$SERVER_URL_FULL" | s
 ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE &
 TUNNEL_PID=$!
 sleep 2
+get_secret
+export SINGULARITYENV_HF_HOME="{HF_HOME}"
 export SINGULARITYENV_VLLM_URL="http://localhost:$SERVER_PORT"
 export SINGULARITYENV_CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_MULTI_NODE}"
 echo "Starting client singularity instance"
@@ -185,6 +204,7 @@ else
     fi
     echo "Starting client singularity instance"
     export SINGULARITYENV_HF_HOME="{HF_HOME}"
+    get_secret
     {CLIENT_START_INSTANCE_COMMAND}
     echo "Running Evaluation Command: {EVAL_COMMAND}"
     {EVAL_COMMAND}

@@ -48,15 +48,18 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # --- Define File Paths early ---
     workdir = os.path.dirname(os.path.abspath(__file__))
-    logs_dir = os.path.join(workdir, LOGS_DIR_NAME)
-    host_logs_dir = expandvars(get_config_value(eval_cfg, ['host_logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
-    pbs_log_file = os.path.join(host_logs_dir, f"{job_name_prefix}.log")
-    vllm_serve_log_file = os.path.join(host_logs_dir, f"{job_name_prefix}_vllm_serve.log")
-    server_ip_file = os.path.join(host_logs_dir, f"{job_name_prefix}_server_ip.txt")
-    client_done_file = os.path.join(host_logs_dir, f"{job_name_prefix}_client.done")
-    base_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
-    host_output_dir = expandvars(get_config_value(eval_cfg, ['host_output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results")))
+    logs_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(workdir, LOGS_DIR_NAME))) 
+    pbs_log_file = os.path.join(logs_dir, f"{job_name_prefix}.log")
+    vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
+    server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
+    client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
+    output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results")))
     hf_home = expandvars(get_config_value(eval_cfg, ['hf_home'], os.path.join(os.path.expanduser("~"), ".cache/huggingface")))
+    # optional secret_path
+    secret_path = expandvars(get_config_value(eval_cfg, ['secret_path']))
+    has_secret = secret_path is not None
+    if has_secret and not os.path.exists(secret_path):
+        raise ValueError(f"Secret file not found at {secret_path}. Please provide a valid path in the job configuration.")
 
     # --- Primary Parameters ---
     model_path = job_config['model_path']
@@ -72,7 +75,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     vllm_singularity_start_command_parts = [
         "singularity", "instance", "start", "--nv",
         "-B", f'{model_path}:{model_path}', # bind model path
-        "-B", f'{host_logs_dir}:{logs_dir}', # bind logs subdir
+        "-B", f'{logs_dir}:{logs_dir}', # bind logs subdir
     ]
     vllm_sif_path = os.path.abspath(expandvars(server_cfg.get('sif_path')))
     vllm_instance_name = f"vllm_{job_name_prefix}"
@@ -103,14 +106,19 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "singularity", "instance", "start", "--nv", "--no-home",
         "-B", f'{hf_home}:{hf_home}', # bind hf_home
         "-B", f'{model_path}:{model_path}', # bind model path
-        "-B", f'{host_output_dir}:{base_output_dir}', # bind kv cache usage output directory
-        "-B", f'{host_logs_dir}:{logs_dir}', # bind logs subdir
+        "-B", f'{output_dir}:{output_dir}', # bind kv cache usage output directory
+        "-B", f'{logs_dir}:{logs_dir}', # bind logs subdir
+        "-B", f'{secret_path}:{secret_path}', # bind secret
     ]
     client_sif_path = os.path.abspath(expandvars(client_cfg.get('sif_path')))
+    if not client_sif_path:
+        raise ValueError(f"Missing 'sif_path' in client configuration for job '{job_name_prefix}'.")
+    if not os.path.exists(client_sif_path):
+        raise ValueError(f"Singularity image not found at {client_sif_path} for job '{job_name_prefix}'.")
     client_instance_name = f"client_{job_name_prefix}"
     client_start_instance_command = " ".join(client_singularity_start_command_parts) + f" {client_sif_path} {client_instance_name}"
 
-    q_args = {k: shlex.quote(str(os.path.expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
+    q_args = {k: shlex.quote(str(expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     client_singularity_exec_command_parts = [
         "singularity", "exec", "--nv", "--no-home",
         f'instance://{client_instance_name}',
@@ -141,8 +149,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         run_name = f"{pruning_strategy}{schedule_suffix}_n{eval_cfg['n_start']}_thresh{threshold_for_naming:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
-    model_dataset_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
-    host_dataset_dir = os.path.join(host_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
+    dataset_dir = os.path.join(output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
 
     template_vars = {
         "JOB_NAME": job_name_prefix,
@@ -158,9 +165,10 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "EVAL_TYPE": eval_type,
         "SERVER_GPU_INDICES": ",".join(map(str, range(tensor_parallel_size))),
         "IS_MULTI_NODE": "true" if is_multi_node else "false",
-        "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(model_dataset_dir, "kvcache_usages.csv")),
-        "HOST_KVC_FILE_PATH": shlex.quote(os.path.join(host_dataset_dir, "kvcache_usages.csv")),
+        "KVC_FILE_PATH": shlex.quote(os.path.join(dataset_dir, "kvcache_usages.csv")),
         "HF_HOME": shlex.quote(hf_home),
+        "HAS_SECRET": 1 if has_secret else 0,
+        "SECRET_PATH": shlex.quote(secret_path),
         # Add path variables directly
         "PBS_LOG_FILE": shlex.quote(pbs_log_file),
         "VLLM_SERVE_LOG_FILE": shlex.quote(vllm_serve_log_file),
@@ -217,16 +225,15 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
         print(f"Error: Missing eval args for '{job_name_prefix}': {missing}. Skipping."); return False
     return True
 
-def output_pbs_script_path(job_uuid: str, host_log_dir: str, pbs_script_path: str):
+def output_pbs_script_path(job_uuid: str, log_dir: str, pbs_script_path: str):
     log_path_base = os.path.dirname(pbs_script_path)
-    print(f"PBS script created at: {pbs_script_path} (host dir: {host_log_dir})")
-    print(f"Logs will be saved in: {log_path_base} (host dir: {host_log_dir})")
-    print(f"To submit the job, run: qsub {os.path.basename(pbs_script_path)}")
+    print(f"PBS script created at: {pbs_script_path}")
+    print(f"Logs will be saved in: {log_path_base}")
     # write into a file for access from nscc
     output_file = os.path.join(log_path_base, f"{job_uuid}_pbs_scripts.txt")
     try:
         with open(output_file, "a") as f:
-            f.write(os.path.join(host_log_dir, os.path.basename(pbs_script_path)) + "\n")
+            f.write(os.path.join(log_dir, os.path.basename(pbs_script_path)) + "\n")
         print(f"PBS script path saved to: {output_file}")
     except IOError as e:
         print(f"Error writing PBS script path to {output_file}: {e}")
@@ -277,9 +284,9 @@ def main_yaml():
         except ValueError as e:
             print(f"Error creating script for '{job_name_prefix}': {e}. Skipping job."); continue
 
-        host_log_dir = expandvars(get_config_value(eval_cfg, ['host_logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
+        log_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
         pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
-        output_pbs_script_path(job_uuid, host_log_dir, pbs_script_path)
+        output_pbs_script_path(job_uuid, log_dir, pbs_script_path)
 
     print("\n===== YAML Job PBS Script Creation Finished =====")
 
