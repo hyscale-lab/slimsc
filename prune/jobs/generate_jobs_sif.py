@@ -118,7 +118,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     client_instance_name = f"client_{job_name_prefix}"
     client_start_instance_command = " ".join(client_singularity_start_command_parts) + f" {client_sif_path} {client_instance_name}"
 
-    q_args = {k: shlex.quote(str(expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
+    q_args = {k: shlex.quote(str(os.path.expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     client_singularity_exec_command_parts = [
         "singularity", "exec", "--nv", "--no-home",
         f'instance://{client_instance_name}',
