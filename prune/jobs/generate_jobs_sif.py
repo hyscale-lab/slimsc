@@ -85,6 +85,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # vLLM Server Command (now uses the final path variable directly)
     vllm_singularity_exec_command_parts = [
+        "setsid",
         "singularity", "exec", "--nv",
         f'instance://{vllm_instance_name}'
     ]
