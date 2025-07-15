@@ -102,7 +102,7 @@ if __name__ == "__main__":
         '--base_run_dir',
         type=str,
         required=True,
-        help='The path to the base run directory containing run* subdirectories (e.g., "results/model/dataset/config").'
+        help='The path to the base run directory containing run* subdirectories (e.g., "results/model/dataset/config_name").'
     )
     args = parser.parse_args()
 

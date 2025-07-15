@@ -16,6 +16,8 @@ def recompute_aggregated_metrics(run_dir: str):
     """
     Recomputes the aggregated_metrics.json file for a single run
     based on its evaluation_summary.csv file.
+    
+    This script is generic and works for both Control and Similarity Pruning runs.
     """
     logging.info(f"Starting recomputation for run directory: {run_dir}")
 
@@ -28,7 +30,7 @@ def recompute_aggregated_metrics(run_dir: str):
         logging.error(f"Required file not found: {csv_path}. Cannot proceed.")
         return
 
-    # Load existing JSON to preserve config and metadata
+    # Load existing JSON to preserve config and metadata (like run_type)
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             original_data = json.load(f)
@@ -69,22 +71,22 @@ def recompute_aggregated_metrics(run_dir: str):
 
     # Helper function to safely calculate and cast stats from a pandas Series
     def get_stat(series, func, cast_to=float):
-        if series.dropna().empty:
+        if not isinstance(series, pd.Series) or series.dropna().empty:
             return None
         val = func(series.dropna())
         return cast_to(val) if pd.notna(val) else None
 
-    # Common metrics
+    # Common metrics for both run types
     overall_accuracy = get_stat(df['final_score'], np.mean)
-    mean_total_completion_tokens = get_stat(df['total_completion_tokens'], np.mean)
-    max_total_completion_tokens = get_stat(df['total_completion_tokens'], np.max)
-    mean_mean_kv_usage = get_stat(df['avg_kv_cache_usage'], np.mean)
-    mean_max_kv_usage = get_stat(df['max_kv_cache_usage'], np.mean)
-    max_max_kv_usage = get_stat(df['max_kv_cache_usage'], np.max)
-    mean_processing_duration = get_stat(df['processing_duration_sec'], np.mean)
-    max_processing_duration = get_stat(df['processing_duration_sec'], np.max)
+    mean_total_completion_tokens = get_stat(df.get('total_completion_tokens'), np.mean)
+    max_total_completion_tokens = get_stat(df.get('total_completion_tokens'), np.max)
+    mean_mean_kv_usage = get_stat(df.get('avg_kv_cache_usage'), np.mean)
+    mean_max_kv_usage = get_stat(df.get('max_kv_cache_usage'), np.mean)
+    max_max_kv_usage = get_stat(df.get('max_kv_cache_usage'), np.max)
+    mean_processing_duration = get_stat(df.get('processing_duration_sec'), np.mean)
+    max_processing_duration = get_stat(df.get('processing_duration_sec'), np.max)
 
-    # Initialize the new metrics dictionary
+    # Initialize the new metrics dictionary with common values
     new_metrics = {
         "overall_accuracy": overall_accuracy,
         "mean_total_completion_tokens_per_question": mean_total_completion_tokens,
@@ -96,7 +98,7 @@ def recompute_aggregated_metrics(run_dir: str):
         "max_processing_duration_sec_per_question": max_processing_duration,
     }
 
-    # Branch for run-type specific metrics based on metadata
+    # === Logic branch based on run_type from the original JSON ===
     run_type = original_data.get("run_type", "")
     is_pruning_run = "Pruning" in run_type
 
@@ -105,28 +107,28 @@ def recompute_aggregated_metrics(run_dir: str):
         new_metrics.update({
             "num_qns_processed": num_processed_questions,
             "num_qns_with_score": num_qns_with_score,
-            "mean_chains_started_per_question": get_stat(df['n_chains_start'], np.mean),
-            "mean_chains_completed_stream_for_voting_per_question": get_stat(df['n_chains_completed_stream_for_voting'], np.mean),
-            "mean_chains_error_per_question": get_stat(df['n_chains_error'], np.mean),
-            "max_chains_error_per_question": get_stat(df['n_chains_error'], np.max),
+            "mean_chains_started_per_question": get_stat(df.get('n_chains_start'), np.mean),
+            "mean_chains_completed_stream_for_voting_per_question": get_stat(df.get('n_chains_completed_stream_for_voting'), np.mean),
+            "mean_chains_error_per_question": get_stat(df.get('n_chains_error'), np.mean),
+            "max_chains_error_per_question": get_stat(df.get('n_chains_error'), np.max),
         })
     else: # Assume control run
         logging.info("Detected Control run. Calculating control-specific metrics.")
         new_metrics.update({
             "num_questions_processed": num_processed_questions,
             "num_questions_with_score": num_qns_with_score,
-            "mean_chains_requested_per_question": get_stat(df['n_chains_requested'], np.mean),
-            "mean_chains_received_per_question": get_stat(df['n_chains_received'], np.mean),
+            "mean_chains_requested_per_question": get_stat(df.get('n_chains_requested'), np.mean),
+            "mean_chains_received_per_question": get_stat(df.get('n_chains_received'), np.mean),
         })
         
         tokenizer_provided = original_data.get("config", {}).get("tokenizer_path_provided", False)
         if tokenizer_provided and 'total_reasoning_tokens' in df.columns:
             logging.info("Tokenizer was provided. Calculating counted token metrics.")
             new_metrics["counted_tokens_aggregated"] = {
-                "mean_total_reasoning_tokens_per_question": get_stat(df['total_reasoning_tokens'], np.mean),
-                "max_total_reasoning_tokens_per_question": get_stat(df['total_reasoning_tokens'], np.max),
-                "mean_total_non_reasoning_tokens_per_question": get_stat(df['total_non_reasoning_tokens'], np.mean),
-                "max_total_non_reasoning_tokens_per_question": get_stat(df['total_non_reasoning_tokens'], np.max),
+                "mean_total_reasoning_tokens_per_question": get_stat(df.get('total_reasoning_tokens'), np.mean),
+                "max_total_reasoning_tokens_per_question": get_stat(df.get('total_reasoning_tokens'), np.max),
+                "mean_total_non_reasoning_tokens_per_question": get_stat(df.get('total_non_reasoning_tokens'), np.mean),
+                "max_total_non_reasoning_tokens_per_question": get_stat(df.get('total_non_reasoning_tokens'), np.max),
             }
         else:
              new_metrics["counted_tokens_aggregated"] = None
@@ -149,13 +151,13 @@ def recompute_aggregated_metrics(run_dir: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Recompute the aggregated_metrics.json for a specific run directory from its evaluation_summary.csv."
+        description="Recompute aggregated_metrics.json for a specific run from its evaluation_summary.csv. Works for Control and Pruning runs."
     )
     parser.add_argument(
         '--run_dir',
         type=str,
         required=True,
-        help='The path to the specific run directory (e.g., "results/model/dataset/config/run1").'
+        help='The path to the specific run directory (e.g., ".../config_name/run1").'
     )
     args = parser.parse_args()
     
