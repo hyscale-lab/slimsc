@@ -5,8 +5,6 @@ WORKDIR /slimsc
 COPY requirements/ ./requirements
 RUN pip install --no-cache-dir -r requirements/requirements.txt
 
-RUN mkdir -p slimsc
-
 COPY . .
 
 RUN mkdir -p prune/results
