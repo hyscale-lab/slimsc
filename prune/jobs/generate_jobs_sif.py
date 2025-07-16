@@ -103,7 +103,10 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # Client Evaluation Command
     client_singularity_start_command_parts = [
-        "cd", "scratch", "&&",  # Change to scratch directory so that --no-home works correctly
+        "pwd", "&&",
+        "ls -d */", "&&",
+        "cd", "$(ls -d */|tail -n 1)", "&&",  # Change to another directory so that --no-home works correctly
+        "pwd", "&&",
         "singularity", "instance", "start", "--nv", "--no-home",
         "-B", f'{hf_home}:{hf_home}', # bind hf_home
         "-B", f'{model_path}:{model_path}', # bind model path
@@ -121,7 +124,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     q_args = {k: shlex.quote(str(os.path.expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     client_singularity_exec_command_parts = [
-        "singularity", "exec", "--nv",
+        "singularity", "exec", "--nv", "--no-home",
         f'instance://{client_instance_name}',
     ]
     eval_parts = []

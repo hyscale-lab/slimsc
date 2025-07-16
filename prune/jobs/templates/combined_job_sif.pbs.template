@@ -15,7 +15,7 @@ EVAL_EXIT_CODE=1 # Default to failure
 # --- Cleanup Function ---
 cleanup() {{
     echo "[$(date)] Caught signal or exiting, attempting cleanup..."
-    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
+    singularity instance stop {VLLM_INSTANCE_NAME} {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
     echo "Server terminated."
 
     echo "Cleaning up temporary files..."
@@ -60,6 +60,7 @@ start_vllm_server() {{
     echo "[$(date)] Setting up and starting vLLM server..."
     export SINGULARITYENV_KVC_USAGE_FILE={KVC_FILE_PATH}
     mkdir -p "$(dirname "{KVC_FILE_PATH}")"
+    touch "{KVC_FILE_PATH}"
     
     PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
     PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
@@ -78,7 +79,7 @@ start_vllm_server() {{
         exit 1
     }}
     {VLLM_EXEC_COMMAND}
-    echo "vLLM server started successfully at $VLLM_URL"
+    echo "vLLM instance started successfully at (VLLM_URL=$VLLM_URL), waiting for it to become ready..."
 }}
 
 # --- Common Server Wait Logic ---
