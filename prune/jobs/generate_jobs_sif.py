@@ -48,12 +48,18 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # --- Define File Paths early ---
     workdir = os.path.dirname(os.path.abspath(__file__))
-    logs_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(workdir, LOGS_DIR_NAME))) 
+    # get logs dir from env or default
+    logs_dir_default = os.getenv("SLIMSC_LOGS_DIR", os.path.join(workdir, LOGS_DIR_NAME))
+    # get logs dir from eval config or default
+    logs_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], logs_dir_default)) 
     pbs_log_file = os.path.join(logs_dir, f"{job_name_prefix}.log")
     vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
     server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
     client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
-    output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results")))
+    # get output dir from env or default
+    output_dir_default = os.getenv("SLIMSC_OUTPUT_DIR", os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
+    # get output dir from eval config or default
+    output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], output_dir_default))
     hf_home = expandvars(get_config_value(eval_cfg, ['hf_home'], os.path.join(os.path.expanduser("~"), ".cache/huggingface")))
     # optional secret_path
     secret_path = expandvars(get_config_value(eval_cfg, ['secret_path']))
