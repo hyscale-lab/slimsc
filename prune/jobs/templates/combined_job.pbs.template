@@ -99,27 +99,32 @@ if [ "{IS_MULTI_NODE}" = "true" ]; then
     # ============================
     echo "Multi-node job detected. Parsing node file..."
     
-    # --- Definitive Node Assignment ---
-    # This logic identifies the server as the node where the PBS script itself is
-    # executed, which corresponds to the first chunk in the `-l select` statement.
-    # The client is the other unique node found in the $PBS_NODEFILE. This is
-    # more reliable than counting entries.
+    # Get the short hostname of the node this script is running on. This is the server.
     SERVER_NODE=$(hostname -s)
-    CLIENT_NODE=$(sort -u $PBS_NODEFILE | grep -v "^${{SERVER_NODE}}$" | head -n 1)
-    # --- End of Definitive Node Assignment ---
 
+    # Get a list of all unique *short* hostnames from the PBS node file.
+    # `cut -d. -f1` strips domain parts, ensuring "node1" and "node1.domain.com" are treated the same.
+    ALL_UNIQUE_SHORT_NODES=$(cut -d. -f1 < "$PBS_NODEFILE" | sort -u)
+
+    # The client node is the one in the unique list that is NOT the server node.
+    CLIENT_NODE=$(echo "$ALL_UNIQUE_SHORT_NODES" | grep -v "^${{SERVER_NODE}}$" | head -n 1)
+
+    # Validation: Check if we successfully found two *different* nodes.
     if [ -z "$CLIENT_NODE" ] || [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then 
         echo "Error: Could not determine distinct server and client nodes. Aborting."
-        echo "SERVER_NODE: $SERVER_NODE"
-        echo "CLIENT_NODE: $CLIENT_NODE"
-        echo "PBS_NODEFILE contents:"
-        cat $PBS_NODEFILE
+        echo "  Server Node (this host): $SERVER_NODE"
+        echo "  Client Node (from list): $CLIENT_NODE"
+        echo "  PBS_NODEFILE contents:"
+        cat "$PBS_NODEFILE"
+        echo "  Processed unique short nodes:"
+        echo "$ALL_UNIQUE_SHORT_NODES"
         exit 1; 
     fi
     echo "Server Node: $SERVER_NODE, Client Node: $CLIENT_NODE"
 
     export CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
-    HOST_IP=$(getent hosts "$SERVER_NODE" | awk '{{print $1}}')
+    # Use the short name for IP resolution. getent is robust.
+    HOST_IP=$(getent hosts "$SERVER_NODE" | awk '{{print $1}}' | head -n 1)
     start_vllm_server
     wait_for_server
 
@@ -134,7 +139,8 @@ PROJECT_ROOT_ABS_PATH=$(cd "{PROJECT_ROOT_REL_PATH}" && pwd)
 export PYTHONPATH="$PROJECT_ROOT_ABS_PATH:$PYTHONPATH"
 source "{CONDA_INIT_PATH}" && conda activate "{CONDA_ENV_NAME}"
 SERVER_URL_FULL="{{VLLM_URL_VAR}}"; SERVER_IP_PORT=$(echo "$SERVER_URL_FULL" | sed -e 's%http://%%g'); SERVER_IP=$(echo "$SERVER_IP_PORT" | cut -d: -f1); SERVER_PORT=$(echo "$SERVER_IP_PORT" | cut -d: -f2)
-ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE &
+# Use $SERVER_NODE_VAR which will be the short name of the server, for the tunnel destination
+ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE_VAR &
 TUNNEL_PID=$!
 sleep 2
 export VLLM_URL="http://localhost:$SERVER_PORT"
@@ -147,16 +153,12 @@ echo $EVAL_EXIT_CODE > "{CLIENT_DONE_FILE}"
 EOF
 )
     CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
-    # Use the full hostname for SSH, not the short name
-    CLIENT_NODE_FQDN=$(getent hosts "$CLIENT_NODE" | awk '{{print $2}}' | head -n 1)
-    if [ -z "$CLIENT_NODE_FQDN" ]; then CLIENT_NODE_FQDN=$CLIENT_NODE; fi
-    SERVER_NODE_FQDN=$(getent hosts "$SERVER_NODE" | awk '{{print $2}}' | head -n 1)
-    if [ -z "$SERVER_NODE_FQDN" ]; then SERVER_NODE_FQDN=$SERVER_NODE; fi
+    # Pass the server's short name to the remote script for the SSH tunnel
+    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE_VAR/$SERVER_NODE}}"
     
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE/$SERVER_NODE_FQDN}}"
-
-    echo "Executing remote client command on $CLIENT_NODE_FQDN in the background..."
-    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE_FQDN" "bash -c '$CLIENT_COMMAND_FILLED'" &
+    # Use the client's short name for the ssh command itself.
+    echo "Executing remote client command on $CLIENT_NODE in the background..."
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" "bash -c '$CLIENT_COMMAND_FILLED'" &
     CLIENT_SSH_PID=$!
     
     echo "[$(date)] Main script now waiting for client to finish by polling for the done file..."

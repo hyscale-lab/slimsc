@@ -184,7 +184,7 @@ async def process_question_similarity_prune(
     threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
     num_steps_to_delay_pruning: int,
-    max_analysis_steps: int = 100 # Limit analysis intervals
+    max_analysis_steps: int = 1000 # Limit analysis intervals
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
