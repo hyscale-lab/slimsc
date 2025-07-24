@@ -84,6 +84,9 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     elif eval_type == "sc_control":
         eval_parts = ["python -m slimsc.prune.evaluation.sc_control_eval", f"--n_start {q_args['n_start']}"]
         if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
+    elif eval_type == "esc":
+        eval_parts = ["python -m slimsc.prune.evaluation.esc_eval", f"--n_chains {q_args['n_chains']}"]
+        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
     
     eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}", f"--run_index {run_index}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
@@ -103,6 +106,10 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         run_name = f"{pruning_strategy}{schedule_suffix}_n{eval_cfg['n_start']}_thresh{threshold_for_naming:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
+    elif eval_type == "esc":
+        n_chains = eval_cfg['n_chains']
+        window_size = max(2, int(n_chains / 8))
+        run_name = f"esc_n{n_chains}_w{window_size}"
     
     # The run-specific output directory, where this run's results will be stored.
     run_specific_output_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run", f"run{run_index}")
@@ -184,8 +191,12 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
     if not get_config_value(job_config, ['model_path']):
         print(f"Error: 'model_path' missing for job '{job_name_prefix}'. Skipping."); return False
     eval_cfg = job_config.get('eval', {})
-    required = ['n_start', 'model_name', 'model_identifier', 'dataset_name']
-    if eval_type == 'similarity': required.extend(['threshold', 'pruning_strategy', 'tokenizer_path'])
+    required = ['model_name', 'model_identifier', 'dataset_name']
+    if eval_type == 'similarity': required.extend(['n_start', 'threshold', 'pruning_strategy', 'tokenizer_path'])
+    elif eval_type == 'sc_control': required.extend(['n_start'])
+    elif eval_type == 'esc':
+        required.extend(['n_chains'])
+    
     missing = [arg for arg in required if arg not in eval_cfg]
     if missing:
         print(f"Error: Missing eval args for '{job_name_prefix}': {missing}. Skipping."); return False
@@ -253,7 +264,7 @@ def main_yaml():
             eval_cfg = job_config.get('eval', {})
             eval_type = get_config_value(eval_cfg, ['type'])
 
-            if eval_type not in ['similarity', 'sc_control']:
+            if eval_type not in ['similarity', 'sc_control', 'esc']:
                 print(f"Error: Invalid 'eval.type' for '{job_name_prefix}'. Skipping run."); continue
             if not validate_job_config(job_config, job_name_prefix, eval_type): continue
             if not check_existing_files(job_name_prefix, workdir):
