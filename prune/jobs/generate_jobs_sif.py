@@ -1,9 +1,11 @@
 # slimsc/prune/jobs/generate_jobs_sif.py
 import os
-import sys
 import argparse
-import yaml
+import copy
 import shlex
+import sys
+import time
+import yaml
 from typing import Dict
 
 # --- Configuration ---
@@ -45,6 +47,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     client_cfg = job_config.get('client', {})
     eval_cfg = job_config.get('eval', {})
     eval_type = eval_cfg['type']
+    run_index = job_config.get('run_index', 1)
 
     # --- Define File Paths early ---
     workdir = os.path.dirname(os.path.abspath(__file__))
@@ -59,7 +62,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     # get output dir from env or default
     output_dir_default = os.getenv("SLIMSC_OUTPUT_DIR", os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
     # get output dir from eval config or default
-    output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], output_dir_default))
+    base_output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], output_dir_default))
     hf_home = expandvars(get_config_value(eval_cfg, ['hf_home'], os.path.join(os.path.expanduser("~"), ".cache/huggingface")))
     # optional secret_path
     secret_path = expandvars(get_config_value(eval_cfg, ['secret_path']))
@@ -114,11 +117,11 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "cd", "$(ls -d */|tail -n 1)", "&&",  # Change to another directory so that --no-home works correctly
         "pwd", "&&",
         "singularity", "instance", "start", "--nv", "--no-home",
-        "-B", f'{hf_home}:{hf_home}', # bind hf_home
-        "-B", f'{model_path}:{model_path}', # bind model path
-        "-B", f'{output_dir}:{output_dir}', # bind kv cache usage output directory
-        "-B", f'{logs_dir}:{logs_dir}', # bind logs subdir
-        "-B", f'{secret_path}:{secret_path}', # bind secret
+        "-B", f'{hf_home}', # bind hf_home
+        "-B", f'{model_path}', # bind model path
+        "-B", f'{base_output_dir}', # bind kv cache usage output directory
+        "-B", f'{logs_dir}', # bind logs subdir
+        "-B", f'{secret_path}', # bind secret
     ]
     client_sif_path = os.path.abspath(expandvars(client_cfg.get('sif_path')))
     if not client_sif_path:
@@ -141,8 +144,11 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     elif eval_type == "sc_control":
         eval_parts = ["python -m slimsc.prune.evaluation.sc_control_eval", f"--n_start {q_args['n_start']}"]
         if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
-
-    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}"])
+    elif eval_type == "esc":
+        eval_parts = ["python -m slimsc.prune.evaluation.esc_eval", f"--n_chains {q_args['n_chains']}"]
+        if q_args.get('tokenizer_path'): eval_parts.append(f"--tokenizer_path {q_args['tokenizer_path']}")
+    
+    eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}", f"--run_index {run_index}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
     eval_command = " ".join(client_singularity_exec_command_parts) + " " + " ".join(filter(None, eval_parts))
@@ -159,8 +165,14 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         run_name = f"{pruning_strategy}{schedule_suffix}_n{eval_cfg['n_start']}_thresh{threshold_for_naming:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
-    dataset_dir = os.path.join(output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run")
-
+    elif eval_type == "esc":
+        n_chains = eval_cfg['n_chains']
+        window_size = max(2, int(n_chains / 8))
+        run_name = f"esc_n{n_chains}_w{window_size}"
+    
+    # The run-specific output directory, where this run's results will be stored.
+    run_specific_output_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run", f"run{run_index}")
+    
     template_vars = {
         "JOB_NAME": job_name_prefix,
         "SERVER_HOURS": get_config_value(server_cfg, ['hours'], 8),
@@ -175,7 +187,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         "EVAL_TYPE": eval_type,
         "SERVER_GPU_INDICES": ",".join(map(str, range(tensor_parallel_size))),
         "IS_MULTI_NODE": "true" if is_multi_node else "false",
-        "KVC_FILE_PATH": shlex.quote(os.path.join(dataset_dir, "kvcache_usages.csv")),
+        "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(run_specific_output_dir, "kvcache_usages.csv")),
         "HF_HOME": shlex.quote(hf_home),
         "HAS_SECRET": 1 if has_secret else 0,
         "SECRET_PATH": shlex.quote(secret_path),
@@ -228,8 +240,12 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
     if not get_config_value(job_config, ['model_path']):
         print(f"Error: 'model_path' missing for job '{job_name_prefix}'. Skipping."); return False
     eval_cfg = job_config.get('eval', {})
-    required = ['n_start', 'model_name', 'model_identifier', 'dataset_name']
-    if eval_type == 'similarity': required.extend(['threshold', 'pruning_strategy', 'tokenizer_path'])
+    required = ['model_name', 'model_identifier', 'dataset_name']
+    if eval_type == 'similarity': required.extend(['n_start', 'threshold', 'pruning_strategy', 'tokenizer_path'])
+    elif eval_type == 'sc_control': required.extend(['n_start'])
+    elif eval_type == 'esc':
+        required.extend(['n_chains'])
+
     missing = [arg for arg in required if arg not in eval_cfg]
     if missing:
         print(f"Error: Missing eval args for '{job_name_prefix}': {missing}. Skipping."); return False
@@ -253,8 +269,8 @@ def main_yaml():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser = argparse.ArgumentParser(description="Submit optimized PBS tasks from a YAML file using a template.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--config", "-c", default="experiments.yaml", help="Path to the YAML configuration file.")
-    parser.add_argument("--start_job_index", type=int, default=0, help="0-based index of the job to start from.")
-    parser.add_argument("--max_jobs", type=int, default=None, help="Max number of jobs to process.")
+    parser.add_argument("--start_job_index", type=int, default=0, help="0-based index of the job in the YAML to start from.")
+    parser.add_argument("--max_jobs", type=int, default=None, help="Max number of YAML job definitions to process.")
     parser.add_argument("--job_uuid", type=str, default=None, help="UUID of the job to process.")
     cli_args = parser.parse_args()
 
@@ -272,33 +288,65 @@ def main_yaml():
     jobs_to_process = all_jobs[start_index:end_index]
     if not jobs_to_process:
         print("No jobs selected to process."); sys.exit(0)
-    print(f"Processing {len(jobs_to_process)} jobs (index {start_index} to {end_index - 1}).")
+    print(f"Processing {len(jobs_to_process)} job definitions (index {start_index} to {end_index - 1}).")
 
     workdir = script_dir
-    for i, job_config in enumerate(jobs_to_process):
-        current_job_index = start_index + i
-        print(f"\n===== Processing Job {current_job_index + 1}/{len(all_jobs)} =====")
+    generated_script_count = 0
+    for i, base_job_config in enumerate(jobs_to_process):
+        current_job_yaml_index = start_index + i
 
-        job_name_prefix = get_config_value(job_config, ['name_prefix'], f"yaml_job_{current_job_index+1}")
-        eval_cfg = job_config.get('eval', {})
-        eval_type = get_config_value(eval_cfg, ['type'])
+        # Determine the runs to generate for this job definition
+        num_runs = base_job_config.get('num_runs', 1)
+        run_indices_to_process = []
+        if 'run_index' in base_job_config:
+            # User wants to run a single, specific index manually
+            run_indices_to_process = [base_job_config['run_index']]
+        else:
+            # User specified num_runs, so we generate them all
+            run_indices_to_process = range(1, num_runs + 1)
 
-        if eval_type not in ['similarity', 'sc_control']:
-            print(f"Error: Invalid 'eval.type' for '{job_name_prefix}'. Skipping."); continue
-        if not validate_job_config(job_config, job_name_prefix, eval_type): continue
-        if not check_existing_files(job_name_prefix, workdir):
-             print(f"Skipping job '{job_name_prefix}' due to existing files."); continue
+        print(f"\n===== Processing YAML Job {current_job_yaml_index + 1}/{len(all_jobs)} (will generate {len(run_indices_to_process)} submission(s)) =====")
 
-        try:
-            pbs_script_content = create_pbs_script_from_template(job_config, job_name_prefix)
-        except ValueError as e:
-            print(f"Error creating script for '{job_name_prefix}': {e}. Skipping job."); continue
+        for run_idx in run_indices_to_process:
+            generated_script_count += 1
+            print(f"--- Submitting Run {run_idx}/{num_runs if 'run_index' not in base_job_config else 1} ---")
+            
+            # Create a deep copy to ensure runs are isolated
+            job_config = copy.deepcopy(base_job_config)
+            job_config['run_index'] = run_idx
+            
+            # Use a descriptive and unique name for this specific run
+            base_name_prefix = get_config_value(job_config, ['name_prefix'], f"yaml_job_{current_job_yaml_index+1}")
+            job_name_prefix = f"{base_name_prefix}_run{run_idx}"
+            job_config['name_prefix'] = job_name_prefix
+            
+            model_unified_path = job_config.get('model_path')
+            if model_unified_path:
+                if 'eval' not in job_config: job_config['eval'] = {}
+                job_config['eval'].setdefault('model_identifier', model_unified_path)
+                job_config['eval'].setdefault('tokenizer_path', model_unified_path)
 
-        log_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
-        pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
-        output_pbs_script_path(job_uuid, log_dir, pbs_script_path)
+            eval_cfg = job_config.get('eval', {})
+            eval_type = get_config_value(eval_cfg, ['type'])
 
-    print("\n===== YAML Job PBS Script Creation Finished =====")
+            if eval_type not in ['similarity', 'sc_control', 'esc']:
+                print(f"Error: Invalid 'eval.type' for '{job_name_prefix}'. Skipping run."); continue
+            if not validate_job_config(job_config, job_name_prefix, eval_type): continue
+            if not check_existing_files(job_name_prefix, workdir):
+                 print(f"Skipping run '{job_name_prefix}' due to existing files."); continue
+
+            try:
+                pbs_script_content = create_pbs_script_from_template(job_config, job_name_prefix)
+            except ValueError as e:
+                print(f"Error creating script for '{job_name_prefix}': {e}. Skipping run."); continue
+
+            log_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
+            pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
+            output_pbs_script_path(job_uuid, log_dir, pbs_script_path)
+
+            time.sleep(1)
+
+    print(f"\n===== YAML Job PBS Script Generation Finished ({generated_script_count} total scripts generated) =====")
 
 if __name__ == "__main__":
     main_yaml()
