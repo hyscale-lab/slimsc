@@ -138,11 +138,18 @@ cd "$PBS_O_WORKDIR"
 PROJECT_ROOT_ABS_PATH=$(cd "{PROJECT_ROOT_REL_PATH}" && pwd)
 export PYTHONPATH="$PROJECT_ROOT_ABS_PATH:$PYTHONPATH"
 source "{CONDA_INIT_PATH}" && conda activate "{CONDA_ENV_NAME}"
-SERVER_URL_FULL="{{VLLM_URL_VAR}}"; SERVER_IP_PORT=$(echo "$SERVER_URL_FULL" | sed -e 's%http://%%g'); SERVER_IP=$(echo "$SERVER_IP_PORT" | cut -d: -f1); SERVER_PORT=$(echo "$SERVER_IP_PORT" | cut -d: -f2)
-# Use $SERVER_NODE_VAR which will be the short name of the server, for the tunnel destination
-ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE_VAR &
+
+SERVER_PORT=$(echo "$VLLM_URL" | cut -d: -f3)
+
+# Set up an SSH tunnel. The client connects to its own localhost, which is
+# forwarded to the server node. This is robust to firewall configurations.
+# The destination host for the tunnel is the SERVER_NODE name.
+echo "[Remote] Setting up SSH tunnel from localhost:$SERVER_PORT to $SERVER_NODE:$SERVER_PORT"
+ssh -o "StrictHostKeyChecking no" -f -N -L "$SERVER_PORT:$SERVER_NODE:$SERVER_PORT" "$SERVER_NODE" &
 TUNNEL_PID=$!
 sleep 2
+
+# The evaluation script must now target localhost due to the tunnel.
 export VLLM_URL="http://localhost:$SERVER_PORT"
 export CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_MULTI_NODE}"
 echo "Client remote execution started on $(hostname)."; echo "Running Evaluation Command: {EVAL_COMMAND}"
@@ -152,13 +159,9 @@ echo "[Remote] Client finished with exit code $EVAL_EXIT_CODE. Creating done fil
 echo $EVAL_EXIT_CODE > "{CLIENT_DONE_FILE}"
 EOF
 )
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
-    # Pass the server's short name to the remote script for the SSH tunnel
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE_VAR/$SERVER_NODE}}"
-    
-    # Use the client's short name for the ssh command itself.
     echo "Executing remote client command on $CLIENT_NODE in the background..."
-    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" "bash -c '$CLIENT_COMMAND_FILLED'" &
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" \
+        "export VLLM_URL='${{VLLM_URL}}'; export SERVER_NODE='${{SERVER_NODE}}'; bash -s" <<< "$CLIENT_COMMAND" &
     CLIENT_SSH_PID=$!
     
     echo "[$(date)] Main script now waiting for client to finish by polling for the done file..."
@@ -174,11 +177,6 @@ EOF
     echo "[$(date)] Client done file found."
     EVAL_EXIT_CODE=$(cat "{CLIENT_DONE_FILE}")
     echo "[$(date)] Remote client evaluation finished with exit code: $EVAL_EXIT_CODE"
-
-    echo "[$(date)] Client has finished. Shutting down vLLM server."
-    kill -TERM -$VLLM_PID || true; sleep 5
-    if ps -p $VLLM_PID > /dev/null; then kill -KILL -$VLLM_PID &> /dev/null || true; fi
-    echo "[$(date)] Server shutdown complete."
 
 else
     # ============================
