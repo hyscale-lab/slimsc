@@ -144,9 +144,14 @@ TUNNEL_PID=""
 remote_cleanup() {{ echo "[Remote] Cleaning up SSH tunnel..."; if [[ -n "$TUNNEL_PID" ]] && ps -p $TUNNEL_PID > /dev/null; then kill $TUNNEL_PID; fi; }}
 trap remote_cleanup EXIT
 cd "$PBS_O_WORKDIR"
-SERVER_URL_FULL="{{VLLM_URL_VAR}}"; SERVER_IP_PORT=$(echo "$SERVER_URL_FULL" | sed -e 's%http://%%g'); SERVER_IP=$(echo "$SERVER_IP_PORT" | cut -d: -f1); SERVER_PORT=$(echo "$SERVER_IP_PORT" | cut -d: -f2)
-# Use $SERVER_NODE_VAR which will be the short name of the server, for the tunnel destination
-ssh -f -N -L $SERVER_PORT:$SERVER_IP:$SERVER_PORT $SERVER_NODE_VAR &
+
+SERVER_PORT=$(echo "$VLLM_URL" | cut -d: -f3)
+
+# Set up an SSH tunnel. The client connects to its own localhost, which is
+# forwarded to the server node. This is robust to firewall configurations.
+# The destination host for the tunnel is the SERVER_NODE name.
+echo "[Remote] Setting up SSH tunnel from localhost:$SERVER_PORT to $SERVER_NODE:$SERVER_PORT"
+ssh -o "StrictHostKeyChecking no" -f -N -L "$SERVER_PORT:$SERVER_NODE:$SERVER_PORT" "$SERVER_NODE" &
 TUNNEL_PID=$!
 sleep 2
 get_secret
@@ -164,14 +169,10 @@ singularity instance stop {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[Remote] 
 echo "[Remote] Client instance stopped."
 EOF
 )
-
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND//'{{VLLM_URL_VAR}}'/$VLLM_URL}}"
-    # Pass the server's short name to the remote script for the SSH tunnel
-    CLIENT_COMMAND_FILLED="${{CLIENT_COMMAND_FILLED//\$SERVER_NODE_VAR/$SERVER_NODE}}"
-    
     # Use the client's short name for the ssh command itself.
     echo "Executing remote client command on $CLIENT_NODE in the background..."
-    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" "bash -c '$CLIENT_COMMAND_FILLED'" &
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" \
+        "export VLLM_URL='${{VLLM_URL}}'; export SERVER_NODE='${{SERVER_NODE}}'; bash -s" <<< "$CLIENT_COMMAND" &
     CLIENT_SSH_PID=$!
 
     echo "[$(date)] Main script now waiting for client to finish by polling for the done file..."
