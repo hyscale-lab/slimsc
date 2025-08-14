@@ -264,49 +264,61 @@ def process_question_worker(args_tuple):
     return per_question_results
 
 def plot_final_stacked_bar(data: dict, output_path: str):
-    """Generates and saves the final stacked bar plot."""
+    """Generates and saves the final stacked bar plot in the target style."""
+    # Extract data from the dictionary
     thresholds = data['thresholds']
     correct_correct_props = np.array(data['correct_correct_props'])
     correct_incorrect_props = np.array(data['correct_incorrect_props'])
     incorrect_incorrect_props = np.array(data['incorrect_incorrect_props'])
 
-    fig, ax = plt.subplots(figsize=(6, 4.5)) # Slightly wider for more labels
-    x = np.arange(len(thresholds))
-    width = 0.6
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(5, 2.4))
 
+    # Stacked bars
+    x = np.arange(len(thresholds))
+    width = 0.35
+
+    # Plot the stacked bars
     ax.bar(x, correct_correct_props, width, label='Correct-Correct', color='tab:blue')
     ax.bar(x, correct_incorrect_props, width, bottom=correct_correct_props, label='Correct-Incorrect', color='tab:purple')
-    ax.bar(x, incorrect_incorrect_props, width, bottom=[a + b for a, b in zip(correct_correct_props, correct_incorrect_props)], label='Incorrect-Incorrect', color='tab:orange')
+    ax.bar(x, incorrect_incorrect_props, width,
+           bottom=[a + b for a, b in zip(correct_correct_props, correct_incorrect_props)],
+           label='Incorrect-Incorrect', color='tab:orange')
 
-    ax.set_xlabel('Similarity Threshold', fontsize=12)
-    ax.set_ylabel('Percentage of Similar Pairs', fontsize=12)
+    # Customize the plot
+    ax.set_xlabel('Similarity Threshold', fontsize=11.5)
+    ax.set_ylabel('Percentage of Similar Pairs', fontsize=11.5)
+    ax.yaxis.set_label_coords(-0.1, 0.27)
     ax.set_xticks(x)
-    # Use str(t) to handle mixed precision labels correctly
-    ax.set_xticklabels([str(t) for t in thresholds], rotation=45, ha="right", fontsize=11)
-    ax.tick_params(axis='y', labelsize=11)
-    ax.legend(fontsize=11, loc='upper left', frameon=True, framealpha=0.9, edgecolor='black')
+    ax.set_xticklabels([f'{t:.2f}' if t < 0.98 else f'{t:.3f}' for t in thresholds], rotation=45, fontsize=10.8)
+    ax.tick_params(axis='y', labelsize=10.8)
+
+    ax.legend(fontsize=8, loc='best', frameon=True, framealpha=0.9, edgecolor='black')
     ax.grid(axis='y', linestyle='--', alpha=0.7)
-    ax.set_ylim(0, 100)
 
     plt.tight_layout(pad=1.0)
-    plt.savefig(output_path, dpi=300)
+    plt.savefig(output_path)
     plt.close()
     print(colored(f"Stacked bar plot saved successfully to: {output_path}", "green"))
 
 def main(args):
     """Main function to run the analysis and generate the plot."""
-    # Get the absolute path to the directory where the script is located.
-    # If the script is at ~/slimsc/prune/analysis/generate_similarity_plot.py,
-    # script_dir will be ~/slimsc/prune/analysis/
     script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Construct the output directory path relative to the script's directory.
-    # This ensures the base is always ~/slimsc/prune/analysis/
     output_dir = os.path.join(script_dir, args.model_arch, args.dataset_name, args.control_run_name)
-    
     os.makedirs(output_dir, exist_ok=True)
+    
     stacked_bar_plot_path = os.path.join(output_dir, 'stacked_bar_plot_granular.png')
+    results_json_path = os.path.join(output_dir, 'similarity_analysis_results.json')
 
+    if not args.force and os.path.exists(results_json_path):
+        print(colored(f"Found existing results at {results_json_path}.", "green"))
+        print(colored("Skipping analysis and regenerating plot. Use --force to override.", "green"))
+        with open(results_json_path, 'r') as f:
+            plot_data = json.load(f)
+        plot_final_stacked_bar(plot_data, stacked_bar_plot_path)
+        sys.exit(0)
+
+    print(colored("No cached results found or --force specified. Starting full analysis.", "yellow"))
     control_eval_summary_path = os.path.join(args.control_run_dir, "evaluation_summary.csv")
     control_chains_dir = os.path.join(args.control_run_dir, "individual_chains")
     control_summaries_dir = os.path.join(args.control_run_dir, "summaries")
@@ -334,8 +346,6 @@ def main(args):
             print(colored(f"No GPUs detected. Using {num_workers} worker processes.", "yellow"))
     else:
         num_workers = args.num_workers
-
-    # num_workers = min(num_workers, len(sampled_question_iterations))
     
     worker_args_list = [
         (sampled_question_iterations[i::num_workers], i, sampled_df, control_summaries_dir, control_chains_dir, args)
@@ -368,36 +378,22 @@ def main(args):
                 for key in step_results:
                     combined_scores_by_step[key][step_idx].extend(step_results[key])
 
-    # MODIFICATION: Use the specified granular thresholds.
     thresholds = [0.90, 0.92, 0.94, 0.96, 0.97, 0.98, 0.985, 0.99, 0.995, 0.999]
-    
     correct_correct_props, correct_incorrect_props, incorrect_incorrect_props = [], [], []
     start_step_for_analysis = 20
     
     for threshold in thresholds:
-        seen_pairs = set()
-        
-        all_cc_pairs = {}
+        all_cc_pairs, all_ci_pairs, all_ii_pairs = {}, {}, {}
         for step_scores in combined_scores_by_step['correct_to_correct'][start_step_for_analysis:]:
-            for pair, score in step_scores:
-                if pair not in seen_pairs:
-                    all_cc_pairs[pair] = score
+            all_cc_pairs.update(dict(step_scores))
         
-        all_ci_pairs = {}
         for step_scores_list in [combined_scores_by_step['correct_to_incorrect'][start_step_for_analysis:], combined_scores_by_step['incorrect_to_correct'][start_step_for_analysis:]]:
             for step_scores in step_scores_list:
-                for pair, score in step_scores:
-                    if pair not in seen_pairs:
-                         all_ci_pairs[pair] = score
+                all_ci_pairs.update(dict(step_scores))
 
-        all_ii_pairs = {}
         for step_scores in combined_scores_by_step['incorrect_to_incorrect'][start_step_for_analysis:]:
-            for pair, score in step_scores:
-                if pair not in seen_pairs:
-                    all_ii_pairs[pair] = score
+            all_ii_pairs.update(dict(step_scores))
         
-        seen_pairs.update(all_cc_pairs.keys(), all_ci_pairs.keys(), all_ii_pairs.keys())
-
         cc_count = sum(1 for score in all_cc_pairs.values() if score >= threshold)
         ci_count = sum(1 for score in all_ci_pairs.values() if score >= threshold)
         ii_count = sum(1 for score in all_ii_pairs.values() if score >= threshold)
@@ -419,6 +415,11 @@ def main(args):
         'correct_incorrect_props': correct_incorrect_props,
         'incorrect_incorrect_props': incorrect_incorrect_props
     }
+
+    print(colored(f"Analysis complete. Saving processed data to {results_json_path}", "green"))
+    with open(results_json_path, 'w') as f:
+        json.dump(plot_data, f, indent=4)
+
     plot_final_stacked_bar(plot_data, stacked_bar_plot_path)
 
 if __name__ == "__main__":
@@ -426,26 +427,17 @@ if __name__ == "__main__":
         description="Run similarity analysis and generate a stacked bar plot.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('--control_run_dir', type=str, required=True,
-                        help="Path to the folder containing evaluation_summary.csv, individual_chains/, and summaries/.")
-    parser.add_argument('--model_arch', type=str, required=True,
-                        help="Model architecture name (e.g., 'R1-Distill-Qwen-14B'). Used for output path.")
-    parser.add_argument('--dataset_name', type=str, required=True,
-                        help="Dataset name (e.g., 'aime'). Used for output path.")
-    parser.add_argument('--control_run_name', type=str, required=True,
-                        help="Name of the control run (e.g., 'sc_16_control'). Used for output path.")
-    parser.add_argument('--tokenizer_path', type=str, required=True,
-                        help="Path to the HuggingFace tokenizer directory.")
-    parser.add_argument('--n_chains', type=int, required=True,
-                        help="Number of self-consistency chains in the control run.")
-    parser.add_argument('--num_questions', type=int,
-                        help="Number of questions to sample for the analysis.")
-    parser.add_argument('--seed', type=int, default=42,
-                        help="Random seed for sampling questions.")
-    parser.add_argument('--token_step_size', type=int, default=100,
-                        help="Token interval for each analysis step.")
-    parser.add_argument('--num_workers', type=int, default=1,
-                        help="Number of parallel worker processes. If not set, defaults to the number of GPUs, or half the CPU cores if no GPUs are available.")
+    parser.add_argument('--control_run_dir', type=str, required=True, help="Path to the folder containing evaluation_summary.csv, individual_chains/, and summaries/.")
+    parser.add_argument('--model_arch', type=str, required=True, help="Model architecture name (e.g., 'R1-Distill-Qwen-14B'). Used for output path.")
+    parser.add_argument('--dataset_name', type=str, required=True, help="Dataset name (e.g., 'aime'). Used for output path.")
+    parser.add_argument('--control_run_name', type=str, required=True, help="Name of the control run (e.g., 'sc_16_control'). Used for output path.")
+    parser.add_argument('--tokenizer_path', type=str, required=True, help="Path to the HuggingFace tokenizer directory.")
+    parser.add_argument('--n_chains', type=int, required=True, help="Number of self-consistency chains in the control run.")
+    parser.add_argument('--num_questions', type=int, help="Number of questions to sample for the analysis.")
+    parser.add_argument('--seed', type=int, default=42, help="Random seed for sampling questions.")
+    parser.add_argument('--token_step_size', type=int, default=100, help="Token interval for each analysis step.")
+    parser.add_argument('--num_workers', type=int, default=1, help="Number of parallel worker processes. If not set, defaults to the number of GPUs, or half the CPU cores if no GPUs are available.")
+    parser.add_argument('--force', action='store_true', help="Force re-running the analysis and overwrite existing results.json file.")
 
     cli_args = parser.parse_args()
     main(cli_args)
