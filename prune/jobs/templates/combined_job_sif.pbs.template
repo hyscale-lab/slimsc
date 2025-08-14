@@ -1,0 +1,224 @@
+#!/bin/bash
+#PBS -l {GPU_REQUEST_LINE}
+#PBS -l walltime={SERVER_HOURS}:00:00
+#PBS -P {PBS_PROJECT}
+#PBS -q normal
+#PBS -N {JOB_NAME}
+#PBS -j oe
+#PBS -o {PBS_LOG_FILE}
+
+# --- Shared Setup ---
+set -eu # Exit immediately if a command exits with a non-zero status or at the presence of unset variables.
+VLLM_INSTANCE_NAME=""
+EVAL_EXIT_CODE=1 # Default to failure
+
+# --- Cleanup Function ---
+cleanup() {{
+    echo "[$(date)] Caught signal or exiting, attempting cleanup..."
+    singularity instance stop {VLLM_INSTANCE_NAME} {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
+    echo "Server terminated."
+
+    echo "Cleaning up temporary files..."
+    rm -f "{SERVER_IP_FILE}"
+    rm -f "{CLIENT_DONE_FILE}"
+
+    if [[ "$EVAL_EXIT_CODE" -eq 0 ]]; then
+        echo "Evaluation succeeded (exit code 0). Removing temporary vLLM log."
+        rm -f "{VLLM_SERVE_LOG_FILE}"
+    else
+        echo "Warning: Evaluation failed (exit code: $EVAL_EXIT_CODE). Preserving vLLM log for debugging: {VLLM_SERVE_LOG_FILE}"
+    fi
+
+    echo "Cleanup function finished."
+}}
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
+
+# --- Main Logic ---
+echo "--- PBS Job Start ({JOB_NAME}) ---"
+echo "Workdir: $PBS_O_WORKDIR"
+cd "$PBS_O_WORKDIR" || exit 1
+
+# --- Create Directories ---
+mkdir -p "{HF_HOME}"
+
+# --- Get Secret ---
+get_secret() {{
+    HAS_SECRET={HAS_SECRET}
+    if [ -z $HAS_SECRET ]; then
+        echo "[$(date)] No secret path provided, skipping secret loading."
+    else
+        echo "[$(date)] Loading secret from {SECRET_PATH}..."
+        if [ ! -f "{SECRET_PATH}" ]; then
+            echo "Error: Secret file not found at {SECRET_PATH}!"
+            exit 1
+        else
+            export $(xargs -a "{SECRET_PATH}")
+            echo "Secret loaded successfully."
+        fi
+    fi
+}}
+
+# --- Common Server Setup Logic ---
+start_vllm_server() {{
+    echo "[$(date)] Setting up and starting vLLM server..."
+    export SINGULARITYENV_KVC_USAGE_FILE={TARGET_KVC_FILE_PATH}
+    mkdir -p "$(dirname "{TARGET_KVC_FILE_PATH}")"
+    touch "{TARGET_KVC_FILE_PATH}"
+    
+    PORT_START=$((8000 + ($(echo $PBS_JOBID | cut -d. -f1) % 1000)))
+    PORT=$(comm -23 <(seq $PORT_START $((PORT_START+100))) <(ss -tan | awk '{{print $4}}' | cut -d':' -f2 | sort -u) | head -n 1)
+    if [ -z "$PORT" ]; then echo "No free port found!"; exit 1; fi
+    export PORT
+    
+    echo "$HOST_IP:$PORT" > "{SERVER_IP_FILE}"
+    export VLLM_URL="http://${{HOST_IP}}:${{PORT}}"
+
+    module add singularity
+    
+    echo "Server using CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+    echo "Starting vLLM server on $VLLM_URL in background..."
+    {VLLM_START_INSTANCE_COMMAND} || {{
+        echo "Failed to start vLLM server instance. Aborting."
+        exit 1
+    }}
+    {VLLM_EXEC_COMMAND}
+    echo "vLLM instance started successfully at (VLLM_URL=$VLLM_URL), waiting for it to become ready..."
+}}
+
+# --- Common Server Wait Logic ---
+wait_for_server() {{
+    echo "[$(date)] Waiting for server to become ready..."
+    # ping vllm server to ensure it starts correctly
+    retries=90 # 15 minutes total wait time
+    interval=10
+    attempt=0
+    while ! curl -s "$VLLM_URL/ping"; do
+        if [ $attempt -ge $retries ]; then echo "Failed to start vLLM server after multiple attempts!"; exit 1; fi
+        echo "Waiting for vLLM server to start... ($((attempt + 1))/$retries attempts)"
+        sleep $interval
+        attempt=$((attempt + 1))
+    done
+    echo "[$(date)] Server is ready."
+}}
+
+# --- Node-Specific Execution ---
+if [ "{IS_MULTI_NODE}" = "true" ]; then
+ # ============================
+    # ===== MULTI-NODE LOGIC =====
+    # ============================
+    echo "Multi-node job detected. Parsing node file..."
+    
+    # Get the short hostname of the node this script is running on. This is the server.
+    SERVER_NODE=$(hostname -s)
+
+    # Get a list of all unique *short* hostnames from the PBS node file.
+    # `cut -d. -f1` strips domain parts, ensuring "node1" and "node1.domain.com" are treated the same.
+    ALL_UNIQUE_SHORT_NODES=$(cut -d. -f1 < "$PBS_NODEFILE" | sort -u)
+
+    # The client node is the one in the unique list that is NOT the server node.
+    CLIENT_NODE=$(echo "$ALL_UNIQUE_SHORT_NODES" | grep -v "^${{SERVER_NODE}}$" | head -n 1)
+
+    # Validation: Check if we successfully found two *different* nodes.
+    if [ -z "$CLIENT_NODE" ] || [ "$SERVER_NODE" == "$CLIENT_NODE" ]; then 
+        echo "Error: Could not determine distinct server and client nodes. Aborting."
+        echo "  Server Node (this host): $SERVER_NODE"
+        echo "  Client Node (from list): $CLIENT_NODE"
+        echo "  PBS_NODEFILE contents:"
+        cat "$PBS_NODEFILE"
+        echo "  Processed unique short nodes:"
+        echo "$ALL_UNIQUE_SHORT_NODES"
+        exit 1; 
+    fi
+    echo "Server Node: $SERVER_NODE, Client Node: $CLIENT_NODE"
+
+    export SINGULARITYENV_CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
+    # Use the short name for IP resolution. getent is robust.
+    HOST_IP=$(getent hosts "$SERVER_NODE" | awk '{{print $1}}' | head -n 1)
+    start_vllm_server
+    wait_for_server
+
+    echo "[$(date)] Setting up and running evaluation client on $CLIENT_NODE..."
+    rm -f "{CLIENT_DONE_FILE}"
+    CLIENT_COMMAND=$(cat <<'EOF'
+TUNNEL_PID=""
+remote_cleanup() {{ echo "[Remote] Cleaning up SSH tunnel..."; if [[ -n "$TUNNEL_PID" ]] && ps -p $TUNNEL_PID > /dev/null; then kill $TUNNEL_PID; fi; }}
+trap remote_cleanup EXIT
+cd "$PBS_O_WORKDIR"
+
+SERVER_PORT=$(echo "$VLLM_URL" | cut -d: -f3)
+
+# Set up an SSH tunnel. The client connects to its own localhost, which is
+# forwarded to the server node. This is robust to firewall configurations.
+# The destination host for the tunnel is the SERVER_NODE name.
+echo "[Remote] Setting up SSH tunnel from localhost:$SERVER_PORT to $SERVER_NODE:$SERVER_PORT"
+ssh -o "StrictHostKeyChecking no" -f -N -L "$SERVER_PORT:$SERVER_NODE:$SERVER_PORT" "$SERVER_NODE" &
+TUNNEL_PID=$!
+sleep 2
+get_secret
+export SINGULARITYENV_HF_HOME="{HF_HOME}"
+export SINGULARITYENV_VLLM_URL="http://localhost:$SERVER_PORT"
+export SINGULARITYENV_CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_MULTI_NODE}"
+echo "Starting client singularity instance"
+{CLIENT_START_INSTANCE_COMMAND}
+echo "Client remote execution started on $(hostname)."; echo "Running Evaluation Command: {EVAL_COMMAND}"
+{EVAL_COMMAND}
+EVAL_EXIT_CODE=$?
+echo "[Remote] Client finished with exit code $EVAL_EXIT_CODE. Creating done file."
+echo $EVAL_EXIT_CODE > "{CLIENT_DONE_FILE}"
+singularity instance stop {CLIENT_INSTANCE_NAME} &> /dev/null || echo "[Remote] Client instance stop command failed, but continuing."
+echo "[Remote] Client instance stopped."
+EOF
+)
+    # Use the client's short name for the ssh command itself.
+    echo "Executing remote client command on $CLIENT_NODE in the background..."
+    ssh -o "StrictHostKeyChecking no" "$CLIENT_NODE" \
+        "export VLLM_URL='${{VLLM_URL}}'; export SERVER_NODE='${{SERVER_NODE}}'; bash -s" <<< "$CLIENT_COMMAND" &
+    CLIENT_SSH_PID=$!
+
+    echo "[$(date)] Main script now waiting for client to finish by polling for the done file..."
+    MAX_WAIT_CLIENT_SEC=$(( {SERVER_HOURS} * 3600 - 600 )) 
+    INTERVAL=15; elapsed=0
+    while [ ! -f "{CLIENT_DONE_FILE}" ]; do
+        if ! singularity instance list -j | jq -r '.[]' | jq -r '.[] | select(.instance | contains("{VLLM_INSTANCE_NAME}")) | .instance' > /dev/null; then echo "ERROR: vLLM server died while waiting for client. Aborting."; exit 1; fi
+        if ! ps -p $CLIENT_SSH_PID > /dev/null; then echo "ERROR: SSH process to client died unexpectedly. Aborting."; exit 1; fi
+        if [ $elapsed -ge $MAX_WAIT_CLIENT_SEC ]; then echo "ERROR: Timeout waiting for client to create done file. Aborting."; kill $CLIENT_SSH_PID &> /dev/null || true; exit 1; fi
+        sleep $INTERVAL; elapsed=$((elapsed + INTERVAL))
+    done
+
+    echo "[$(date)] Client done file found."
+    EVAL_EXIT_CODE=$(cat "{CLIENT_DONE_FILE}")
+    echo "[$(date)] Remote client evaluation finished with exit code: $EVAL_EXIT_CODE"
+
+    echo "[$(date)] Client has finished. Shutting down vLLM server."
+    singularity instance stop {VLLM_INSTANCE_NAME} &> /dev/null || echo "[$(date)] Server instance stop command failed, but continuing."
+    echo "[$(date)] Server shutdown complete."
+else
+    # ============================
+    # ===== SINGLE-NODE LOGIC ====
+    # ============================
+    echo "Single-node job detected."
+    export SINGULARITYENV_CUDA_VISIBLE_DEVICES="{SERVER_GPU_INDICES}"
+    HOST_IP=$(getent hosts "$(hostname -s)" | awk '{{print $1}}' || hostname -i)
+    start_vllm_server
+    wait_for_server
+
+    echo "[$(date)] Setting up and running evaluation client..."
+    cd "{PROJECT_ROOT_REL_PATH}" || exit 1
+    if [ "{EVAL_TYPE}" = "similarity" ]; then
+        export SINGULARITYENV_CUDA_VISIBLE_DEVICES="{CLIENT_GPU_INDICES_SINGLE_NODE}"
+        echo "Client using CUDA_VISIBLE_DEVICES=$SINGULARITYENV_CUDA_VISIBLE_DEVICES"
+    else
+        echo "Client using available CPUs."
+    fi
+    echo "Starting client singularity instance"
+    export SINGULARITYENV_HF_HOME="{HF_HOME}"
+    get_secret
+    {CLIENT_START_INSTANCE_COMMAND}
+    echo "Running Evaluation Command: {EVAL_COMMAND}"
+    {EVAL_COMMAND}
+    EVAL_EXIT_CODE=$?
+fi
+
+echo "[$(date)] Evaluation script exited with code: $EVAL_EXIT_CODE"
+echo "--- PBS Job Finished ---"
+exit $EVAL_EXIT_CODE
