@@ -41,7 +41,7 @@ def create_prompt_hmmt(example: Dict) -> Tuple[str, str]:
     question = example.get('question', example.get('problem', 'N/A'))
     
     # Build the prompt with clear instructions for the language model
-    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}. Your answer should be left in the most appropriate LaTeX format.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering. Be concise."""
+    prompt = f"""Answer the following math problem.\nThe last line of your response should be your answer within \\boxed{{}}. Your answer should be left in the most appropriate LaTeX format.\n\n{question}\n\nPut your final answer within \\boxed{{}}\nThink step by step before answering."""
 
     # Extract the correct answer from the example
     correct_answer = example.get('answer', 'N/A')
