@@ -1,0 +1,186 @@
+#!/bin/bash
+#PBS -l select=1:ngpus=$tensor_parallel_size
+#PBS -l walltime=$server_hours:00:00
+#PBS -P $pbs_project
+#PBS -q normal
+#PBS -N $server_job_name
+#PBS -j oe
+#PBS -o $relative_pbs_log_file
+$dependency_directive
+
+# Define relative paths used within the script
+VLLM_SERVE_LOG_RELPATH="$relative_vllm_serve_log_file"
+SERVER_IP_FILE_RELPATH="$relative_server_ip_file"
+MAIN_PBS_LOG_RELPATH="$relative_pbs_log_file"
+
+# Function to clean up vLLM process on script exit/termination
+cleanup() {
+    echo "[$$(date)] Caught signal, attempting cleanup..."
+    if [[ -n "$$VLLM_PID" ]] && kill -0 $$VLLM_PID > /dev/null 2>&1; then
+        echo "Attempting to terminate vLLM server process group (PID: -$$VLLM_PID)..."
+        if kill -TERM -$$VLLM_PID; then
+            echo "Sent TERM signal to process group -$$VLLM_PID."
+            sleep 5
+            if kill -0 -$$VLLM_PID > /dev/null 2>&1; then
+                echo "Process group -$$VLLM_PID still running after TERM, sending KILL signal."
+                kill -KILL -$$VLLM_PID
+            else
+                echo "Process group -$$VLLM_PID terminated gracefully."
+            fi
+        else
+            echo "Failed to send TERM signal (maybe already stopped)."
+        fi
+    elif [[ -n "$$VLLM_PID" ]]; then
+         echo "vLLM server process (PID: $$VLLM_PID) was not found during cleanup."
+    else
+         echo "VLLM_PID variable not set, cannot perform cleanup."
+    fi
+    echo "Cleanup function finished."
+}
+
+# Trap signals (INTERRUPT, TERM, HUP, EXIT) to call the cleanup function
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
+
+echo "--- PBS Server Job Start ---"
+echo "Job ID: $$PBS_JOBID"
+echo "Job Name: $server_job_name"
+echo "Depends on Job ID: $dependency_job_id" # Log dependency job ID if provided
+echo "Running on host: $$(hostname)"
+echo "PBS work directory: $$PBS_O_WORKDIR"
+echo "Main PBS Log File: $$PBS_O_WORKDIR/$$MAIN_PBS_LOG_RELPATH"
+echo "vLLM Serve Output Log: $$PBS_O_WORKDIR/$$VLLM_SERVE_LOG_RELPATH" # Indicate the specific log
+echo "Server IP File: $$PBS_O_WORKDIR/$$SERVER_IP_FILE_RELPATH"
+echo "Eval Type: $eval_type" # Log eval type
+echo "Run Name: $run_name" 
+echo "Target KVC Usage File: $target_kvc_file_path"
+echo "----------------------------"
+
+# Go to the submission directory
+cd $$PBS_O_WORKDIR || { echo "Error changing to $$PBS_O_WORKDIR"; exit 1; }
+
+# Ensure the logs directory exists (PBS might create it for -o, but good practice)
+mkdir -p "$logs_subdir" || { echo "Error creating logs directory $logs_subdir"; exit 1; }
+
+# Ensure the vLLM log file is clean before starting
+echo "Checking for existing vLLM serve log file..."
+if [ -f "$$VLLM_SERVE_LOG_RELPATH" ]; then
+    echo "Removing existing file: $$VLLM_SERVE_LOG_RELPATH"
+    rm -f "$$VLLM_SERVE_LOG_RELPATH"
+fi
+
+# Ensure Run Directory Exists
+echo "Ensuring target run directory for KVC log '$kvc_dirname' exists..."
+$create_run_dir_command || { echo "Error creating target run directory for KVC log: $kvc_dirname"; exit 1; }
+echo "Directory ensured: $kvc_dirname"
+
+# Set Environment Variables
+echo "Setting environment variables..."
+$exports
+
+module load $modules || { echo "Error loading modules: $modules"; exit 1; }
+echo "Module loaded: $modules"
+module list
+
+# Find an available port
+echo "Finding an available port..."
+# Start with a port derived from the job ID to reduce chance of collisions
+# Extract numeric part of PBS_JOBID (e.g., 10170350 from 10170350.pbs101)
+JOB_NUM=$$(echo $$PBS_JOBID | cut -d. -f1)
+# Use modulo 1000 to get a number between 0-999, then add to base port 8000
+PORT_START=$$((8000 + (JOB_NUM % 1000)))
+PORT=$$PORT_START
+MAX_PORT=$$((PORT_START + 100))  # Try up to 100 ports
+
+while [[ $$PORT -lt $$MAX_PORT ]]; do
+    echo "Checking port $$PORT..."
+    if ! nc -z localhost $$PORT &>/dev/null; then
+        echo "Port $$PORT is available"
+        break
+    fi
+    echo "Port $$PORT is in use, trying next port"
+    PORT=$$((PORT + 1))
+done
+
+if [[ $$PORT -ge $$MAX_PORT ]]; then
+    echo "Error: Could not find an available port in range $$PORT_START-$$MAX_PORT" >&2
+    echo "ERROR_NO_PORT" > "$$SERVER_IP_FILE_RELPATH"
+    exit 1
+fi
+
+echo "Selected port: $$PORT"
+export PORT
+
+# Write IP:PORT to file
+echo "$$PORT" > "$$SERVER_IP_FILE_RELPATH"
+echo "PORT saved to $$SERVER_IP_FILE_RELPATH"
+
+# Start vLLM Server in Background using setsid
+echo "Starting vLLM server in background..."
+echo "Command: $singularity_command $sif_image_path $vllm_serve_command"
+echo "Output directed to: $$VLLM_SERVE_LOG_RELPATH"
+
+# Use setsid to run vllm in a new session and process group.
+setsid bash -c "$singularity_command $sif_image_path '$vllm_serve_command $vllm_log_redirection' > /dev/null & echo $$!" |
+{
+    # Capture the PID of the background process (setsid)
+    read -r VLLM_PID
+    if [[ -z "$$VLLM_PID" ]]; then
+        echo "Error: Failed to start vLLM server. No PID returned." >&2
+        echo "Check logs:" >&2
+        echo "  vLLM output: $$PBS_O_WORKDIR/$$VLLM_SERVE_LOG_RELPATH" >&2
+        echo "  PBS script log: $$PBS_O_WORKDIR/$$MAIN_PBS_LOG_RELPATH" >&2
+        exit 1
+    fi
+} 
+echo "vLLM server process group started with PID: $$VLLM_PID"
+
+# Brief check if the process started successfully
+sleep 2 # Give it a moment to potentially fail immediately
+if ! kill -0 $$VLLM_PID > /dev/null 2>&1; then
+    echo "Error: vLLM server process (PID $$VLLM_PID) not found shortly after start." >&2
+    echo "Check logs:" >&2
+    echo "  vLLM output: $$PBS_O_WORKDIR/$$VLLM_SERVE_LOG_RELPATH" >&2
+    echo "  PBS script log: $$PBS_O_WORKDIR/$$MAIN_PBS_LOG_RELPATH" >&2
+    exit 1
+fi
+
+echo "[$$(date)] vLLM Server started (PID: $$VLLM_PID). Waiting for termination signal or job end..."
+
+# Wait for the backgrounded vLLM process (or rather, the setsid leader) to finish.
+wait $$VLLM_PID
+WAIT_EXIT_CODE=$$?
+
+echo "[$$(date)] 'wait \\$$VLLM_PID' command finished with exit code: $$WAIT_EXIT_CODE."
+
+# --- Delete vLLM Serve Log ---
+# This happens after the wait command finishes, meaning the server process ended
+# (either normally, via cancellation triggering cleanup, or error).
+# We delete it regardless of exit code, as requested (delete once server.log is saved).
+# The main server.log (-o target) should already contain most script execution logs.
+echo "[$$(date)] Attempting to delete vLLM serve log file: $$VLLM_SERVE_LOG_RELPATH"
+if [ -f "$$VLLM_SERVE_LOG_RELPATH" ]; then
+    rm -f "$$VLLM_SERVE_LOG_RELPATH"
+    if [ $$? -eq 0 ]; then
+        echo "Successfully deleted $$VLLM_SERVE_LOG_RELPATH."
+    else
+        echo "Warning: Failed to delete $$VLLM_SERVE_LOG_RELPATH." >&2
+    fi
+else
+    echo "vLLM serve log file $$VLLM_SERVE_LOG_RELPATH not found, nothing to delete."
+fi
+# ----------------------------
+
+echo "--- PBS Server Job Finished ---"
+
+# Explicitly exit with the wait command's status (optional, trap EXIT handles cleanup)
+
+echo "[$$(date)] Archiving and copying result folder..."
+
+CSV_TO_CHECK="$$RESULT_DIR/evaluation_summary.csv"
+echo "Checking for empty fields in $$CSV_TO_CHECK..."
+
+python check_empty.py "$$CSV_TO_CHECK"
+if [ $$? -eq 1 ]; then
+    echo "Suspicious rows detected in $$CSV_TO_CHECK. Aborting archive and copy."
+    exit 1
+fi

@@ -405,3 +405,113 @@ async def process_question_sc_stream(
         "processing_duration_sec": gather_duration, # Added duration to CSV
         "individual_answers_str": json.dumps(all_extracted_answers), # Answers from chains used for voting
     }
+
+
+async def process_question_esc_stream(
+    example: Dict,
+    iteration: int,
+    n_chains_max: int,
+    window_size: int,
+    paths: Dict[str, str],
+    vllm_url: str,
+    model_name: str,
+    tokenizer_path: Optional[str],
+    dataset_name: str
+) -> Optional[Dict]:
+    """
+    Processes a single question using Early-Stopping Self-Consistency (ESC),
+    generating chains in non-overlapping windows and stopping if consensus is found.
+    """
+    logger.info(f"--- Processing Question {iteration} (ESC: N_max={n_chains_max}, W={window_size}) ---")
+    question_id = example.get("id", f"index_{iteration-1}")
+    handler = DatasetHandler(dataset_name=dataset_name)
+
+    try:
+        prompt, details = handler.create_prompt(example)
+        correct_answer = details[1] if dataset_name == "gpqa_diamond" else details
+    except Exception as e:
+        logger.exception(f"[red]Error creating prompt for question {iteration}[/red]")
+        return None
+
+    all_generated_chains, all_extracted_answers = [], []
+    num_chains_generated, final_answer, final_score = 0, None, 0
+    stopped_early = False
+    
+    start_process_time = time.time()
+
+    while num_chains_generated < n_chains_max:
+        chains_this_window = min(window_size, n_chains_max - num_chains_generated)
+        logger.info(f"[Q{iteration}] Generating window of {chains_this_window} chains. (Total so far: {num_chains_generated})")
+        
+        stream_consumers = []
+        for i in range(chains_this_window):
+            global_idx = num_chains_generated + i + 1
+            stream = stream_vllm_request(prompt, vllm_url, model_name, request_id=f"q{iteration}_c{global_idx}", temperature=0.6, max_tokens=32768)
+            stream_consumers.append(process_single_stream(stream, global_idx))
+        
+        window_results = await asyncio.gather(*stream_consumers, return_exceptions=True)
+
+        window_answers = []
+        for result in window_results:
+            if isinstance(result, Exception) or ("error" in result and result.get("error",{}).get("status") not in ["ignored", "none"]):
+                logger.warning(f"Stream consumer task failed: {result}")
+                continue
+            
+            extracted_answer = handler.extract_answer(result.get("full_content"))
+            result["extracted_answer"] = extracted_answer
+            all_generated_chains.append(result)
+            
+            if extracted_answer is not None:
+                window_answers.append(extracted_answer)
+                all_extracted_answers.append(extracted_answer)
+
+        num_chains_generated += chains_this_window
+        
+        if len(window_answers) > 0 and len(set(window_answers)) == 1:
+            logger.info(f"[bold green][Q{iteration}] Consensus '{window_answers[0]}' found. Stopping early.[/bold green]")
+            final_answer, stopped_early = window_answers[0], True
+            break
+    
+    end_process_time = time.time()
+    total_duration = end_process_time - start_process_time
+
+    if not stopped_early:
+        logger.info(f"[Q{iteration}] Reached max chains. No early stop. Voting on all {len(all_extracted_answers)} answers.")
+        chains_for_vote = [c for c in all_generated_chains if c.get("extracted_answer") is not None]
+        if chains_for_vote:
+            voted_answer_obj, _, _ = majority_vote(chains_for_vote, correct_answer, dataset_name)
+            final_answer = voted_answer_obj
+
+    final_score = handler.calculate_score(final_answer, correct_answer)
+    kv_cache_stats = extract_kv_cache_usage_for_question(start_process_time, end_process_time, iteration, paths)
+    
+    # Aggregate stats from all *actually generated* chains
+    total_completion_tokens = sum(c.get("completion_tokens", 0) for c in all_generated_chains if c.get("completion_tokens"))
+    prompt_tokens = all_generated_chains[0].get("prompt_tokens", 0) if all_generated_chains else 0
+    total_tokens = prompt_tokens + total_completion_tokens
+
+    # Save summary
+    summary_data = {
+        "iteration": iteration, "question_id": question_id, "status": "SUCCESS",
+        "n_chains_max": n_chains_max, "window_size": window_size, "n_chains_generated": num_chains_generated,
+        "stopped_early": stopped_early, "correct_answer_reference": correct_answer,
+        "voted_answer": final_answer, "final_score": final_score,
+        "individual_answers": all_extracted_answers, "processing_duration_sec": total_duration,
+        "usage_aggregated": {"prompt_tokens": prompt_tokens, "total_completion_tokens": total_completion_tokens, "total_tokens": total_tokens},
+        "chains_details": all_generated_chains,
+        **kv_cache_stats,
+    }
+    summary_filename = os.path.join(paths["summaries"], f"question_{iteration}_summary.json")
+    with open(summary_filename, "w") as f: json.dump(summary_data, f, indent=2)
+
+    return {
+        "iteration": iteration, "question_id": question_id, "n_chains_max": n_chains_max,
+        "window_size": window_size, "n_chains_generated": num_chains_generated, "stopped_early": stopped_early,
+        "correct_answer": correct_answer, "final_answer": final_answer, "final_score": final_score,
+        "prompt_tokens": prompt_tokens, "total_completion_tokens": total_completion_tokens,
+        "total_tokens": total_tokens, "total_reasoning_tokens": None, "total_non_reasoning_tokens": None,
+        "avg_kv_cache_usage": kv_cache_stats.get('avg_kv_cache_usage'),
+        "max_kv_cache_usage": kv_cache_stats.get('max_kv_cache_usage'),
+        "processing_duration_sec": total_duration,
+        "individual_answers_str": json.dumps(all_extracted_answers),
+    }

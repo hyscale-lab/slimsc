@@ -184,7 +184,7 @@ async def process_question_similarity_prune(
     threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
     num_steps_to_delay_pruning: int,
-    max_analysis_steps: int = 100 # Limit analysis intervals
+    max_analysis_steps: int = 1000 # Limit analysis intervals
 ) -> Optional[Dict]:
     """
     Processes a question using Similarity Pruning with continuous streams.
@@ -312,9 +312,12 @@ async def process_question_similarity_prune(
         }
         # Create the long-running stream request
         stream_generator = stream_vllm_request(
-            prompt=prompt_text, vllm_url=vllm_url, model_name=model_name,
+            prompt=prompt_text,
+            vllm_url=vllm_url,
+            model_name=model_name,
             request_id=chain_id,
             temperature=0.6,
+            max_tokens=32768,
             logprobs=None
         )
         # Create and store the consumer task

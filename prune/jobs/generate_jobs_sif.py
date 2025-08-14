@@ -1,22 +1,17 @@
-# slimsc/prune/jobs/submit_jobs.py
-import subprocess
+# slimsc/prune/jobs/generate_jobs_sif.py
 import os
-import sys
 import argparse
-import textwrap
+import copy
+import shlex
+import sys
 import time
 import yaml
-import shlex
-from typing import Optional, Dict
-import copy
+from typing import Dict
 
 # --- Configuration ---
 PROJECT_ROOT_REL_PATH = "../../.."
 LOGS_DIR_NAME = "logs"
-CONDA_INIT_PATH = os.environ.get("CONDA_INIT_PATH", "$HOME/miniconda3/etc/profile.d/conda.sh")
-CONDA_ENV_NAME = "vllm"
 PBS_PROJECT_PREFIX = "personal"
-LD_LIBRARY_EXPORT_COMMAND = f'export LD_LIBRARY_PATH="$HOME/miniconda3/envs/{CONDA_ENV_NAME}/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$LD_LIBRARY_PATH"'
 GPUS_PER_NODE = 4
 
 # --- Helper Functions ---
@@ -37,6 +32,14 @@ def check_existing_files(job_name_prefix: str, workdir: str):
         return False
     return True
 
+def expandvars(path: str) -> str:
+    """Expands environment variables in the given path."""
+    if not path: return path
+    expanded_path = os.path.expandvars(path)
+    if not os.path.isabs(expanded_path):
+        raise ValueError(f"Path '{path}' must be absolute after variable expansion.")
+    return expanded_path
+
 def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> str:
     """Creates a PBS script by populating a template with values from the job config."""
     # --- Extract Configs ---
@@ -48,12 +51,25 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
 
     # --- Define File Paths early ---
     workdir = os.path.dirname(os.path.abspath(__file__))
-    logs_dir = os.path.join(workdir, LOGS_DIR_NAME)
+    # get logs dir from env or default
+    logs_dir_default = os.getenv("SLIMSC_LOGS_DIR", os.path.join(workdir, LOGS_DIR_NAME))
+    # get logs dir from eval config or default
+    logs_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], logs_dir_default)) 
     pbs_log_file = os.path.join(logs_dir, f"{job_name_prefix}.log")
     vllm_serve_log_file = os.path.join(logs_dir, f"{job_name_prefix}_vllm_serve.log")
     server_ip_file = os.path.join(logs_dir, f"{job_name_prefix}_server_ip.txt")
     client_done_file = os.path.join(logs_dir, f"{job_name_prefix}_client.done")
-    
+    # get output dir from env or default
+    output_dir_default = os.getenv("SLIMSC_OUTPUT_DIR", os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
+    # get output dir from eval config or default
+    base_output_dir = expandvars(get_config_value(eval_cfg, ['output_dir'], output_dir_default))
+    hf_home = expandvars(get_config_value(eval_cfg, ['hf_home'], os.path.join(os.path.expanduser("~"), ".cache/huggingface")))
+    # optional secret_path
+    secret_path = expandvars(get_config_value(eval_cfg, ['secret_path']))
+    has_secret = secret_path is not None
+    if has_secret and not os.path.exists(secret_path):
+        raise ValueError(f"Secret file not found at {secret_path}. Please provide a valid path in the job configuration.")
+
     # --- Primary Parameters ---
     model_path = job_config['model_path']
     tensor_parallel_size = get_config_value(server_cfg, ['tensor_parallel_size'], 2)
@@ -64,18 +80,62 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     is_multi_node = eval_type == "similarity" and total_gpus > GPUS_PER_NODE
     
     # --- Build Commands ---
+    # VLLM Server Singularity Command
+    vllm_singularity_start_command_parts = [
+        "singularity", "instance", "start", "--nv",
+        "-B", f'{model_path}:{model_path}', # bind model path
+        "-B", f'{logs_dir}:{logs_dir}', # bind logs subdir
+    ]
+    vllm_sif_path = os.path.abspath(expandvars(server_cfg.get('sif_path')))
+    vllm_instance_name = f"vllm_{job_name_prefix}"
+    vllm_start_instance_command = " ".join(vllm_singularity_start_command_parts) + f" {vllm_sif_path} {vllm_instance_name}"
+    if not vllm_sif_path:
+        raise ValueError(f"Missing 'sif_path' in server configuration for job '{job_name_prefix}'.")
+    vllm_sif_path = os.path.abspath(vllm_sif_path)
+    if not os.path.exists(vllm_sif_path):
+        raise ValueError(f"Singularity image not found at {vllm_sif_path} for job '{job_name_prefix}'.")
+
     # vLLM Server Command (now uses the final path variable directly)
-    vllm_parts = ["vllm", "serve", shlex.quote(model_path), f"--tensor-parallel-size {tensor_parallel_size}", "--port $PORT", "--seed 42"]
+    vllm_singularity_exec_command_parts = [
+        "setsid",
+        "singularity", "exec", "--nv",
+        f'instance://{vllm_instance_name}'
+    ]
+    vllm_parts = ["vllm", "serve", model_path, f"--tensor-parallel-size {tensor_parallel_size}", "--port $PORT", "--seed 42"]
     if get_config_value(server_cfg, ['gpu_memory_utilization']):
         vllm_parts.append(f"--gpu-memory-utilization {server_cfg['gpu_memory_utilization']}")
     if get_config_value(server_cfg, ['enable_reasoning'], False):
         vllm_parts.append("--enable-reasoning")
     if get_config_value(server_cfg, ['reasoning_parser']):
         vllm_parts.append(f'--reasoning-parser {shlex.quote(server_cfg["reasoning_parser"])}')
-    vllm_exec_command = " ".join(vllm_parts) + f" > >(tee -a {shlex.quote(vllm_serve_log_file)}) 2>&1 &"
+    vllm_exec_command = " ".join(vllm_singularity_exec_command_parts) + " " + " ".join(vllm_parts) + f" > >(tee -a {shlex.quote(vllm_serve_log_file)}) 2>&1 &"
 
     # Client Evaluation Command
-    q_args = {k: shlex.quote(str(v)) if isinstance(v, str) else v for k, v in eval_cfg.items()}
+    client_singularity_start_command_parts = [
+        "pwd", "&&",
+        "ls -d */", "&&",
+        "cd", "$(ls -d */|tail -n 1)", "&&",  # Change to another directory so that --no-home works correctly
+        "pwd", "&&",
+        "singularity", "instance", "start", "--nv", "--no-home",
+        "-B", f'{hf_home}', # bind hf_home
+        "-B", f'{model_path}', # bind model path
+        "-B", f'{base_output_dir}', # bind kv cache usage output directory
+        "-B", f'{logs_dir}', # bind logs subdir
+        "-B", f'{secret_path}', # bind secret
+    ]
+    client_sif_path = os.path.abspath(expandvars(client_cfg.get('sif_path')))
+    if not client_sif_path:
+        raise ValueError(f"Missing 'sif_path' in client configuration for job '{job_name_prefix}'.")
+    if not os.path.exists(client_sif_path):
+        raise ValueError(f"Singularity image not found at {client_sif_path} for job '{job_name_prefix}'.")
+    client_instance_name = f"client_{job_name_prefix}"
+    client_start_instance_command = " ".join(client_singularity_start_command_parts) + f" {client_sif_path} {client_instance_name}"
+
+    q_args = {k: shlex.quote(str(os.path.expandvars(v))) if isinstance(v, str) else v for k, v in eval_cfg.items()}
+    client_singularity_exec_command_parts = [
+        "singularity", "exec", "--nv", "--no-home",
+        f'instance://{client_instance_name}',
+    ]
     eval_parts = []
     if eval_type == "similarity":
         eval_parts = ["python -m slimsc.prune.evaluation.similarity_prune_eval", f"--n_start {q_args['n_start']}", f"--threshold {q_args['threshold']}", f"--pruning_strategy {q_args['pruning_strategy']}", f"--tokenizer_path {q_args['tokenizer_path']}", f"--threshold_schedule {q_args.get('threshold_schedule', 'fixed')}"]
@@ -91,10 +151,9 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     eval_parts.extend([f"--model_name {q_args['model_name']}", f"--model_identifier {q_args['model_identifier']}", "--vllm_url $VLLM_URL", f"--dataset_name {q_args['dataset_name']}", f"--run_index {run_index}"])
     if q_args.get("output_dir"): eval_parts.append(f"--output_dir {q_args['output_dir']}")
     if q_args.get("num_qns"): eval_parts.append(f"--num_qns {q_args['num_qns']}")
-    eval_command = " ".join(filter(None, eval_parts))
+    eval_command = " ".join(client_singularity_exec_command_parts) + " " + " ".join(filter(None, eval_parts))
 
     # --- Prepare All Template Variables in a Single Dictionary ---
-    base_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
     pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
     threshold = get_config_value(eval_cfg, ['threshold'])
     threshold_schedule = get_config_value(eval_cfg, ['threshold_schedule'])
@@ -113,21 +172,25 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     
     # The run-specific output directory, where this run's results will be stored.
     run_specific_output_dir = os.path.join(base_output_dir, eval_cfg['model_name'], eval_cfg['dataset_name'], run_name or "unknown_run", f"run{run_index}")
-
+    
     template_vars = {
         "JOB_NAME": job_name_prefix,
         "SERVER_HOURS": get_config_value(server_cfg, ['hours'], 8),
         "PBS_PROJECT": f"{PBS_PROJECT_PREFIX}-{os.environ.get('USER', 'default')}",
-        "CONDA_INIT_PATH": CONDA_INIT_PATH,
-        "CONDA_ENV_NAME": CONDA_ENV_NAME,
         "PROJECT_ROOT_REL_PATH": PROJECT_ROOT_REL_PATH,
+        "VLLM_START_INSTANCE_COMMAND": vllm_start_instance_command,
         "VLLM_EXEC_COMMAND": vllm_exec_command,
+        "VLLM_INSTANCE_NAME": vllm_instance_name,
         "EVAL_COMMAND": eval_command,
+        "CLIENT_START_INSTANCE_COMMAND": client_start_instance_command,
+        "CLIENT_INSTANCE_NAME": client_instance_name,
         "EVAL_TYPE": eval_type,
-        "LD_LIBRARY_EXPORT_COMMAND": LD_LIBRARY_EXPORT_COMMAND,
         "SERVER_GPU_INDICES": ",".join(map(str, range(tensor_parallel_size))),
         "IS_MULTI_NODE": "true" if is_multi_node else "false",
         "TARGET_KVC_FILE_PATH": shlex.quote(os.path.join(run_specific_output_dir, "kvcache_usages.csv")),
+        "HF_HOME": shlex.quote(hf_home),
+        "HAS_SECRET": 1 if has_secret else 0,
+        "SECRET_PATH": shlex.quote(secret_path),
         # Add path variables directly
         "PBS_LOG_FILE": shlex.quote(pbs_log_file),
         "VLLM_SERVE_LOG_FILE": shlex.quote(vllm_serve_log_file),
@@ -152,7 +215,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
         template_vars["CLIENT_GPU_INDICES_MULTI_NODE"] = "" # Dummy value
     
     # --- Render Final Script in a Single Pass ---
-    template = get_template("combined_job.pbs.template")
+    template = get_template("combined_job_sif.pbs.template")
     return template.format(**template_vars)
 
 def write_pbs_script(job_name_prefix: str, pbs_script_content: str, workdir: str) -> str:
@@ -165,20 +228,6 @@ def write_pbs_script(job_name_prefix: str, pbs_script_content: str, workdir: str
         return pbs_script_path
     except IOError as e:
         print(f"Error writing PBS script {pbs_script_path}: {e}"); sys.exit(1)
-
-def submit_pbs_job(pbs_script_path: str) -> Optional[str]:
-    submit_command = ["qsub", pbs_script_path]
-    print(f"Submitting command: {' '.join(submit_command)}")
-    try:
-        submission_dir = os.path.dirname(os.path.dirname(pbs_script_path))
-        process = subprocess.run(submit_command, capture_output=True, text=True, check=True, cwd=submission_dir)
-        job_id = process.stdout.strip()
-        print(f"PBS Job submitted: {pbs_script_path} -> Job ID: {job_id}")
-        return job_id
-    except subprocess.CalledProcessError as e:
-        print(f"Error submitting job {pbs_script_path}:\n{e.stderr}"); return None
-    except Exception as e:
-        print(f"Exception during job submission for {pbs_script_path}: {e}"); return None
 
 def get_config_value(cfg, keys, default=None):
     val = cfg
@@ -196,11 +245,25 @@ def validate_job_config(job_config, job_name_prefix, eval_type):
     elif eval_type == 'sc_control': required.extend(['n_start'])
     elif eval_type == 'esc':
         required.extend(['n_chains'])
-    
+
     missing = [arg for arg in required if arg not in eval_cfg]
     if missing:
         print(f"Error: Missing eval args for '{job_name_prefix}': {missing}. Skipping."); return False
     return True
+
+def output_pbs_script_path(job_uuid: str, log_dir: str, pbs_script_path: str):
+    log_path_base = os.path.dirname(pbs_script_path)
+    print(f"PBS script created at: {pbs_script_path}")
+    print(f"Logs will be saved in: {log_path_base}")
+    # write into a file for access from nscc
+    output_file = os.path.join(log_path_base, f"{job_uuid}_pbs_scripts.txt")
+    try:
+        with open(output_file, "a") as f:
+            f.write(os.path.join(log_dir, os.path.basename(pbs_script_path)) + "\n")
+        print(f"PBS script path saved to: {output_file}")
+    except IOError as e:
+        print(f"Error writing PBS script path to {output_file}: {e}")
+    return pbs_script_path
 
 def main_yaml():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -208,6 +271,7 @@ def main_yaml():
     parser.add_argument("--config", "-c", default="experiments.yaml", help="Path to the YAML configuration file.")
     parser.add_argument("--start_job_index", type=int, default=0, help="0-based index of the job in the YAML to start from.")
     parser.add_argument("--max_jobs", type=int, default=None, help="Max number of YAML job definitions to process.")
+    parser.add_argument("--job_uuid", type=str, default=None, help="UUID of the job to process.")
     cli_args = parser.parse_args()
 
     config_path = os.path.join(script_dir, cli_args.config)
@@ -220,16 +284,17 @@ def main_yaml():
     all_jobs = config.get('jobs', [])
     start_index = max(0, cli_args.start_job_index)
     end_index = min(start_index + (cli_args.max_jobs or len(all_jobs)), len(all_jobs))
+    job_uuid = cli_args.job_uuid
     jobs_to_process = all_jobs[start_index:end_index]
     if not jobs_to_process:
         print("No jobs selected to process."); sys.exit(0)
     print(f"Processing {len(jobs_to_process)} job definitions (index {start_index} to {end_index - 1}).")
 
     workdir = script_dir
-    submission_count = 0
+    generated_script_count = 0
     for i, base_job_config in enumerate(jobs_to_process):
         current_job_yaml_index = start_index + i
-        
+
         # Determine the runs to generate for this job definition
         num_runs = base_job_config.get('num_runs', 1)
         run_indices_to_process = []
@@ -239,11 +304,11 @@ def main_yaml():
         else:
             # User specified num_runs, so we generate them all
             run_indices_to_process = range(1, num_runs + 1)
-            
+
         print(f"\n===== Processing YAML Job {current_job_yaml_index + 1}/{len(all_jobs)} (will generate {len(run_indices_to_process)} submission(s)) =====")
 
         for run_idx in run_indices_to_process:
-            submission_count += 1
+            generated_script_count += 1
             print(f"--- Submitting Run {run_idx}/{num_runs if 'run_index' not in base_job_config else 1} ---")
             
             # Create a deep copy to ensure runs are isolated
@@ -271,21 +336,17 @@ def main_yaml():
                  print(f"Skipping run '{job_name_prefix}' due to existing files."); continue
 
             try:
-                # Pass the run-specific config and unique name
                 pbs_script_content = create_pbs_script_from_template(job_config, job_name_prefix)
             except ValueError as e:
                 print(f"Error creating script for '{job_name_prefix}': {e}. Skipping run."); continue
 
+            log_dir = expandvars(get_config_value(eval_cfg, ['logs_dir'], os.path.join(os.path.expanduser("~"), "slimsc/logs")))
             pbs_script_path = write_pbs_script(job_name_prefix, pbs_script_content, workdir)
-            new_job_id = submit_pbs_job(pbs_script_path)
+            output_pbs_script_path(job_uuid, log_dir, pbs_script_path)
 
-            if not new_job_id:
-                print(f"Error submitting job '{job_name_prefix}'. Stopping further processing."); break
-
-            print(f"Successfully submitted job for '{job_name_prefix}': Job ID = {new_job_id}")
             time.sleep(1)
 
-    print(f"\n===== YAML Job Submission Finished ({submission_count} total jobs submitted) =====")
+    print(f"\n===== YAML Job PBS Script Generation Finished ({generated_script_count} total scripts generated) =====")
 
 if __name__ == "__main__":
     main_yaml()
