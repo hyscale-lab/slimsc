@@ -146,17 +146,4 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_name', type=str, default="gpqa_diamond", help="Dataset name (e.g., gpqa_diamond).")
 
     cli_args = parser.parse_args()
-
-<<<<<<< HEAD
     main_offline_analysis(cli_args)
-
-    """
-<<<<<<< HEAD
-    python esc_simulator.py --base_slimsc_dir "/home/users/ntu/chaanan0/slimsc" --model_arch R1-Distill-Qwen-14B --dataset_name aqua_rat
-=======
-    python esc_simulator.py --base_slimsc_dir "/home/users/ntu/colinhon/slimsc" --model_arch QwQ-32B --dataset_name aime
->>>>>>> main
-    """
-=======
-    main_offline_analysis(cli_args)
->>>>>>> main

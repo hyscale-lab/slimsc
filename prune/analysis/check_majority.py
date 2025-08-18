@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 
-# --- analyze_csv_file function (remains the same) ---
 def analyze_csv_file(csv_filepath):
     """
     Analyzes a single CSV file to get counts.
@@ -81,7 +80,7 @@ def analyze_csv_file(csv_filepath):
     # Return the raw counts
     return (total_questions, correct_answer_present_count, correct_answer_highest_proportion_count)
 
-# --- find_and_group_csvs function (remains the same) ---
+
 def find_and_group_csvs(root_dir):
     """
     Finds CSV files ONLY in IMMEDIATE subdirectories of root_dir and groups them
@@ -159,7 +158,7 @@ def find_and_group_csvs(root_dir):
 
     return grouped_csvs
 
-# --- Modified aggregate_results function (returns both raw and percentages) ---
+
 def aggregate_results(csv_groups):
     """
     Analyzes CSVs in groups and aggregates counts.
@@ -220,7 +219,7 @@ def aggregate_results(csv_groups):
     # Return both the raw aggregated counts and the calculated percentages
     return aggregated, results_percentages
 
-# --- plot_comparison function (remains the same) ---
+
 def plot_comparison(results_percentages, output_filename=None):
     """
     Generates a bar plot comparing specific groups ('sc_64', 'diversity_n64_thresh', 'random_n64_thresh')
@@ -236,7 +235,6 @@ def plot_comparison(results_percentages, output_filename=None):
         return
 
     # Ensure the order of groups in the plot is consistent if possible
-    # You might want to define a preferred order if needed, but using keys() is usually fine
     group_names.sort() # Sort alphabetically for consistent bar order
 
     # Extract values for plotting
