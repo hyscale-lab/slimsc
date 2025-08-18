@@ -347,7 +347,6 @@ async def process_question_similarity_prune(
             logger.info(f"[Q{iteration} Analysis Interval {analysis_step}] No running chains remain. Stopping analysis.")
             break
         
-        # --- MODIFICATION: Diverge logic based on pruning strategy ---
         chains_to_prune_this_interval: Set[str] = set()
         pruning_info_this_interval: Dict[str, Tuple[int, str]] = {}
         
@@ -428,10 +427,6 @@ async def process_question_similarity_prune(
             embeddings_to_add_to_faiss: List[Tuple[np.ndarray, str, int, str]] = []
             num_chains_in_index = index_manager.get_num_active_chains()
 
-            # (The existing pruning logic for prune_farthest, random, diversity, etc. remains here)
-            # This logic block correctly populates `chains_to_prune_this_interval` and `pruning_info_this_interval`
-            # For brevity, this large block is represented by the original code. The key is that it's now in an 'else' branch.
-            # --- START of original similarity-based pruning logic ---
             if newly_completed_thoughts_for_faiss and pruning_strategy == 'prune_farthest':
                 logger.info(f"[Q{iteration} Int {analysis_step}] Finding most dissimilar thought using 'prune_farthest' strategy.")
                 for chain_id, thought_idx, text, embedding in newly_completed_thoughts_for_faiss:
