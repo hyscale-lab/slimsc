@@ -171,12 +171,11 @@ async def run_similarity_pruning_evaluation_async(
     specific_iterations: Optional[List[int]] = None
 ):
     """Runs the Similarity Pruning evaluation loop (Continuous Stream Version)."""
-    threshold_for_naming = 0.9 if threshold_schedule == 'annealing' else similarity_threshold
 
-    logger.info(f"Starting Run {run_index} - Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={threshold_for_naming:.2f}, DelaySteps={num_steps_to_delay_pruning}, Model={model_name}")
+    logger.info(f"Starting Run {run_index} - Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={similarity_threshold:.2f}, DelaySteps={num_steps_to_delay_pruning}, Model={model_name}")
     paths = setup_output_directories_prune(
         base_output_dir, model_name, dataset_name, n_chains_start,
-        threshold=threshold_for_naming,
+        threshold=similarity_threshold,
         pruning_strategy=pruning_strategy,
         threshold_schedule=threshold_schedule,
         num_steps_to_delay_pruning=num_steps_to_delay_pruning,
@@ -531,8 +530,6 @@ def main():
                         help='Ending iteration (inclusive). Used only if --num_qns and --iterations are not specified.')
     parser.add_argument('--iterations', type=str, default=None,
                         help='Comma-separated list of specific iterations (e.g., "1,5,10-12"). If specified, overrides --start and --end. Overridden by --num_qns.')
-    parser.add_argument('--threshold_schedule', type=str, default='fixed', choices=['fixed', 'annealing'],
-                    help='How the similarity threshold is determined: "fixed" uses the --threshold value, "annealing" decays it exponentially.')
     parser.add_argument('--seed', type=int, default=None,
                         help=f'Random seed for question selection (if --num_qns is used) and other random operations. Overrides internal default seed ({DEFAULT_SEED}).')
     parser.add_argument('--num_steps_to_delay_pruning', type=int, default=20,
@@ -549,15 +546,6 @@ def main():
     
     actual_seed_for_run = args.seed if args.seed is not None else DEFAULT_SEED
     random.seed(actual_seed_for_run)
-
-    # Log if annealing is used, potentially mentioning the initial threshold from the formula
-    if args.threshold_schedule == 'annealing':
-        logger.info(f"[yellow]Using annealing threshold schedule. The --threshold value ({args.threshold}) will be ignored during pruning checks.[/yellow]")
-        logger.info(f"Annealing formula: 0.9 * exp(analysis_step * -0.02197)")
-        # Define a nominal threshold for directory naming when annealing, e.g., the initial value 0.9
-        threshold_for_naming = 0.9
-    else:
-        threshold_for_naming = args.threshold
 
     if args.pruning_strategy == 'random_after_delay':
         logger.info(f"[yellow]Using 'random_after_delay' strategy. The --threshold value ({args.threshold}) will be ignored.[/yellow]")
