@@ -11,7 +11,7 @@ from matplotlib import cm # For accessing color maps
 import numpy as np
 
 # Define base path (as requested)
-user = os.environ.get("USER", "chong032") # Default to chong032 if USER env var not set
+user = os.environ.get("USER", "default_user")
 BASE_RESULTS_PATH = Path(f"/home/users/ntu/{user}/slimsc/prune/results")
 
 # Define the specific SC runs to analyze for each model and dataset
