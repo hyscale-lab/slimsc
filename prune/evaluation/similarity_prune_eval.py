@@ -115,13 +115,11 @@ def setup_output_directories_prune(
         n_start: int,
         threshold: float,
         pruning_strategy: str,
-        threshold_schedule: str,
         num_steps_to_delay_pruning: int,
         run_index: int
         ) -> Dict[str, str]:
     """Creates directories for storing similarity pruning evaluation results."""
-    schedule_suffix = f"_{threshold_schedule}" if threshold_schedule != 'fixed' else ""
-    run_name = f"{pruning_strategy}{schedule_suffix}_n{n_start}_thresh{threshold:.2f}_delay{num_steps_to_delay_pruning}"
+    run_name = f"{pruning_strategy}_n{n_start}_thresh{threshold:.2f}_delay{num_steps_to_delay_pruning}"
     
     # Parent directory for all runs of this configuration
     base_run_dir = os.path.join(base_output_dir, model_name, dataset_name, run_name)
@@ -160,7 +158,6 @@ async def run_similarity_pruning_evaluation_async(
     n_chains_start: int,
     similarity_threshold: float,
     pruning_strategy: str,
-    threshold_schedule: str,
     vllm_url: str,
     base_output_dir: str,
     run_index: int,
@@ -172,12 +169,11 @@ async def run_similarity_pruning_evaluation_async(
 ):
     """Runs the Similarity Pruning evaluation loop (Continuous Stream Version)."""
 
-    logger.info(f"Starting Run {run_index} - Similarity Pruning Eval ({pruning_strategy}, Schedule={threshold_schedule}): N_start={n_chains_start}, Threshold={similarity_threshold:.2f}, DelaySteps={num_steps_to_delay_pruning}, Model={model_name}")
+    logger.info(f"Starting Run {run_index} - Similarity Pruning Eval ({pruning_strategy}): N_start={n_chains_start}, Threshold={similarity_threshold:.2f}, DelaySteps={num_steps_to_delay_pruning}, Model={model_name}")
     paths = setup_output_directories_prune(
         base_output_dir, model_name, dataset_name, n_chains_start,
         threshold=similarity_threshold,
         pruning_strategy=pruning_strategy,
-        threshold_schedule=threshold_schedule,
         num_steps_to_delay_pruning=num_steps_to_delay_pruning,
         run_index=run_index
     )
@@ -197,7 +193,7 @@ async def run_similarity_pruning_evaluation_async(
     csv_cols = [
         "iteration", "question_id", "n_chains_start", 
         "n_chains_completed_stream_for_voting", "n_chains_error",
-        "similarity_threshold", "threshold_schedule",
+        "similarity_threshold",
         "correct_answer", "voted_answer", "final_score",
         "prompt_tokens", "total_completion_tokens", "total_tokens", # total_completion_tokens is sum across ALL finished streams
         "individual_answers_str", "total_analysis_intervals",
@@ -222,8 +218,6 @@ async def run_similarity_pruning_evaluation_async(
                     elif col in ["final_score", "similarity_threshold",
                                  "avg_kv_cache_usage", "max_kv_cache_usage", "processing_duration_sec"]:
                         existing_df[col] = pd.NA # Use pandas NA for missing numeric data
-                    elif col == "threshold_schedule":
-                        existing_df[col] = "fixed" # Assume fixed if column missing
                     else:
                         existing_df[col] = None # Use None for object/string types
 
@@ -305,7 +299,6 @@ async def run_similarity_pruning_evaluation_async(
             tokenizer_path=tokenizer_path,
             similarity_threshold=similarity_threshold,
             pruning_strategy=pruning_strategy,
-            threshold_schedule=threshold_schedule,
             dataset_name=dataset_name,
             num_steps_to_delay_pruning=num_steps_to_delay_pruning
         )
@@ -327,8 +320,6 @@ async def run_similarity_pruning_evaluation_async(
                                         "avg_kv_cache_usage", "max_kv_cache_usage",
                                         "processing_duration_sec"]:
                                 df[col] = pd.NA
-                            elif col == "threshold_schedule":
-                                df[col] = threshold_schedule
                             else:
                                 df[col] = None
                 # Filter out rows where iteration is NA after conversion
@@ -416,7 +407,6 @@ async def run_similarity_pruning_evaluation_async(
             "config": {
                 "n_chains_start": n_chains_start,
                 "similarity_threshold": similarity_threshold,
-                "threshold_schedule": threshold_schedule,
                 "pruning_strategy": pruning_strategy,
                 "iterations_selected_by": "specific_list" if specific_iterations is not None else "range",
                 "random_seed": seed_for_run if specific_iterations is not None and any(specific_iterations) else None,
@@ -632,7 +622,6 @@ def main():
             n_chains_start=args.n_start,
             similarity_threshold=args.threshold,
             pruning_strategy=args.pruning_strategy,
-            threshold_schedule=args.threshold_schedule,
             vllm_url=args.vllm_url,
             base_output_dir=args.output_dir,
             run_index=args.run_index,
