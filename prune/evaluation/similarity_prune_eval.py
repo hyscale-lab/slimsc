@@ -340,8 +340,6 @@ async def run_similarity_pruning_evaluation_async(
         else:
             logger.error(f"[red]Skipping results storage for question {i} due to processing error.[/red]")
         pbar.update(1)
-        # Optional: Small delay between questions if server needs cooldown
-        # await asyncio.sleep(0.5)
         
     clear_source_kv_cache(paths.get("source_usage_file"))
     pbar.close()
