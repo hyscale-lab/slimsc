@@ -181,7 +181,6 @@ async def process_question_similarity_prune(
     tokenizer_path: str,
     similarity_threshold: float,
     pruning_strategy: str,
-    threshold_schedule: str,
     dataset_name: str,  # Add dataset_name parameter
     num_steps_to_delay_pruning: int,
     max_analysis_steps: int = 1000 # Limit analysis intervals
@@ -1030,7 +1029,6 @@ async def process_question_similarity_prune(
         "n_chains_pruned": len(pruned_chains_data),
         "n_chains_error": len(error_chains_data),
         "similarity_threshold": similarity_threshold,
-        "threshold_schedule": threshold_schedule,
         "correct_answer": correct_answer_for_scoring,
         "voted_answer": voted_answer,
         "final_score": final_score,

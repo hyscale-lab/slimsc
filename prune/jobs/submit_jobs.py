@@ -78,7 +78,7 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     q_args = {k: shlex.quote(str(v)) if isinstance(v, str) else v for k, v in eval_cfg.items()}
     eval_parts = []
     if eval_type == "similarity":
-        eval_parts = ["python -m slimsc.prune.evaluation.similarity_prune_eval", f"--n_start {q_args['n_start']}", f"--threshold {q_args['threshold']}", f"--pruning_strategy {q_args['pruning_strategy']}", f"--tokenizer_path {q_args['tokenizer_path']}", f"--threshold_schedule {q_args.get('threshold_schedule', 'fixed')}"]
+        eval_parts = ["python -m slimsc.prune.evaluation.similarity_prune_eval", f"--n_start {q_args['n_start']}", f"--threshold {q_args['threshold']}", f"--pruning_strategy {q_args['pruning_strategy']}", f"--tokenizer_path {q_args['tokenizer_path']}"]
         if q_args.get('seed') is not None: eval_parts.append(f"--seed {q_args['seed']}")
         if q_args.get('num_steps_to_delay_pruning') is not None: eval_parts.append(f"--num_steps_to_delay_pruning {q_args['num_steps_to_delay_pruning']}")
     elif eval_type == "sc_control":
@@ -97,13 +97,10 @@ def create_pbs_script_from_template(job_config: Dict, job_name_prefix: str) -> s
     base_output_dir = get_config_value(eval_cfg, ['output_dir'], os.path.join(os.path.expanduser("~"), "slimsc/prune/results"))
     pruning_strategy = get_config_value(eval_cfg, ['pruning_strategy'])
     threshold = get_config_value(eval_cfg, ['threshold'])
-    threshold_schedule = get_config_value(eval_cfg, ['threshold_schedule'])
     
     run_name = ""
     if eval_type == "similarity":
-        schedule_suffix = f"_{threshold_schedule}" if threshold_schedule == 'annealing' else ""
-        threshold_for_naming = 0.9 if threshold_schedule == 'annealing' else threshold
-        run_name = f"{pruning_strategy}{schedule_suffix}_n{eval_cfg['n_start']}_thresh{threshold_for_naming:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
+        run_name = f"{pruning_strategy}_n{eval_cfg['n_start']}_thresh{threshold:.2f}_delay{get_config_value(eval_cfg, ['num_steps_to_delay_pruning'], 20)}"
     elif eval_type == "sc_control":
         run_name = f"sc_{eval_cfg['n_start']}_control"
     elif eval_type == "esc":
