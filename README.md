@@ -8,14 +8,13 @@ First, set up a Conda environment with the required Python dependencies.
 
 ```bash
 # Create a new conda environment (e.g., named "slimsc")
-conda create -n slimsc python=3.10 -y
+conda create -n slimsc python=3.12 -y
 
 # Activate the environment
 conda activate slimsc
 
 # Install the dependencies
 pip install -r requirements/requirements.txt
-pip install -r requirements/torch.requirements.txt
 ```
 
 ### 2. Modified vLLM Installation
@@ -23,52 +22,35 @@ pip install -r requirements/torch.requirements.txt
 The `slimsc` evaluation process relies on the vLLM server logging KV cache usage at each step. This requires a modification to the vLLM source code. You must install vLLM from source in an editable mode and apply the necessary code change.
 
 *   **Install vLLM in Editable Mode:** Follow the vLLM documentation to install it from source using `pip install -e .` (from the root of the cloned vLLM repository). This allows changes to the source files to take effect without re-installing.
-*   **Locate and Edit `llm_engine.py`:** Find the file `vllm/vllm/engine/llm_engine.py` within your vLLM source directory.
+*   **Locate and Edit `core.py`:** Find the file `vllm/v1/engine/core.py` within your vLLM source directory.
 *   **Add Imports:** At the top of the file, add the following import statements:
     ```python
-    import csv
-    import os
-    import time
-    import logging # Needed for logger.error
+    import csv, os, time
     ```
-*   **Initialize Logger:** Below the imports (or near other logger initialization), initialize the logger if it's not already done:
-    ```python
-    logger = logging.getLogger(__name__)
-    ```
-*   **Insert KV Logging Code:** Locate the `step()` function within `llm_engine.py`. **Insert the following code block right before the `return ctx.request_outputs` line at the very end of the function:**
+*   **Insert KV Logging Code:** Locate the `step()` function within `core.py`. **Insert the following code block right before the `return engine_core_outputs` line at the very end of the function:**
 
     ```python
     # --- START slimsc KV Usage Logging ---
     # KV Cache Usage in %
-    num_total_gpu = self.cache_config.num_gpu_blocks
-    gpu_cache_usage_perc = 0.
-    if num_total_gpu:
-        num_free_gpu = sum(
-            scheduler.block_manager.get_num_free_gpu_blocks()
-            for scheduler in self.scheduler)
-        gpu_cache_usage_perc = 1.0 - (num_free_gpu / num_total_gpu)
+    sched_stats = self.scheduler.make_stats()
+    gpu_cache_usage_perc = sched_stats.gpu_cache_usage
+    
     if gpu_cache_usage_perc > 0.0:
         try:
             # Get the CSV file path from an environment variable, with a default fallback
-            # NOTE: Default fallback path below might not be appropriate for your system.
-            # It's strongly recommended to always set the KVC_USAGE_FILE environment variable.
             default_path = "~/scratch/kvcache_usage.csv"
             path = os.getenv("KVC_USAGE_FILE", default_path)
             path = os.path.expanduser(path)  # Expand '~' for user directories
 
             file_exists = os.path.exists(path)
             # Use 'a' mode for appending, 'w' only if file doesn't exist (or handle header writing explicitly)
-            # Ensure directory exists before writing
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-
             with open(path, "a", newline="") as csvfile:
                 writer = csv.writer(csvfile)
-                # Write header only if the file did not exist before opening or is empty
+                # Write header only if the file did not exist before opening
                 if not file_exists or os.path.getsize(path) == 0:
                     writer.writerow(["timestamp", "gpu_cache_usage_perc"])
                 writer.writerow([time.time(), gpu_cache_usage_perc])
         except Exception as e:
-            # Use the logger initialized earlier
             logger.error(f"Failed to write KV cache usage to {path}: {e}")
     # --- END slimsc KV Usage Logging ---
     ```
@@ -104,8 +86,8 @@ Open `my_experiment.yaml` and edit the parameters for your experiment. Pay close
 
 The vLLM server must be running before you can launch the client.
 
-**A. Set Environment Variables:**
-You need to set `CUDA_VISIBLE_DEVICES` to control which GPUs are used, and `KVC_USAGE_FILE` to tell the server where to save the KV cache statistics. The path for `KVC_USAGE_FILE` depends on your experiment configuration. You can derive it from your YAML file (see `prune/jobs/submit_jobs.py` for the exact logic) or simply choose a path.
+#### A. Set Environment Variables:
+You need to set `CUDA_VISIBLE_DEVICES` to control which GPUs are used, and `KVC_USAGE_FILE` to tell the server where to save the KV cache statistics. The path for `KVC_USAGE_FILE` depends on your experiment configuration. You need to set the `KVC_USAGE_FILE` environment variable as follows.
 
 ```bash
 # Activate your conda environment
@@ -113,15 +95,41 @@ conda activate slimsc
 
 # Select the GPUs for the server (matches tensor_parallel_size)
 export CUDA_VISIBLE_DEVICES=0,1 # For TP=2
+```
 
-# Set the path for the KV cache log file
-export KVC_USAGE_FILE=/path/to/your/results/kvcache_usages.csv
+##### Set the `KVC_USAGE_FILE` Path
+```
+<output_dir>/<model_name>/<dataset_name>/<run_name>/run<run_index>/kvcache_usages.csv
+```
 
-# Create the directory for the log file
+**For `similarity` evaluation:**
+```bash
+export KVC_USAGE_FILE="<output_dir>/<model_name>/<dataset_name>/<pruning_strategy>_n<n_start>_thresh<threshold>_delay<delay>/run<run_index>/kvcache_usages.csv"
+```
+
+**For `sc_control` evaluation:**
+```bash
+export KVC_USAGE_FILE="<output_dir>/<model_name>/<dataset_name>/sc_<n_start>_control/run<run_index>/kvcache_usages.csv"
+```
+
+##### Examples:
+
+**For `similarity` evaluation:**
+```bash
+export KVC_USAGE_FILE="~/slimsc/prune/results/QwQ-32B/aime/random_n8_thresh0.98_delay20/run1/kvcache_usages.csv"
+```
+
+**For `sc_control` evaluation:**
+```bash
+export KVC_USAGE_FILE="~/slimsc/prune/results/QwQ-32B/aime/sc_8_control/run1/kvcache_usages.csv"
+```
+
+#### B. Create the directory for the log file
+```bash
 mkdir -p "$(dirname "$KVC_USAGE_FILE")"
 ```
 
-**B. Launch the Server:**
+#### C. Launch the Server:
 Construct the `vllm serve` command using the `model_path` and `server` settings from your YAML file.
 
 ```bash
@@ -138,7 +146,7 @@ Wait until you see the message `Application startup complete.` before proceeding
 
 Open a **new terminal**.
 
-**A. Set Environment Variables:**
+#### A. Set Environment Variables:
 
 ```bash
 # Activate your conda environment
@@ -148,8 +156,8 @@ conda activate slimsc
 export VLLM_URL="http://localhost:8000"
 ```
 
-**B. Run the Client Script:**
-Navigate to the root of the `slimsc` project. The command you run depends on the `eval.type` in your YAML file.
+#### B. Run the Client Script:
+Navigate to the root of the `slimsc` project. The command you run depends on whether you are running a `similarity` or `sc_control` evaluation.
 
 ```bash
 cd /path/to/your/slimsc/project/root
@@ -171,7 +179,7 @@ python -m prune.evaluation.similarity_prune_eval \
     --model_identifier <eval.model_identifier> \
     --tokenizer_path <eval.tokenizer_path> \
     --dataset_name <eval.dataset_name> \
-    # ... and other arguments from your YAML file
+    --run_index <eval.run_index>
 ```
 
 **For `sc_control` evaluation:**
@@ -181,7 +189,7 @@ python -m prune.evaluation.sc_control_eval \
     --model_name <eval.model_name> \
     --model_identifier <eval.model_identifier> \
     --dataset_name <eval.dataset_name> \
-    # ... and other arguments from your YAML file
+    --run_index <eval.run_index>
 ```
 
 Replace the placeholders `<...>` with the actual values from your YAML configuration.
