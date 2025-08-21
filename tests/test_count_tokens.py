@@ -7,6 +7,18 @@ import sys
 # Import the count_tokens function directly from the module
 sys.path.insert(0, '/home/runner/work/slimsc/slimsc')
 from prune.utils.count_tokens import count_tokens
+import prune.utils.count_tokens
+
+
+@pytest.fixture(autouse=True)
+def reset_tokenizer_cache():
+    """Reset the global tokenizer cache before each test."""
+    prune.utils.count_tokens._tokenizer = None
+    prune.utils.count_tokens._tokenizer_path_loaded = None
+    yield
+    # Clean up after test
+    prune.utils.count_tokens._tokenizer = None
+    prune.utils.count_tokens._tokenizer_path_loaded = None
 
 
 class TestCountTokensBasic:
@@ -76,6 +88,8 @@ class TestCountTokensBasic:
     def test_count_tokens_different_token_counts(self, mock_from_pretrained):
         """Test token counting with different token counts."""
         mock_tokenizer = Mock()
+        # Clear any side effects from previous tests
+        mock_tokenizer.encode.side_effect = None
         mock_from_pretrained.return_value = mock_tokenizer
         
         # Test case 1: Single word
@@ -97,6 +111,8 @@ class TestCountTokensBasic:
     def test_count_tokens_special_characters(self, mock_from_pretrained):
         """Test token counting with special characters."""
         mock_tokenizer = Mock()
+        # Clear any side effects from previous tests
+        mock_tokenizer.encode.side_effect = None
         mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5, 6]
         mock_from_pretrained.return_value = mock_tokenizer
         
@@ -109,6 +125,8 @@ class TestCountTokensBasic:
     def test_count_tokens_unicode_text(self, mock_from_pretrained):
         """Test token counting with unicode text."""
         mock_tokenizer = Mock()
+        # Clear any side effects from previous tests
+        mock_tokenizer.encode.side_effect = None
         mock_tokenizer.encode.return_value = [1, 2, 3]
         mock_from_pretrained.return_value = mock_tokenizer
         
@@ -179,6 +197,8 @@ class TestCountTokensEdgeCases:
     def test_count_tokens_empty_token_list(self, mock_from_pretrained):
         """Test when tokenizer returns empty token list."""
         mock_tokenizer = Mock()
+        # Clear any side effects from previous tests
+        mock_tokenizer.encode.side_effect = None
         mock_tokenizer.encode.return_value = []  # Empty token list
         mock_from_pretrained.return_value = mock_tokenizer
         
@@ -189,6 +209,8 @@ class TestCountTokensEdgeCases:
     def test_count_tokens_very_long_text(self, mock_from_pretrained):
         """Test with very long text."""
         mock_tokenizer = Mock()
+        # Clear any side effects from previous tests
+        mock_tokenizer.encode.side_effect = None
         # Simulate many tokens for long text
         mock_tokenizer.encode.return_value = list(range(1000))  # 1000 tokens
         mock_from_pretrained.return_value = mock_tokenizer

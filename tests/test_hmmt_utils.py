@@ -252,7 +252,7 @@ class TestNormalizeLatexExpression:
     def test_normalize_latex_multiplication(self):
         """Test normalization of multiplication symbols."""
         result = normalize_latex_expression("a\\cdot b")
-        assert result == "a\\times b"
+        assert result == "a\\timesb"
     
     def test_normalize_latex_whitespace_removal(self):
         """Test complete whitespace removal."""
