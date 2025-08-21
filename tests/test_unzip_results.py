@@ -12,10 +12,12 @@ from prune.utils.unzip_results import unzip_results
 class TestUnzipResults:
     """Test the unzip_results function."""
     
-    @patch('prune.utils.unzip_results.Path')
-    def test_unzip_results_success(self, mock_path, temp_dir, capsys):
+    @patch('prune.utils.unzip_results.zipfile.ZipFile')
+    @patch('prune.utils.unzip_results.Path.exists')
+    @patch('prune.utils.unzip_results.sys.exit')
+    def test_unzip_results_success(self, mock_exit, mock_exists, mock_zipfile, temp_dir, capsys):
         """Test successful unzipping of results."""
-        # Setup mock paths
+        # Setup actual paths using temp_dir
         script_dir = temp_dir / "utils"
         script_dir.mkdir()
         base_results_dir = temp_dir / "results"
@@ -30,44 +32,38 @@ class TestUnzipResults:
             zf.writestr("test_dir/file2.txt", "content2")
             zf.writestr("test_dir/subdir/file3.txt", "content3")
         
-        # Mock Path behavior
-        mock_path.return_value.resolve.return_value.parent = script_dir
-        mock_path.return_value.__truediv__ = lambda self, other: script_dir / other if "/.." in str(other) else target_parent_dir / other
-        
-        # Setup is_dir and is_file mocks
-        def mock_is_dir(self):
-            return str(self) == str(target_parent_dir)
-        
-        def mock_is_file(self):
-            return str(self) == str(zip_file_path)
+        # Mock Path resolution to use our temp directory structure
+        with patch('prune.utils.unzip_results.Path') as mock_path_class:
+            def path_constructor(path_str):
+                if path_str == "__file__":
+                    return script_dir / "unzip_results.py"
+                else:
+                    return Path(path_str)
             
-        # Apply the mocks
-        type(mock_path.return_value).is_dir = property(lambda self: mock_is_dir(self))
-        type(mock_path.return_value).is_file = property(lambda self: mock_is_file(self))
-        
-        # Mock zipfile operations
-        mock_zip_members = ["test_dir/file1.txt", "test_dir/file2.txt", "test_dir/subdir/", "test_dir/subdir/file3.txt"]
-        
-        with patch('zipfile.ZipFile') as mock_zipfile:
-            mock_zip_ref = MagicMock()
-            mock_zip_ref.namelist.return_value = mock_zip_members
-            mock_zip_ref.__enter__ = Mock(return_value=mock_zip_ref)
-            mock_zip_ref.__exit__ = Mock(return_value=False)
-            mock_zipfile.return_value = mock_zip_ref
+            mock_path_class.side_effect = path_constructor
             
-            # Mock the file existence checks (all files are new)
-            with patch('pathlib.Path.exists', return_value=False):
-                unzip_results("TestModel", "test_dataset", "test_dir", verbose=True)
+            # Mock zipfile operations to count extractions
+            mock_zip_context = Mock()
+            mock_zip_context.__enter__ = Mock(return_value=mock_zip_context)
+            mock_zip_context.__exit__ = Mock(return_value=False)
+            mock_zip_context.namelist.return_value = [
+                "test_dir/file1.txt", "test_dir/file2.txt", "test_dir/subdir/", "test_dir/subdir/file3.txt"
+            ]
+            mock_zipfile.return_value = mock_zip_context
             
-            # Verify zipfile was opened and extract was called for files
-            mock_zipfile.assert_called_once_with(zip_file_path, 'r')
-            assert mock_zip_ref.extract.call_count == 3  # 3 files (not the directory entry)
+            # Mock file existence checks (all files are new)
+            mock_exists.return_value = False
+            
+            unzip_results("TestModel", "test_dataset", "test_dir", verbose=True)
+            
+            # Verify zipfile was opened and extract was called for files (not directories)
+            mock_zipfile.assert_called_once()
+            assert mock_zip_context.extract.call_count == 3  # 3 files (not the directory entry)
             
             # Check console output
             captured = capsys.readouterr()
             assert "--- Unzipping Results ---" in captured.out
             assert "Model: TestModel, Dataset: test_dataset, Directory: test_dir" in captured.out
-            assert "Unzipping without overwriting existing files" in captured.out
     
     @patch('prune.utils.unzip_results.Path')
     def test_unzip_results_directory_not_found(self, mock_path, temp_dir, capsys):

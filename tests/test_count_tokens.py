@@ -31,6 +31,11 @@ class TestCountTokensBasic:
     @patch('prune.utils.count_tokens.transformers.AutoTokenizer.from_pretrained')
     def test_count_tokens_with_valid_tokenizer(self, mock_from_pretrained):
         """Test token counting with a valid tokenizer."""
+        # Reset global state for this test
+        import prune.utils.count_tokens
+        prune.utils.count_tokens._tokenizer = None
+        prune.utils.count_tokens._tokenizer_path_loaded = None
+        
         # Setup mock tokenizer
         mock_tokenizer = Mock()
         mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5]  # 5 tokens
@@ -207,6 +212,11 @@ class TestCountTokensIntegration:
     @patch('prune.utils.count_tokens.transformers.AutoTokenizer.from_pretrained')
     def test_realistic_tokenization_workflow(self, mock_from_pretrained):
         """Test a realistic workflow of text tokenization."""
+        # Reset global state for this test
+        import prune.utils.count_tokens
+        prune.utils.count_tokens._tokenizer = None
+        prune.utils.count_tokens._tokenizer_path_loaded = None
+        
         # Setup a mock tokenizer that behaves realistically
         mock_tokenizer = Mock()
         
@@ -242,12 +252,17 @@ class TestCountTokensIntegration:
             result = count_tokens(text, tokenizer_path)
             assert result == expected_count, f"Text: '{text}' expected {expected_count}, got {result}"
         
-        # Tokenizer should be loaded for each call (since we don't test global state here)
-        assert mock_from_pretrained.call_count >= 1
+        # Tokenizer should be loaded only once due to global caching
+        assert mock_from_pretrained.call_count == 1
     
     @patch('prune.utils.count_tokens.transformers.AutoTokenizer.from_pretrained')
     def test_error_recovery_workflow(self, mock_from_pretrained):
         """Test error recovery in a workflow."""
+        # Reset global state for this test
+        import prune.utils.count_tokens
+        prune.utils.count_tokens._tokenizer = None
+        prune.utils.count_tokens._tokenizer_path_loaded = None
+        
         # Start with a failing tokenizer
         mock_from_pretrained.side_effect = Exception("Network error")
         
