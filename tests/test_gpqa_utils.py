@@ -260,7 +260,6 @@ class TestExtractAnswerGpqa:
             ("Therefore, the answer C", "C"),  # "he answer C" contains "answer"
             ("So the result is D", "D"), # This might not work - let's be more explicit
             ("Final answer: D", "D"),    # "l answer: D" contains both "answer" and ":"
-        ]
         
         for content, expected in test_cases:
             result = extract_answer_gpqa(content)
