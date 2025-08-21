@@ -1,0 +1,1 @@
+# Test package for slimsc prune directory
