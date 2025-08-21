@@ -25,9 +25,6 @@ for module in mock_modules:
     if module not in sys.modules:
         sys.modules[module] = MagicMock()
 
-# Special handling for numpy - we need some functions to work properly
-# (No longer needed since we have real numpy installed)
-
 
 @pytest.fixture
 def temp_dir():
