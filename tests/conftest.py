@@ -14,10 +14,10 @@ sys.path.insert(0, project_root)
 
 # Mock heavy dependencies that might not be available
 mock_modules = [
-    'pandas', 'datasets', 'transformers', 'torch', 
-    'faiss', 'faiss-cpu', 'sentence_transformers', 'sympy',
+    'datasets', 'transformers', 'torch', 
+    'faiss', 'faiss-cpu', 'sentence_transformers',
     'sklearn', 'scikit-learn', 'scipy', 'matplotlib', 'seaborn',
-    'tqdm', 'rich', 'aiohttp', 'aiosignal', 'yarl',
+    'aiohttp', 'aiosignal', 'yarl',
     'huggingface_hub'
 ]
 
@@ -26,13 +26,7 @@ for module in mock_modules:
         sys.modules[module] = MagicMock()
 
 # Special handling for numpy - we need some functions to work properly
-if 'numpy' not in sys.modules:
-    numpy_mock = MagicMock()
-    # Make numpy.mean actually compute the mean
-    def mock_mean(data):
-        return sum(data) / len(data) if data else 0
-    numpy_mock.mean = mock_mean
-    sys.modules['numpy'] = numpy_mock
+# (No longer needed since we have real numpy installed)
 
 
 @pytest.fixture
