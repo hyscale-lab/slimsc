@@ -37,7 +37,10 @@ def flatten_dict(d, parent_key='', sep='_'):
     """ Flattens a nested dictionary. """
     items = []
     for k, v in d.items():
-        new_key = parent_key + sep + k if parent_key else k
+        # Convert keys to strings to handle numeric keys
+        k_str = str(k)
+        parent_key_str = str(parent_key) if parent_key else ''
+        new_key = parent_key_str + sep + k_str if parent_key_str else k_str
         if isinstance(v, collections.abc.MutableMapping):
             items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:

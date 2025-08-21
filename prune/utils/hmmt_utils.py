@@ -120,8 +120,8 @@ def normalize_latex_expression(latex_expr: str) -> str:
     normalized = re.sub(r'\\right\)', ')', normalized)
     normalized = re.sub(r'\\left\[', '[', normalized)
     normalized = re.sub(r'\\right\]', ']', normalized)
-    normalized = re.sub(r'\\left\{', '{', normalized)
-    normalized = re.sub(r'\\right\}', '}', normalized)
+    normalized = re.sub(r'\\left\\{', '{', normalized)
+    normalized = re.sub(r'\\right\\}', '}', normalized)
 
     # Remove text formatting commands but keep the content
     text_commands = [
