@@ -1,0 +1,1829 @@
+Okay, so I have this problem here where I need to find the least integer base b (where b is at least 2) such that there are more than ten b-eautiful integers. Let me try to unpack what this
+
+---------------
+
+ means.
+
+First, the problem defines a b-eautiful number as a positive integer n that has exactly two digits when written in base b. Also
+
+---------------
+
+, the sum of these two digits equals the square root of n. 
+
+Let me restate that to make sure I understand. If n is a two-digit number in base b, that means it can be expressed as n = a * b + c, where a and c are digits in base b. Since it's a two-digit number, a can't be zero, and both a and c must be less than b. The
+
+---------------
+
+ sum of the digits, a + c, should equal sqrt(n). 
+
+So, for n to be b-eautiful, the
+
+---------------
+
+ equation a + c = sqrt(a*b + c) must hold. Let me write that down:
+
+a + c = sqrt(a*b + c)
+
+If
+
+---------------
+
+ I square both sides to eliminate the square root, I get:
+
+(a + c)^2 = a*b + c
+
+Expanding the left side:
+
+a^2 + 2ac + c^2 = a*b + c
+
+Hmm, let
+
+---------------
+
+'s rearrange this equation to group like terms:
+
+a^2 + 2ac + c^2 - a*b - c = 0
+
+Maybe
+
+---------------
+
+ I can factor this or find a way to express it in terms of a or c. Let me try to rearrange it:
+
+a^2 + (2c - b)a + (c^2 - c) = 0
+
+This
+
+---------------
+
+ is a quadratic equation in terms of a. Let me denote this as:
+
+A*a^2 + B*a + C = 0
+
+Where:
+A = 1
+B = 2c - b
+C = c^2 - c
+
+So
+
+---------------
+
+ for each c (digit in base b, so c < b), I can solve for a using the quadratic formula. 
+
+
+
+---------------
+
+The quadratic formula says that a = [-B ± sqrt(B^2 - 4AC)] / (2A)
+
+Plugging in A, B, C:
+
+a = [-(2c - b) ± sqrt((2c - b)^2 - 4*1*(c^2 - c))]/2
+
+Let me compute the discriminant:
+
+D = (2c - b)^2 - 4(c^2 - c)
+
+Expanding (2c - b)^2:
+
+= 4c^2 - 4bc + b^2 - 4c^2 + 4c
+
+Simplify:
+
+= (4c^2 - 4c^2) + (-4bc) + (b^2) + 4c
+
+= -4bc + b^2 + 4c
+
+Factor terms
+
+---------------
+
+:
+
+= b^2 -4bc +4c
+
+Hmm, maybe factor out a c from the last two terms?
+
+Wait, let
+
+---------------
+
+'s see:
+
+= b^2 + (-4bc +4c)
+
+= b^2 + c*(-4b +4)
+
+=
+
+---------------
+
+ b^2 +4c(1 - b)
+
+Wait, not sure if that helps. Let me compute D as is:
+
+D = b^2 -4bc +4c
+
+So
+
+---------------
+
+, D = b^2 -4c(b -1)
+
+Hmm, for the quadratic equation to have integer solutions, the discriminant must be a perfect square. Because a must be an integer (digit
+
+---------------
+
+ in base b, so a is integer between 1 and b-1).
+
+So, D must be a perfect square.
+
+So, for
+
+---------------
+
+ each base b and each c (from 0 to b-1), we can compute D and check if it's a perfect square. If it is, then we
+
+---------------
+
+ can compute a and check if a is a positive integer less than b.
+
+Wait, but c is a digit in base b, so c must be in 0 to b-1. Similarly
+
+---------------
+
+, a must be in 1 to b-1 because it's the leading digit.
+
+So, for each base b, I can iterate c from 0 to b-1, compute D, check if D is a perfect square. Then compute
+
+---------------
+
+ a, check if a is integer and in 1 to b-1. If so, then n = a*b + c is a b-eautiful number.
+
+But
+
+---------------
+
+ since I need to find the smallest b where there are more than ten such numbers, perhaps I should find, for each b starting from 2 upwards, the number of b
+
+---------------
+
+-eautiful integers, and stop when I find the first b with more than ten.
+
+But this could be time-consuming. Maybe I can find a pattern
+
+---------------
+
+ or a formula.
+
+Let me see:
+
+From the equation:
+
+(a + c)^2 = a*b + c
+
+Let me denote
+
+---------------
+
+ s = a + c. Then s^2 = a*b + c.
+
+But since a = s - c, substitute into the equation:
+
+s^2 = (s - c)*b + c
+
+=
+
+---------------
+
+ s*b - c*b + c
+
+= s*b - c(b - 1)
+
+So, s^2 = s*b - c(b -1)
+
+Rearranged:
+
+s^2 - s*b = -c(b -1)
+
+Multiply both sides by -1:
+
+s*b - s^2 = c(b -1)
+
+So,
+
+c = (s*b - s^2)/(b -1)
+
+Hmm
+
+---------------
+
+, that's interesting. So c can be expressed in terms of s and b.
+
+Since c must be an integer between 0 and b-1, inclusive
+
+---------------
+
+, and s is a + c, which is sqrt(n). Since n is a two-digit number in base b, the maximum value of n is (b-1)*b + (b-1) = b^2 -1, so sqrt(n) is less than sqrt(b^2 -1) which is less than b. So
+
+---------------
+
+ s must be less than b.
+
+Also, since a is at least 1 and c is at least 0, s = a + c is at least 1. So s ranges from 1 to b-1.
+
+So, for each s from 1 to b-1, compute
+
+---------------
+
+ c = (s*b - s^2)/(b -1). If c is integer and 0 <= c < b, then a
+
+---------------
+
+ = s - c, which must satisfy 1 <= a < b.
+
+So, for each b, we can iterate s from 1 to b-1, compute c, and check if c is integer and within range. If so, count that as a valid b-eautiful number.
+
+This
+
+---------------
+
+ approach might be more efficient because it reduces the problem to iterating s for each b.
+
+So, let's write down the formula for c again:
+
+c = (s*b - s^2)/(b -1)
+
+S
+
+---------------
+
+implify numerator:
+
+s*(b - s)
+
+So,
+
+c = s*(b - s)/(b -1)
+
+We need c to be an integer,
+
+---------------
+
+ so (b -1) must divide s*(b - s).
+
+So, for each s in 1 to b-1, check if (b -1) divides s*(b - s).
+
+If
+
+---------------
+
+ yes, then compute c, and check if c is between 0 and b-1.
+
+Then, a = s - c must be between 1 and b-1.
+
+So
+
+---------------
+
+, for each b, the number of b-eautiful numbers is equal to the number of s in 1 to b-1 for which (b -1) divides s*(b - s), and c is within
+
+---------------
+
+ the digit constraints.
+
+Hmm, so perhaps the number of b-eautiful numbers is equal to the number of divisors s of
+
+---------------
+
+ (b-1) or something like that.
+
+Wait, because (b -1) divides s*(b - s). So s*(b - s) must be a multiple of (b -1).
+
+Let
+
+---------------
+
+ me denote d = b -1. So d = b -1.
+
+Then, s*(d +1 - s) must be divisible by d.
+
+Because b = d +1, so s
+
+---------------
+
+*(b - s) = s*(d +1 - s) = s*(d +1 - s) = s*(d +1) - s^2.
+
+Wait, maybe
+
+---------------
+
+ another approach.
+
+Since d divides s*(d +1 - s), which is s*(d +1 - s).
+
+So
+
+---------------
+
+, d | s*(d +1 - s).
+
+But d and (d +1) are coprime, because consecutive integers.
+
+Wait, so
+
+---------------
+
+ d and d+1 are coprime, so d divides s*(d +1 - s).
+
+But since d and d+1 are coprime, d must divide s*(d+1 -s).
+
+But
+
+---------------
+
+ d and s can share factors. Hmm.
+
+Alternatively, since d = b -1, and s is from 1 to d.
+
+So
+
+---------------
+
+, for each s in 1 to d, check if d divides s*(d +1 - s).
+
+But s*(d +1 - s) = s*(d +1) - s^2.
+
+Hmm
+
+---------------
+
+, not sure if that's helpful.
+
+Alternatively, perhaps express it as:
+
+s*(d +1 - s) = s*(d +1) - s^2 = s*d + s - s^2.
+
+So
+
+---------------
+
+, s*(d +1 - s) = d*s + s - s^2.
+
+Hmm.
+
+Wait, since d divides this, d
+
+---------------
+
+ | (d*s + s - s^2).
+
+But d divides d*s, so d must divide (s - s^2).
+
+So, d divides s*(1 - s).
+
+But
+
+---------------
+
+ s is from 1 to d, so s*(1 - s) is negative or zero when s=1, 
+
+---------------
+
+0 when s=1, negative for s>1.
+
+Wait, s*(1 - s) = s - s^2.
+
+Hmm, so
+
+---------------
+
+ d must divide s - s^2.
+
+Which is equivalent to d divides s(1 - s).
+
+So, s(1 - s) must be divisible by d.
+
+But s is
+
+---------------
+
+ between 1 and d.
+
+So, s can be 1, 2, ..., d.
+
+Let me try small values of d to see if
+
+---------------
+
+ I can find a pattern.
+
+For example, take d=2 (so b=3):
+
+s can be 1 or 2.
+
+For s=1: 1*(1 -1)=0. 0 is divisible by d=2. So c = 1*(3 -1)/(3-1) = 1*2/2 = 1. So
+
+---------------
+
+ c=1, which is less than 3. Then a = s - c = 1 -1=0, which is invalid because a must be at least 1. So this
+
+---------------
+
+ s=1 is invalid.
+
+For s=2: 2*(1 -2)=2*(-1)=-2. -
+
+---------------
+
+2 is divisible by 2. So c=2*(3 -2)/(3-1)=2*1/2=1. So c=1. Then a=2-1=1, which is valid. So n = 1*3 +1=4. Check sqrt(4)=2, and digits sum 1+1=2. Correct. So for
+
+---------------
+
+ b=3, there is 1 b-eautiful number.
+
+Similarly, let's try d=3 (b=4):
+
+s ranges
+
+---------------
+
+ 1,2,3.
+
+s=1: 1*(1-1)=0. So c=1*(4 -1)/(4-1)=1*3/3=1. a=1-1=0 invalid.
+
+s=2: 2*(1-2)= -2. 
+
+---------------
+
+3 does not divide -2? 3 doesn't divide 2, so no.
+
+s=3: 3*(1-3)=3*(-2)=-6. 3 divides -6. So c=3*(4 -3)/(4-1)=3*1/3=1. Then a=3-1=2. Which is valid. So n=2*4 +1=9. sqrt(9)=3, digits sum 2+1=3. Correct. So for b=4, one
+
+---------------
+
+ b-eautiful number.
+
+Hmm, seems like for each base, the number of b-eautiful numbers is equal to the number of s where d divides s(1 -s), which is
+
+---------------
+
+ equivalent to d divides s(s -1). Wait, because s(1 - s) = -s(s -1). So d divides s(s -1).
+
+So
+
+---------------
+
+, d divides s(s -1). Since d is fixed, for each s from 1 to d, check if d divides s(s -1).
+
+But
+
+---------------
+
+ since s and s-1 are consecutive integers, they are coprime. So d must divide either s or s-1.
+
+Because
+
+---------------
+
+ if d divides s(s-1), and gcd(s, s-1)=1, then d must divide s or d must divide s-1.
+
+So, for each s in 1 to d, either
+
+---------------
+
+ d divides s or d divides s-1.
+
+But s ranges from 1 to d, so s-1 ranges from 0 to d-1.
+
+So, when
+
+---------------
+
+ does d divide s or s-1?
+
+Case 1: d divides s. Since s <= d, the only possibility is s = d. Because d divides d.
+
+Case 2: d divides s-1. So s -1 must be a multiple of d. But s-1 <=
+
+---------------
+
+ d-1, so the only possibility is s -1 =0, i.e., s=1.
+
+So, for s in 1 to d, only s=1 and s=d will satisfy that d divides s(s-1).
+
+Wait
+
+---------------
+
+, that's interesting. So for each d, the only s that satisfy d | s(s-1) are s=1 and s=d.
+
+But
+
+---------------
+
+ wait, let's test this with d=2:
+
+d=2. s=1: 1*(1-1)=0, which is divisible by 2? Wait, 0 is divisible by any d, so yes. s=2: 2*(2-1)=2, which is divisible by 2. So yes
+
+---------------
+
+, both s=1 and s=2.
+
+But earlier when d=2 (b=3), s=1 gave
+
+---------------
+
+ c=1, a=0 (invalid). s=2 gave c=1, a=1 (valid). So only s=2 was
+
+---------------
+
+ valid. So only one solution.
+
+Similarly, d=3:
+
+s=1: 1*0=0, which is divisible by 3. But
+
+---------------
+
+ a=0 invalid.
+
+s=3: 3*2=6, which is divisible by 3. So c
+
+---------------
+
+=1, a=2. Valid.
+
+So again, only one solution.
+
+Wait, but earlier when I thought about d=4, let's see:
+
+d=4, b=5.
+
+s=1: c=1*(5 -1)/(5-1)=1*4/4=1. a=1-1=0 invalid.
+
+s=4: c=4*(5 -4)/(5-1)=4*1/4=1. a=4-1=3. Valid. So n=3*5 +1=16. sqrt(16)=4, digits sum 3+1=4. Correct.
+
+So again
+
+---------------
+
+, only one solution.
+
+Wait, but when d=6, b=7.
+
+s=1: c=1*(7-1)/(7-1)=6/6=1. a=0 invalid.
+
+s=6: c=6*(7-6)/(7-1)=6*1/6=1. a=6-1=5. So n=5*7 +1=36. sqrt(36)=6, digits sum 5+1=6. Correct.
+
+Only
+
+---------------
+
+ one solution.
+
+Wait, but wait, this contradicts my initial thought. Because if for each d, only s=1 and s=d give
+
+---------------
+
+ c as integer, but s=1 gives a=0 which is invalid, except when s=d.
+
+Wait, but let
+
+---------------
+
+'s try d=1, which would be b=2.
+
+s=1: c=1*(2 -1)/(2-1)=1*1/1=1. a=1-1=0 invalid. So no solution for b=2.
+
+But wait
+
+---------------
+
+, in the problem statement, b >=2, but the example is 81 is 13-beautiful. So for
+
+---------------
+
+ bases like b=13, let's check.
+
+Wait, let me think again. Maybe my earlier conclusion that only s=1 and s=d give
+
+---------------
+
+ c as integer is incorrect.
+
+Wait, let me take d=4, b=5.
+
+s=2:
+
+c = 2*(5 -2)/(5 -1) = 2*3/4 = 6/4 = 1.5, which is not integer. So invalid.
+
+s=3:
+
+c=3*(5 -3)/(5-1)=3*2/4=6/4=1.5, not integer.
+
+So,
+
+---------------
+
+ only s=1 and s=4 give c integer, but s=1 gives a=0 invalid. So only one solution.
+
+Similarly
+
+---------------
+
+, let's take d=5, b=6.
+
+s=1: c=1*(6-1)/(6-1)=5/5=1. a=0 invalid.
+
+s=2: c=2*(6-2)/(6-1)=2*4/5=8/5=1.6, not integer.
+
+s=3: c=3*(6-3)/5=3*3/5=9/5=1.8, not integer.
+
+s=4: c=4*(6-4)/5=4*2/5=8/5=1.6, no.
+
+s=5: c=5*(6-5)/5=5*1/5=1. a=5-1=4. So n=4*6 +1=25. sqrt(25)=5. 
+
+---------------
+
+4+1=5. Correct. So only one solution.
+
+Wait, but earlier I thought maybe for some d, there are more s that satisfy the condition. But
+
+---------------
+
+ according to this, only s=1 and s=d yield integer c, but s=1 gives a=0 which is invalid, so only s=d gives a valid solution.
+
+But wait
+
+---------------
+
+, in the problem statement, the example is 81 is 13-beautiful. Let's compute for b=13.
+
+s
+
+---------------
+
+ = a + c = sqrt(81) =9.
+
+So s=9.
+
+c = s*(b - s)/(b -1) = 9*(13 -9)/(13 -1) =9*4/12= 36/12=3.
+
+So c=3. Then a = s - c =9 -3=6. So n=6*13 +3=81.
+
+So
+
+---------------
+
+ that's correct.
+
+But according to my earlier conclusion, for b=13, d=12.
+
+So s can
+
+---------------
+
+ be 1 and 12.
+
+s=1: c=1*(13-1)/12=12/12=1. a=0 invalid.
+
+s=12: c=12*(13-12)/12=12*1/12=1. a=12-1=11. n=11*13 +1=143 +1=144. sqrt(144)=12. 11+1=12. Correct.
+
+So for
+
+---------------
+
+ b=13, two solutions: n=81 and n=144? Wait, but according to my earlier computation
+
+---------------
+
+, only s=12 would give a valid solution.
+
+Wait, but according to the example, 81 is a solution with
+
+---------------
+
+ s=9. So how come s=9 is also a solution?
+
+Wait, maybe my earlier conclusion was wrong. Because
+
+---------------
+
+ in the case of b=13, d=12.
+
+s=9:
+
+c=9*(13 -9)/(13 -1)=9*4/12=3. So c=3, which is an
+
+---------------
+
+ integer. So s=9 is a solution.
+
+But according to my previous logic, only s=1 and s=12 would yield
+
+---------------
+
+ c as integer.
+
+But in this case, s=9 also gives c integer. So my previous conclusion was incorrect.
+
+So
+
+---------------
+
+, perhaps my initial assumption that only s=1 and s=d would give c integer was wrong.
+
+So, I need to find
+
+---------------
+
+ all s in 1 to d such that (s*(d +1 -s)) is divisible by d.
+
+Wait, but
+
+---------------
+
+ s*(d +1 -s) must be divisible by d.
+
+So, for each s, compute s*(d +1 -s) and check if it's divisible by d.
+
+Alternatively
+
+---------------
+
+, since d divides s*(d +1 -s), and d and d+1 are coprime, perhaps I
+
+---------------
+
+ can find s such that s*(d +1 -s) ≡ 0 mod d.
+
+But s*(d +1 -s) mod d.
+
+
+
+---------------
+
+Since d+1 ≡1 mod d, so (d +1 -s) ≡ (1 -s) mod d.
+
+So, s*(d +1 -s) ≡ s*(1 - s) mod d.
+
+So, we
+
+---------------
+
+ have s*(1 -s) ≡ 0 mod d.
+
+Which is equivalent to s(s -1) ≡ 0 mod d.
+
+So, d
+
+---------------
+
+ divides s(s -1).
+
+So, for each s in 1 to d, if d divides s(s -1), then c is integer.
+
+But
+
+---------------
+
+ since s and s-1 are consecutive integers, their gcd is 1. So, d must divide either s or s-1.
+
+But
+
+---------------
+
+ since s is from 1 to d, s can only be a multiple of d if s=d. Similarly, s-1 can be a multiple of d only if s-1=0, i.e., s=1.
+
+Wait, but in the case of d=12, s=9:
+
+s=9, s-1=8.
+
+d=12.
+
+---------------
+
+ 12 divides 9*8=72. 72/12=6. So yes, 12 divides 72.
+
+But 12 does not divide 9 or 8 individually. 12 doesn't divide 9, and
+
+---------------
+
+ 12 doesn't divide 8. So, how come 12 divides 9*8?
+
+Because 9 and 8 are coprime, but their product is divisible by 12.
+
+Hmm, so my earlier conclusion that d must divide s or s-1 is only a
+
+---------------
+
+ sufficient condition, but not necessary.
+
+Wait, because if d is composite, it could have factors that are in s and s-1.
+
+Wait
+
+---------------
+
+, for example, d=12=3*4. s=9, s-1=8.
+
+So, 3 divides 9, and 4 divides 8. So, 3*4 divides 9*8.
+
+So
+
+---------------
+
+, in this case, d=12 is the product of 3 and 4, and 3 divides s=9, 4 divides s-1=8.
+
+So, in
+
+---------------
+
+ general, if d can be factored into two coprime factors, say m and n, such that m divides s and n divides s-1, then d= m*n divides s*(s-1).
+
+So
+
+---------------
+
+, for d=12, m=3, n=4. Since 3 divides 9 and 4 divides 8, d
+
+---------------
+
+ divides 9*8=72.
+
+So, in this case, s=9 is a solution.
+
+Similarly, for
+
+---------------
+
+ other d's, we can have multiple s's that satisfy d divides s*(s-1) even if d doesn't divide s or s-1 individually, as long as d can be expressed as a product of two coprime factors that each divide s and s-1 respectively.
+
+So, the
+
+---------------
+
+ number of solutions s for each d is equal to the number of ways to write d as a product of two coprime factors m and n, and then find s such that m divides s and n divides s-1.
+
+But
+
+---------------
+
+ this seems a bit abstract. Maybe I can think in terms of the number of divisors.
+
+Alternatively, perhaps for each d, the number of s in 1 to d such that d divides s(s-1) is equal to the number of divisors m of d where m divides s and d/m divides s-1.
+
+But this might get complicated.
+
+Alternatively, perhaps for
+
+---------------
+
+ each d, the number of solutions s is equal to the number of divisors of d, but I'm not sure.
+
+Wait, let's take d=6.
+
+d=6. So b=7.
+
+s
+
+---------------
+
+ can be from 1 to 6.
+
+Compute for each s:
+
+s=1: 1*0=0, divisible by 6? 0 is, but a=0 invalid.
+
+s=2: 2*1=2, not divisible by 6.
+
+s=3: 3*2=6, which is divisible by 6. So c=3*(7-3)/(7-1)=3*4/6=12/6=2. c=2. a=3-2=1. So n=1*7 +2=9. sqrt(9)=3, 1+2=3. Correct.
+
+s=4: 4*3=12, which is divisible by 6. c=4*(7-4)/6=4*3/6=12/6=2. a=4-2=2. n=2*7 +2=16. sqrt(16)=4, 2+2=4. Correct.
+
+s=5:5*4=20, not divisible by 6.
+
+s=6:6*5=30, which is divisible by 6. c=6*(7-6)/6=6*1/6=1. a=6-1=5. n=5*7 +1=36. sqrt(36)=6, 5+1=6. Correct.
+
+So for d=6, s=3,4,6 give valid solutions. s=1 and s=6 give
+
+---------------
+
+ c=2 and 1, but s=1 gives a=0 invalid, s=6 gives a=5 valid. So total of three solutions: s=3,4,6.
+
+Wait, so
+
+---------------
+
+ for d=6, there are three solutions.
+
+Similarly, let's check d=4:
+
+d=4, b=5.
+
+s=1: c
+
+---------------
+
+=1, a=0 invalid.
+
+s=2:2*3=6, not divisible by 4.
+
+s=3:3*2=6, not divisible by 4.
+
+s=4:4*3=12, divisible by 4. c=1, a=3. So n=3*5 +1=16. Correct.
+
+So only s=4 gives a solution. So one solution.
+
+Wait, but earlier when
+
+---------------
+
+ d=6, there were three solutions. So the number of solutions can vary.
+
+So, it seems that the number of solutions depends on the number of ways d can be expressed as a product of two coprime factors m and n, such that m divides s and n divides s-1.
+
+But
+
+---------------
+
+ perhaps a better approach is to note that for each d, the number of solutions s is equal to the number of ways to write d as m*n where m and n are coprime, and then solve
+
+---------------
+
+ for s ≡0 mod m and s ≡1 mod n.
+
+Each such pair (m,n) gives a solution s via the Chinese Remainder Theorem.
+
+But
+
+---------------
+
+ since m and n are coprime, there is a unique solution modulo m*n.
+
+But since s must be between 1 and d, each
+
+---------------
+
+ such pair (m,n) would give exactly one solution s in that range.
+
+Therefore, the number of solutions s is equal to the number of ways to factor d into two coprime factors m and n, where m*n
+
+---------------
+
+=d.
+
+But the number of such factorizations is 2^{k-1}, where k is the number of distinct prime factors of d.
+
+Because for each prime factor, you can assign it to m or to n, but since m and n are coprime, each prime must go entirely to m or to n.
+
+So
+
+---------------
+
+, the number of coprime factorizations is 2^{k}, but since m and n are unordered, it's 2^{k-1}.
+
+Wait, let me think
+
+---------------
+
+.
+
+For example, d=6=2*3. The coprime factorizations are (1,6), (2,3), (3,2), (6,1). But since m and n are positive integers, and order
+
+---------------
+
+ matters, but in our case, since m divides s and n divides s-1, the order matters because m and n are in specific roles.
+
+Wait, no
+
+---------------
+
+, actually, for each factorization into m and n coprime, with m*n=d, we can have two possibilities: m divides s and n divides s-1, or n divides s and m divides s-1.
+
+But in our case, since
+
+---------------
+
+ m and n are coprime, each factorization (m,n) gives a unique solution s.
+
+Wait, perhaps the
+
+---------------
+
+ number of solutions is equal to the number of such factorizations, which is 2^{k}, where k is the number of distinct prime factors of d.
+
+Because for each prime, you can assign it to m or to n.
+
+But let
+
+---------------
+
+ me test this.
+
+Take d=6=2*3. k=2. So number of solutions should be 2^{2}=4.
+
+But earlier, for d=6, we found three solutions: s=3,4,6.
+
+Wait, that
+
+---------------
+
+ doesn't match. Hmm.
+
+Wait, perhaps the number of solutions is equal to the number of such factorizations where m and n are greater than 1. Or maybe including
+
+---------------
+
+ 1.
+
+Wait, for d=6, the coprime factorizations are:
+
+(1,6), (2,3), (3,2), (6,1).
+
+Each of these gives
+
+---------------
+
+ a solution s.
+
+Let me check:
+
+For (m,n)=(1,6):
+
+s ≡0 mod 1 (always true), s ≡1 mod 6.
+
+So s ≡1 mod6. In
+
+---------------
+
+ 1<=s<=6, s=1,7,... but s<=6, so s=1. But a=0 invalid.
+
+For (m,n)=(2,3):
+
+s ≡0 mod2, s≡1 mod3.
+
+Find s in 1-6:
+
+s=4: 4≡0 mod2, 4≡1 mod3? 4 mod3=1. Yes. So s=4.
+
+For (m,n)=(3,2):
+
+s≡0 mod3, s≡1 mod2.
+
+Find s in 1-6:
+
+s=3: 3≡0 mod3, 3≡1 mod2? 3 mod2=1. Yes. So s=3.
+
+s=9 would be next, but beyond d=6.
+
+For (m,n)=(6,1):
+
+s≡0 mod6, s≡1 mod1 (always true).
+
+So s=6.
+
+So,
+
+---------------
+
+ the solutions are s=1,3,4,6.
+
+But s=1 gives a=0 invalid, so only s=3,4,6 are valid. So three solutions.
+
+So, the
+
+---------------
+
+ number of valid solutions is equal to the number of coprime factorizations minus the ones where s=1 (which gives a=0 invalid).
+
+But
+
+---------------
+
+ in this case, one of the four factorizations leads to s=1, which is invalid. So, the number of valid solutions is 3.
+
+Similarly, for d=12=2^2*3.
+
+Number of coprime factorizations: factors
+
+---------------
+
+ are pairs (m,n) where m*n=12 and gcd(m,n)=1.
+
+Possible factorizations:
+
+(1,12), (3,4), (4,3), (12,1).
+
+So four factorizations.
+
+Each gives a solution s:
+
+(1,12): s≡0 mod1, s≡1 mod12. So s=1,
+
+---------------
+
+13,... but s<=12, so s=1. a=0 invalid.
+
+(3,4): s≡0 mod3, s≡1 mod4.
+
+Find s: 3 divides
+
+---------------
+
+ s, 4 divides s-1.
+
+s=9: 9 mod3=0, 9 mod4=1. So s=9.
+
+(4,3): s≡0 mod4, s≡1 mod3.
+
+Find s: 4 divides s, 3 divides s-1.
+
+s=4: 4 mod4=0, 4 mod3=1. So s=4.
+
+s=12: 12 mod4=0, 12 mod3=0, which is not 1. So no.
+
+Wait, next would be s=4+ lcm(3,4)=12, which is beyond d=12.
+
+So s=4.
+
+(12,1): s≡0 mod12, s≡1 mod1.
+
+So s=12.
+
+Thus, the solutions are s=1,4,9,12.
+
+s=1 invalid, others valid. So three valid solutions.
+
+Wait, but earlier with
+
+---------------
+
+ d=6, we had three solutions, and d=12 also has three solutions.
+
+Wait, but the number of coprime factorizations is four, but one leads to s=1 which is invalid, so three valid solutions.
+
+But
+
+---------------
+
+ wait, let's take d=4.
+
+d=4=2^2.
+
+Coprime factorizations: (1,4), (4,1).
+
+So two factorizations.
+
+Each gives s:
+
+(1,4): s=1, invalid.
+
+(4,1): s=4, valid.
+
+So only one solution.
+
+Similarly, d=8=2^3.
+
+Coprime factorizations: (1,8), (8,1).
+
+So two factorizations.
+
+s=1 invalid, s=8 valid.
+
+So only one solution.
+
+But d=9=3^2.
+
+Coprime factorizations: (1,9), (9,1).
+
+Two factorizations.
+
+s=1 invalid, s=9 valid.
+
+So one solution.
+
+Wait, but d=12,
+
+---------------
+
+ which has two distinct prime factors, gives three solutions.
+
+Wait, perhaps the number of solutions is equal to the number of cop
+
+---------------
+
+rime factorizations (excluding (1,d)) minus 1 if s=1 is included.
+
+But this seems inconsistent.
+
+Alternatively, perhaps the number of valid solutions is equal to the number of cop
+
+---------------
+
+rime factorizations (m,n) where m>1 and n>1, because when either m=1 or n=1, s=1 or s=d, which may or may not be valid.
+
+Wait, for d=6, the
+
+---------------
+
+ coprime factorizations where both m>1 and n>1 are (2,3) and (3,2). Each gives a solution s=4 and s=3, respectively.
+
+So
+
+---------------
+
+, two solutions from these, plus s=d=6, which gives another solution. So total three.
+
+Similarly, for d=12, the coprime factorizations where both m>1 and n>1 are (3,4) and (4,3). Each gives s=9 and s=4, respectively. Plus s=d=12. So total three solutions.
+
+For d=6, number
+
+---------------
+
+ of solutions is three.
+
+For d=12, number of solutions is three.
+
+Wait, but d=6 has two distinct prime factors, d=12 has two as well.
+
+Hmm, perhaps
+
+---------------
+
+ the number of solutions is equal to the number of ways to write d as a product of two coprime factors greater than 1, multiplied by 2 (since each such pair (m,n) and (n,m) gives a different s), plus one for s=d.
+
+Wait, but
+
+---------------
+
+ in d=6, the coprime factorizations with m,n>1 are (2,3) and (3,2), each giving a solution. So two solutions from these, plus s=6, total three.
+
+Similarly, for d=12, (3,4) and (4,3) give two solutions, plus s=12, total three.
+
+But for d=8, which is 2^3, the only coprime factorization with m,n>1 is none, because 8 cannot be written as a product of two coprime numbers greater than 1. Because 8=2^3, and any factors would share the factor 2. So, only s=8 is a solution.
+
+Similarly, for d=9=3^2, same thing: can't be written as a product of two coprime factors greater than 1. So only s=9 is a solution.
+
+So, the
+
+---------------
+
+ number of solutions is:
+
+Number of coprime factorizations (m,n) with m>1, n>1, and
+
+---------------
+
+ m*n=d: let's denote this as t.
+
+Then total solutions = t*2 +1.
+
+But for d=6, t=1 (only (2,3)), so 1*2 +1=3.
+
+For d=12, t=1 (only (3,4)), so 1*2 +1=3.
+
+For d=8, t=0, so 0 +1=1.
+
+For d=9, t=0, so 1.
+
+For
+
+---------------
+
+ d=4, t=0, so 1.
+
+But wait, d=12 can be written as 3*4, which are coprime, but also 2*6, which are not coprime. So, t counts only the coprime factorizations where m and n are coprime and both >1.
+
+So, t is the number of such pairs.
+
+So
+
+---------------
+
+, t is equal to the number of ways to write d as a product of two coprime factors greater than 1.
+
+This is equivalent to the number of unordered pairs {m,n} where m and n are coprime, m>1, n>1, and m*n=d.
+
+Each
+
+---------------
+
+ such pair contributes two ordered pairs (m,n) and (n,m), except when m=n, but since m and n are coprime, m=n only if m=n=1, which is excluded.
+
+So, t is the number of unordered coprime pairs {m,n} with m,n>1 and m*n=d.
+
+Thus
+
+---------------
+
+, the number of such pairs is 2^{k-1}, where k is the number of distinct prime factors of d.
+
+Because each prime factor can be assigned to m or n, but since m and n are coprime, each prime must go entirely to m or to n.
+
+Thus
+
+---------------
+
+, the number of ordered pairs is 2^{k}, but since unordered, it's 2^{k-1}.
+
+But wait
+
+---------------
+
+, for d=6=2*3, k=2. So t=2^{2-1}=2. But earlier, for d=6, t=1 (
+
+---------------
+
+only (2,3) and (3,2) considered as one unordered pair). So, t=1.
+
+Wait, perhaps
+
+---------------
+
+ t=2^{k-1}.
+
+Yes, for d=6, k=2, t=2^{1}=2.
+
+---------------
+
+ But we have only one unordered pair {2,3}, which gives two ordered pairs. So, in terms of ordered pairs, t=2.
+
+But in our case, each ordered pair gives a different s.
+
+For
+
+---------------
+
+ example, (m,n)=(2,3) gives s=4, and (m,n)=(3,2) gives s=3.
+
+So, for each unordered pair, we get two s's.
+
+Thus, the number of solutions s from these is
+
+---------------
+
+ 2*t, where t is the number of unordered coprime pairs {m,n} with m,n>1.
+
+Plus
+
+---------------
+
+ the solution s=d.
+
+Thus, total solutions = 2*t +1.
+
+But t is 2^{k-1}.
+
+Wait, for
+
+---------------
+
+ d=6, k=2, t=2^{1}=2 (unordered pairs?), but actually, {2,3} is one unordered pair.
+
+Wait, I'm getting confused.
+
+Wait, perhaps
+
+---------------
+
+ it's better to think that the number of ordered coprime pairs (m,n) with m,n>1 and m*n=d is 2^{k}.
+
+Because for each prime factor, you can assign it to m or n, leading
+
+---------------
+
+ to 2^{k} ordered pairs.
+
+But since m and n are distinguishable (because one is assigned to divide s, the other to divide s-1), each ordered pair gives a different s.
+
+Thus, for each d with k distinct prime factors, the number of such ordered pairs is 2^{k}.
+
+But in
+
+---------------
+
+ the case of d=6=2*3, k=2, so 2^2=4 ordered pairs.
+
+
+
+---------------
+
+But earlier, for d=6, we have four factorizations: (1,6), (2,3), (3,2), (6,1). Among
+
+---------------
+
+ these, only (2,3) and (3,2) are ordered pairs with m,n>1. So, t
+
+---------------
+
+=2.
+
+Thus, the number of ordered pairs with m,n>1 is 2^{k} - 2.
+
+
+
+---------------
+
+Wait, because total ordered pairs including m=1 or n=1 is 2^{k}, but we subtract the two cases where m=1 or n=1.
+
+Wait, perhaps
+
+---------------
+
+ not exactly.
+
+Alternatively, for d with k distinct prime factors, the number of ordered coprime pairs (m,n) with m,n>1 and m*n=d is 2^{k} - 2.
+
+Because for each prime, you can assign it to m or n, leading to 2^{k} ordered pairs. But two
+
+---------------
+
+ of these are (1,d) and (d,1), which we exclude because m,n>1. So, the
+
+---------------
+
+ number is 2^{k} - 2.
+
+Thus, for d=6, k=2, number of ordered pairs is 2^2 - 2=2. Which matches,
+
+---------------
+
+ since (2,3) and (3,2) are the two.
+
+Similarly, for d=12=2^2*3, k=2, number of ordered pairs is 2^2 -2=2. Indeed
+
+---------------
+
+, (3,4) and (4,3).
+
+So, for each d with k distinct prime factors, the number of ordered coprime pairs (m,n) with m,n>1 is 2^{k} -2.
+
+Thus, the number of solutions s from these is equal to 2^{k} -2.
+
+Plus the solution s=d.
+
+So, total solutions = (2^{k} -2) +1=2^{k} -1.
+
+Wait, but for d=6, k=2, 2^{2} -1=3, which matches.
+
+For d=12, k=2, 2^{2} -1=3, which matches.
+
+For d=8=2^3, k=1, 2^{1} -1=1, which matches.
+
+For d=9=3^2, k=1, 2^{1}-1=1, which matches.
+
+For d=4=2^2, k=1, 2^{1}-1=1, which matches.
+
+For
+
+---------------
+
+ d=2=2, k=1, 2^{1}-1=1. But d=2, b=3.
+
+s can be 1 and 2.
+
+s=1: c=1*(3-1)/(3-1)=2/2=1. a=0 invalid.
+
+s=2: c=2*(3-2)/2=2*1/2=1. a=2-1=1. So n=1*3 +1=4. sqrt(4)=2. Correct. So only one solution, which matches.
+
+So, the
+
+---------------
+
+ formula seems to hold.
+
+Thus, for a given d, the number of b-eautiful numbers is equal to 2^{k} -1, where k is the number of distinct prime factors of d.
+
+But wait, for
+
+---------------
+
+ d=6, which is 2*3, k=2, so 2^2 -1=3 solutions.
+
+But
+
+---------------
+
+ earlier, when d=6, we had three solutions: s=3,4,6.
+
+Similarly, for d=12=2^2*3, k=2, so 3 solutions.
+
+But
+
+---------------
+
+ wait, d=12 has two distinct prime factors, same as d=6.
+
+So, the number of solutions is 2^{k} -1, where k is the number of distinct prime factors of d.
+
+Thus, for each base b, where d = b -1, the number of b-eautiful numbers is 2^{k} -1, where k is the number of distinct prime factors of d.
+
+But
+
+---------------
+
+ wait, let me check for d=30=2*3*5, k=3.
+
+Number of solutions would be 2^3 -1=7.
+
+Let me test
+
+---------------
+
+ d=30.
+
+d=30, b=31.
+
+We can find s in 1 to30 such that 30 divides s(s-1).
+
+Number
+
+---------------
+
+ of solutions s is 2^{3} -1=7.
+
+So, let's see:
+
+The coprime factorizations of 30 into m and n where m,n>1:
+
+
+
+---------------
+
+Each prime can go to m or n.
+
+So, the ordered pairs (m,n) are:
+
+(2,15), (3,10), (5,6), (6,5), (10,3), (15,2), (30,1), (1,30).
+
+But we exclude those
+
+---------------
+
+ with m=1 or n=1, so the remaining are (2,15), (15,2), (3,10), (10,3), (5,6), (6,5). So six ordered pairs.
+
+Each of these gives a solution s.
+
+For
+
+---------------
+
+ example:
+
+(m,n)=(2,15):
+
+s ≡0 mod2, s≡1 mod15.
+
+Find s in 1-30.
+
+s=16: 16 mod2=0, 16 mod15=1. So s=16.
+
+(m,n)=(15,2):
+
+s≡0 mod15, s≡1 mod2.
+
+s=15: 15 mod15=0, 15 mod2=1. So s=15.
+
+(m,n)=(3,10):
+
+s≡0 mod3, s≡1 mod10.
+
+Find s: 3 divides s, 10 divides s-1.
+
+s= 3
+
+---------------
+
+*k, s-1=10*m.
+
+So 3k -10m =1.
+
+Find k and m integers.
+
+Try k=7: 21 -10m=1 → 10m=20 → m=2. So s=21.
+
+Check
+
+---------------
+
+:21 mod3=0, 21 mod10=1. Yes.
+
+(m,n)=(10,3):
+
+s≡0 mod10, s≡1 mod3.
+
+s=10*k, 10k ≡1 mod3.
+
+10 mod3=1, so 10k ≡k mod3 �
+
+---------------
+
+�1 → k=1 mod3.
+
+So s=10,40,... but s<=30, so s=10,40 invalid. s=10: 10 mod10=0, 10 mod3=1. Yes.
+
+(m,n)=(5,6):
+
+s≡0 mod5, s≡1 mod6.
+
+Find s: 5 divides s, 6 divides s-1.
+
+s=5*k, 5k -6*m=1.
+
+Try k=5:25 -6m=1→6m=24→m=4. So s=25.
+
+Check:25 mod5=0, 25 mod6=1. Yes.
+
+(m,n)=(6,5):
+
+s≡0 mod6, s≡1 mod5.
+
+s=6*k, 6k ≡1 mod5.
+
+6 mod5=1, so 6k ≡k mod5≡1 →k=1 mod5.
+
+So s=6,11,16,21,26,31,...
+
+---------------
+
+ but s<=30.
+
+s=6:6 mod6=0,6 mod5=1. Yes.
+
+s=11:11 mod6=5≠0.
+
+Wait, s=6 is
+
+---------------
+
+ the only one in 1-30.
+
+So, the solutions from these pairs are s=15,16,21,10,25,6.
+
+Plus s=30.
+
+So total solutions s=6,10,15,16,21,25,30.
+
+That
+
+---------------
+
+'s seven solutions. So, seven b-eautiful numbers for b=31.
+
+Thus, the formula holds.
+
+So, the
+
+---------------
+
+ number of b-eautiful numbers for base b is 2^{k} -1, where k is the number of distinct prime factors of d = b -1.
+
+Thus
+
+---------------
+
+, to find the least b where the number of b-eautiful numbers exceeds ten, we need to find the smallest b such that 2^{k} -1 >10, where k is the number of distinct prime factors of b-1.
+
+So, 2^{k} -1 >10 → 2^{k} >11 →k >=4, since 2^4=16>11.
+
+Thus, we need b-1 to have at least 4 distinct prime factors.
+
+Because then
+
+---------------
+
+ 2^4 -1=15>10.
+
+So, the smallest d =b-1 with at least 4 distinct prime factors is the product of the first four primes: 2*3*5*7=210.
+
+Thus, b=211.
+
+But wait, is
+
+---------------
+
+ there a smaller d with four distinct prime factors?
+
+Yes, for example, 2*3*5*7=210 is the smallest number
+
+---------------
+
+ with four distinct primes.
+
+But wait, 2*3*5*7=210.
+
+But is there a smaller d with four distinct prime factors? No, because the first four primes are 2,3,5,7. So 210 is the smallest.
+
+Thus, b=211.
+
+But wait, let me check.
+
+
+
+---------------
+
+Wait, 210 is the smallest number with four distinct prime factors.
+
+So, for b=211, d=210, which has four distinct prime factors, so k=4.
+
+Thus, number of b-eautiful numbers is 2^4 -1=15>10.
+
+But is there a smaller b where d has k=4?
+
+Yes, because
+
+---------------
+
+ 2*3*5*7=210 is the first, but perhaps another number less than 210 with four distinct prime factors.
+
+Wait, for
+
+---------------
+
+ example, 2*3*5*7=210, which is the smallest.
+
+No, because the primes are in order, so the next would be 2*3*5*11=330, which is larger.
+
+Thus, 210 is the smallest d with four distinct prime factors.
+
+Thus, the least b is 211.
+
+But wait, wait a second. Let's check
+
+---------------
+
+ if d=105=3*5*7 has three distinct prime factors.
+
+k=3, so number of solutions is 2^3 -1=7.
+
+Which is less than 10.
+
+Thus, to
+
+---------------
+
+ get more than ten solutions, we need k>=4.
+
+Thus, the minimal d is 210, leading to b=211.
+
+But wait, let
+
+---------------
+
+ me check for d=60=2^2*3*5, which has three distinct prime factors.
+
+k=3, so 2^3 -1=7<10.
+
+Thus
+
+---------------
+
+, not enough.
+
+Similarly, d=120=2^3*3*5, k=3, solutions=7.
+
+Still not enough.
+
+Thus
+
+---------------
+
+, the first d with four distinct prime factors is 210, so b=211.
+
+Thus, the answer is 211.
+
+But wait, let
+
+---------------
+
+ me check if d=105=3*5*7, which has k=3, so solutions=7.
+
+But
+
+---------------
+
+ wait, d=105 has three distinct prime factors, but what about d=2310=2*3*5*7*11, which has five distinct prime factors.
+
+But that's larger, so not needed.
+
+Thus, the minimal b is 211.
+
+
+To determine the least integer \( b \geq 2 \) for which there are more than ten \( b \)-eautiful integers, we analyze the problem as follows:
+
+A positive integer \( n \) is \( b \)-eautiful if it has exactly two digits in base \( b \), and the sum of these digits equals \( \sqrt{n} \). Expressing \( n \) in base \( b \) as \( n = a \cdot b + c \), where \( a \) and \( c \) are digits in base \( b \), the condition becomes \( a + c = \sqrt{a \cdot b + c} \). Squaring both sides gives the equation \( (a + c)^2 = a \cdot b + c \), which simplifies to \( a^2 + 2ac + c^2 = a \cdot b + c \). Rearranging terms yields a quadratic equation in \( a \):
+
+\[
+a^2 + (2c - b)a + (c^2 - c) = 0
+\]
+
+Using the quadratic formula, the discriminant must be a perfect square for \( a \) to be an integer. This leads to the condition that \( b - 1 \) must divide \( s(s - 1) \), where \( s = a + c \). The number of valid \( b \)-eautiful numbers is determined by the number of ways to factor \( b - 1 \) into coprime pairs \( (m, n) \), which is \( 2^{k} - 1 \), where \( k \) is the number of distinct prime factors of \( b - 1 \).
+
+To exceed ten \( b \)-eautiful numbers, we need \( 2^{k} - 1 > 10 \), which requires \( k \geq 4 \). The smallest \( b - 1 \) with four distinct prime factors is \( 210 \) (the product of the first four primes: 2, 3, 5, 7). Thus, \( b = 211 \).
+
+The least integer \( b \) is:
+
+\boxed{211}<｜end▁of▁sentence｜>

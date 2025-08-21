@@ -1,0 +1,2216 @@
+Okay, so I need to find the smallest base b (where b is at least 2) such that there are more than ten b-eautiful numbers. Let me first make sure I understand what a b-eautiful number is. 
+
+The problem says a positive integer n is b-eautiful if two conditions are met: first, when n is written in base b, it has exactly two digits. Second, the sum of those two digits equals the square root of n. The example given is 81 being 13-eautiful because in base 13, 81 is written as 63 (since 6*13 + 3 = 81), and 6+3=9, which is the square root of 81. 
+
+Alright, so let me formalize this. If n is a two-digit number in base b, then n can be written as n = a*b + c, where a and c are digits in base b. Since it's a two-digit number, the first digit a must be at least 1 and less than b, and the second digit c must be between 0 and b-1, inclusive. The key equation here is that a + c = sqrt(n). 
+
+So substituting n = a*b + c into the equation, we have a + c = sqrt(a*b + c). Let me write that down:
+
+a + c = sqrt(a*b + c)
+
+Hmm, maybe
+
+---------------
+
+ I can square both sides to eliminate the square root. Let's try that.
+
+(a + c)^2 = a*b + c
+
+Expanding the left side gives:
+
+a² + 2ac + c² = a*b + c
+
+Let me rearrange this equation to collect like terms. Subtract a*b + c from both sides:
+
+a² + 2ac + c² - a*b - c = 0
+
+Hmm, perhaps I
+
+---------------
+
+ can rearrange terms:
+
+a² + (2c - b)a + (c² - c) = 0
+
+Hmm, this is a quadratic equation in terms of a, with coefficients depending on c and b. Alternatively, maybe it's better to think in terms of variables a and c, and see
+
+---------------
+
+ if there's a way to parameterize solutions.
+
+Alternatively, maybe I can express this equation as:
+
+a² + 2ac + c² = a*b + c
+
+Then, moving everything to the left:
+
+a² + 2ac + c² - a*b - c = 0
+
+Hmm, maybe factor terms with a:
+
+a² + a*(2c - b) + (c² - c) = 0
+
+This is a quadratic equation in a. For a to be an integer, the discriminant must be a perfect square. Let's compute the discriminant D:
+
+D = (2c - b)^2 - 4*1*(c² - c) 
+
+Let me compute that:
+
+D = 4c² - 4b c + b² - 4c² + 4c
+
+Simplify terms:
+
+The 4c² cancels with -4c², so we have:
+
+D = -4b c + b² + 4c 
+
+Hmm, so D = b² -4b c +4c 
+
+Hmm, so discriminant D must be a perfect square for a to be integer. 
+
+
+
+---------------
+
+Alternatively, maybe there's another way to approach this. Let me think again.
+
+Let me consider that n = a*b + c, and sqrt(n) = a + c. So n = (a + c)^2. Therefore, we have:
+
+(a + c)^2 = a*b + c
+
+So, rearranged:
+
+a*b = (a + c)^2 - c
+
+Therefore
+
+---------------
+
+,
+
+a*b = a² + 2a c + c² - c
+
+Wait, that's the same equation as before, so maybe this
+
+---------------
+
+ isn't helpful. Alternatively, since n = (a + c)^2, then n must be a perfect square. That's an important point. So all b-eautiful numbers must be perfect squares. 
+
+Therefore, the
+
+---------------
+
+ problem reduces to finding perfect squares n such that when written in base b as two digits (i.e., between b and b² - 1), their digits sum to their square root. 
+
+So, given
+
+---------------
+
+ that n is a perfect square, let me denote sqrt(n) = s, so that n = s². Then the two digits in base b must satisfy a + c = s, and n = a*b + c. Since n = s², then:
+
+s² = a*b + c
+
+But since a + c = s, so c = s - a. Substitute that into the equation:
+
+s² = a*b + (s - a)
+
+S
+
+---------------
+
+implify:
+
+s² = a*b + s - a
+
+Bring all terms to one side:
+
+s² - s = a*(b - 1)
+
+So,
+
+a = (s² - s)/(b - 1)
+
+Hmm, interesting. Since a must be an integer between 1 and b-1 (since it's the first digit in base b), and c must be between 0 and b-1. Also, since c = s - a, then c must also satisfy 0 ≤ c ≤ b -1, so s - a must be in that interval. 
+
+So, from the equation above, a must equal (s² - s)/(b -1). Since a must be an integer, this tells us that (b -1) must divide (s² - s). 
+
+Therefore, for each possible s, the base b can be such
+
+---------------
+
+ that (b -1) divides (s² - s). Let me see if this is helpful. 
+
+Alternatively, since we need to find for a given b, how many such numbers n exist. Since n is a two-digit number in base b, n must be between b (since 10_b is b in decimal) and b² -1 (since the maximum two-digit number in base b is (b-1)*b + (b-1) = b² -1). 
+
+So n is in [b, b² -1], and n must be a perfect square. Let me denote s = sqrt(n). Then s must satisfy s² is in [b, b² -1], so s is between ceil(sqrt(b)) and floor(sqrt(b² -1)). Since sqrt(b² -1) is less than b, so floor(sqrt(b² -1)) is b -1. Therefore s ranges from ceil(sqrt(b)) up to b -1. 
+
+Therefore, for each s from ceil(sqrt(b)) to b -1, we can check if (s² - s) is divisible by (b -1). Then a would be (s² - s)/(b -1), and then c = s - a. 
+
+Moreover
+
+---------------
+
+, the digits a and c must satisfy 1 ≤ a ≤ b-1 and 0 ≤ c ≤ b-1. Since a is already (s² - s)/(b-1), so we need to check whether a is within 1 to b-1 and c = s - a is within 0 to b-1. 
+
+So for each s in that range, if (s² - s) is divisible by (b-1), then compute a and check the constraints. Each such valid (a, c) pair corresponds to a unique n = s², so each valid s gives a unique n. 
+
+Therefore, the number of b-eautiful numbers is equal to the number of integers s between ceil(sqrt(b)) and b -1 such that (s² - s) is divisible by (b -1), and the digits a and c satisfy their constraints. 
+
+So
+
+---------------
+
+ our goal is to find the smallest b ≥2 such that the number of such s is greater than 10. 
+
+Hmm, so perhaps it's better to approach this problem by considering
+
+---------------
+
+ for a given b, how many s satisfy the conditions. Let's try to formalize this. 
+
+Let me denote that
+
+---------------
+
+ for a given b, the number of b-eautiful numbers is equal to the number of integers s in [ceil(sqrt(b)), b -1] such that (s² - s) is divisible by (b -1), and when
+
+---------------
+
+ a = (s² - s)/(b-1), then c = s - a must be between 0 and b-1. 
+
+Alternatively, since c = s - a = s - (s² - s)/(b-1). Let me compute that:
+
+c = s - (s² - s)/(b -1) 
+
+Let me factor s from numerator:
+
+c = s [1 - (s -1)/(b -1)] 
+
+Hmm, not sure if that helps. Alternatively, let me compute c:
+
+c = s - [ (s(s -1)) / (b -1) ]
+
+Hmm
+
+---------------
+
+, perhaps it's better to note that since a must be at least 1, so (s² - s)/(b -1) ≥1, so s(s-1) ≥ (b -1). Also, since a must be less than b, then (s² -s)/(b -1) < b. 
+
+So:
+
+(s² - s) / (b -1) < b ⇒ s² - s < b(b -1)
+
+Similarly, since c = s - a must be ≥0, so s - (s² - s)/(b -1) ≥0 ⇒ 
+
+s ≥ (s² - s)/(b -1)
+
+Multiply both sides by (b-1) (assuming b >1, which it is):
+
+s(b -1) ≥ s² - s
+
+Bring all terms to left:
+
+s(b -1) - s² + s ≥0 ⇒ 
+
+-s² + s(b -1 +1) ≥0 ⇒ 
+
+-s² + s b ≥0 ⇒ 
+
+s(-s + b) ≥0 ⇒ 
+
+Since s is positive, this implies that -s + b ≥0 ⇒ s ≤ b. 
+
+But since s is at most b-1, that's okay. So that condition is automatically satisfied. 
+
+The
+
+---------------
+
+ other condition is c ≤ b-1. Let's see:
+
+c = s - a = s - (s² -s)/(b -1) ≤ b -1
+
+So:
+
+s - [ (s² - s)/(b -1) ] ≤ b -1
+
+Multiply both sides by (b-1):
+
+s(b -1) - (s² - s) ≤ (b -1)^2
+
+Left side:
+
+s(b -1) - s² + s = s b - s - s² + s = s b - s²
+
+Therefore:
+
+s b - s² ≤ (b -1)^2
+
+Rearranged:
+
+-s² + s b - (b -1)^2 ≤0 ⇒ 
+
+Multiply by -1 (inequality reverses):
+
+s² - s b + (b -1)^2 ≥0 
+
+Hmm, let's see if this is always true. Let me compute the discriminant of the quadratic in s:
+
+Discriminant D = b² -4*1*(b -1)^2 = b² -4(b² - 2b +1 ) = b² -4b² +8b -4 = -3b² +8b -4 
+
+Hmm, this
+
+---------------
+
+ is getting complicated. Maybe instead of trying to handle the inequality algebraically, perhaps it's better to note that for c to be ≤ b-1, since c = s - a and a is (s² -s)/(b-1). 
+
+Alternatively, perhaps instead
+
+---------------
+
+ of dealing with inequalities, since we can just compute for each s, the value of a and c and check if they are valid digits. 
+
+But since we need to find the minimal b where there are more than ten such numbers, maybe we can find a formula for the number of s for
+
+---------------
+
+ each b. 
+
+Alternatively, perhaps think of s as a variable and see for which b, the equation (s² - s) divisible by (b-1) gives multiple s. Let me think differently. 
+
+Let me consider that (b -1) divides s(s -1). So for each s, the divisors of s(s -1) are the possible (b -1). Since s and s-1 are coprime (consecutive integers), their GCD is 1. Therefore, the divisors of s(s-1) are products of divisors of s and divisors of s-1. 
+
+Thus, for each s, the possible values of (b -1) must be a divisor of s(s-1). Therefore, for a given b-1 = d, which is a divisor of s(s-1), then s must be such that d divides s(s-1). 
+
+Alternatively, if
+
+---------------
+
+ we fix d = b -1, then the number of s such that d divides s(s -1) and s is between ceil(sqrt(d +1)) and (d). Because since s must be up to b-1 = d. Wait, since
+
+---------------
+
+ s is up to b-1, and b = d +1, so s up to d. 
+
+Wait, let me rephrase. Let me set d = b -1. Then b = d +1. So the range of s is ceil( sqrt(b) ) to b -1, which is ceil( sqrt(d +1) ) to d. 
+
+Therefore, for each d (which is b -1), the number of s between ceil( sqrt(d+1) ) and d such that d divides s(s-1). 
+
+Our goal is to find the minimal d +1 (since b = d +1) such that the number of such s is greater than 10. 
+
+Therefore, the
+
+---------------
+
+ problem reduces to finding the smallest d ≥1 such that the number of integers s in [ceil( sqrt(d+1) ), d] where d divides s(s-1) is greater than 10. Then b = d +1. 
+
+Hmm, okay. So perhaps it
+
+---------------
+
+'s better to think in terms of d instead of b. Let me proceed with that. 
+
+First, note that s and s-1 are coprime, so d divides s(s-1) implies that d must divide the product of two coprime numbers, so d must be a product of factors of s and factors of s-1. Since they are coprime, the factors of d must partition between s and s-1. 
+
+Therefore, for each s in the interval, either:
+
+- d divides s, or 
+
+- d divides s-1, or 
+
+- factors of d divide s and the complementary factors divide s-1. 
+
+But this might complicate. Alternatively, since d divides s(s -1), each prime factor of d must divide either s or s -1. 
+
+Alternatively, perhaps for
+
+---------------
+
+ each d, we can count the numbers s in the interval [ceil( sqrt(d +1)), d] such that s ≡0 mod d or s ≡1 mod d? Wait no, that would only be if d divides s or s-1, but d divides s(s-1) can be in
+
+---------------
+
+ other ways too. For example, if d has factors that divide s and others divide s-1. 
+
+Hmm, perhaps it's better to note that s mod d can be any residue, but the product s(s -1) mod d must be 0. Therefore, s ≡0 mod d or s ≡1 mod d. Wait, actually, if s ≡0 mod d, then s(s-1) ≡0 mod d. Similarly, if s ≡1 mod d, then s-1 ≡0 mod d. However, if s is congruent to something else mod d, but d factors into parts
+
+---------------
+
+ that divide s and parts that divide s-1. But since s and s-1 are coprime, the factors of d must divide either s or s-1 but not both. 
+
+Therefore, the solutions s mod d are exactly those where s ≡0 mod d or s ≡1 mod d. Wait, is that true? Let me think. Suppose d has a prime p dividing it. Then p divides s or p divides s-1, but since s and s-1 are coprime, each prime factor of d must divide exactly one of s or s-1. Therefore, for each prime factor of d, we can choose whether it divides s or s-1, but the combined
+
+---------------
+
+ congruence must hold. 
+
+However, the total number of solutions s mod d where d divides s(s-1) is exactly the number of solutions to s ≡0 mod p_i or s≡1 mod p_i for each prime p_i dividing d. Wait
+
+---------------
+
+, perhaps more systematically, using the Chinese Remainder Theorem. 
+
+Alternatively, perhaps the number of solutions s mod d is 2^k, where k is the number of distinct prime factors of d. However, this might not be precise. 
+
+Alternatively, perhaps
+
+---------------
+
+ the number of solutions s mod d to s(s-1) ≡0 mod d is equal to the number of divisors of d? Hmm, perhaps not. Let me think of an example. 
+
+Take d = 6. Then s(s -1) ≡0 mod 6. The solutions mod 6 would be s ≡0 or 1 mod 2 and mod 3. 
+
+Wait, let
+
+---------------
+
+'s compute:
+
+s(s-1) ≡0 mod 6. 
+
+This requires that s ≡0 mod 2 or s ≡1 mod 2, and s ≡0 mod 3 or s ≡1 mod3. Wait, actually, no
+
+---------------
+
+. Let me think again. 
+
+Wait, s(s-1) must be divisible by 2 and by 3. 
+
+To be divisible by 2: either s even or s-1 even, which is always true, since one of two consecutive numbers is even. Similarly, for divisibility by 3: either s ≡0 mod3 or s≡1 mod3. So the
+
+---------------
+
+ condition is that s ≡0 or1 mod3. 
+
+Thus, the solutions mod 6 are numbers congruent to 0,1,3,4 mod6. 
+
+Indeed, check
+
+---------------
+
+ s=0 mod6: s=0 mod6 ⇒ divisible by 2 and 3. 
+
+s=1 mod6: 1 mod6 ⇒ s-1=0 mod6.
+
+s=3 mod6: divisible by 3, so s divisible by 3, but mod2: 3 is odd, so s-1 even, so 
+
+---------------
+
+3 mod6 is okay.
+
+s=4 mod6: 4 mod6 ⇒ s-1 =3 mod6, which is divisible by 3. 
+
+So total
+
+---------------
+
+ solutions mod6: 4 solutions. 
+
+So 2^2=4, since 6 has two distinct prime factors. So perhaps
+
+---------------
+
+ in general, for square-free d with k distinct prime factors, the number of solutions mod d is 2^k. 
+
+Therefore, in general, the number of solutions mod d to s(s-1) ≡0 mod d is 2^{ω(d)}, where ω(d) is the number of distinct prime factors of d. 
+
+But this
+
+---------------
+
+ is when d is square-free. If d is not square-free, say d has a prime power p^e, then perhaps?
+
+Wait, let me think. Suppose d has a square factor, say d = p^2. Then s(s-1) ≡0 mod p^2. This requires that either s ≡0 mod p^2 or s ≡1 mod p^2, because if s ≡0 mod p, then s must be 0 mod p^2 to have p^2 divide s, or s-1 must be 0 mod p^2. Otherwise
+
+---------------
+
+, if s ≡k mod p^2 where k is between 1 and p^2-1 not 0 or 1, then neither s nor s-1 is divisible by p^2, but since they are consecutive, they can't both be divisible by p. So actually
+
+---------------
+
+, for prime powers, the number of solutions mod p^e is 2. 
+
+Therefore, even for prime powers, the number of solutions mod p^e is 2. 
+
+Therefore, by the Chinese Remainder Theorem, the number of solutions mod d is 2^{ω(d)}, where ω(d) is the number of distinct prime factors of d, even if d is not square-free? Wait, let's see. 
+
+Wait, if d is p^e, then solutions mod d are 2. If d is p^e * q^f, then solutions mod d would be 2*2=4, so indeed 2^{number of distinct primes}. So even if d has multiple exponents, as long as the prime factors are distinct, the number is 2^{ω(d)}. 
+
+Therefore, the total number of solutions s mod d is 2^{ω(d)}. 
+
+Therefore, in the interval from ceil(sqrt(d+1)) to d, how many integers s are congruent to 0 or 1 mod each prime power in d's factorization? Wait, actually, the solutions mod d are those s where s ≡0 or1 mod each prime factor? Wait no, the
+
+---------------
+
+ solutions mod d are those s such that for each prime p dividing d, s ≡0 or1 mod p. 
+
+Wait, actually, for each prime p dividing d, s must be ≡0 or1 mod p. Therefore
+
+---------------
+
+, the solutions mod d are the numbers s congruent to a tuple (a_p) where a_p is 0 or1 mod p for each prime p dividing d. 
+
+By Chinese Remainder Theorem, this gives 2^{ω(d)} solutions mod d. 
+
+Therefore, the total number of solutions in the range [1, d] would be roughly 2^{ω(d)}, but exactly
+
+---------------
+
+, it's floor(d / m) * 2^{ω(d)} ? Not exactly, perhaps exactly 2^{ω(d)} solutions
+
+---------------
+
+ mod d, so in each block of d numbers, there are 2^{ω(d)} solutions. 
+
+Therefore, in the interval from 1 to d, the number of solutions is exactly 2^{ω(d)}. 
+
+However, in our problem, the interval is from ceil(sqrt(d+1)) to d. 
+
+Therefore, the total number of solutions s in that interval would be equal to (number of solutions between 1 and d) minus (number of solutions between 1 and ceil(sqrt(d+1)) -1). 
+
+Hmm, so to
+
+---------------
+
+ compute the number of s in [ceil(sqrt(d+1)), d], it's equal to:
+
+Number of solutions mod d in [1,d] minus the number of solutions in [1, ceil(sqrt(d+1)) -1]
+
+But since the total number of solutions mod d in [1,d] is exactly 2^{ω(d)}, because
+
+---------------
+
+ each residue class mod d occurs exactly once in 1 to d. Therefore, the number of solutions in [1, d] is exactly 2^{ω(d)}. 
+
+Therefore, the number of s in [ceil(sqrt(d+1)), d] is equal to 2^{ω(d)} minus the number of solutions less than ceil(sqrt(d+1)). 
+
+Hmm, but this might be complicated. Alternatively, perhaps for
+
+---------------
+
+ large d, the number of solutions in the interval [sqrt(d), d] is roughly (d - sqrt(d)) / d * 2^{ω(d)} }
+
+---------------
+
+? Not sure. 
+
+Alternatively, maybe we can approximate that the number of solutions is roughly proportional to 2^{ω(d)}. So to get more than ten solutions, we need 2^{ω(d)} to be greater than ten? But that would be 2^4=16, so ω(d) >=4. But perhaps
+
+---------------
+
+ not exactly, because the solutions are spread out. 
+
+Alternatively, perhaps we can think of d such that 2^{ω(d)} is large enough, but also that the interval [sqrt(d+1), d] is large enough. 
+
+Alternatively, let me try small values of d and see how the count works. 
+
+Wait, but maybe it
+
+---------------
+
+'s better to think of the number of s between ceil(sqrt(d+1)) and d where s ≡0 or1 mod p for each prime p dividing d. 
+
+Alternatively, since the number of solutions is 2^{ω(d)}, but they
+
+---------------
+
+ are spread throughout the range. 
+
+Alternatively, maybe the minimal d where 2^{ω(d)} exceeds 10? Since 2^4=16, so ω(d)>=4. The smallest d with ω(d)>=4 is 2*3*5*7=210. But that's probably too big, and maybe the actual number of solutions in the interval is less. 
+
+Alternatively, perhaps my approach is wrong. Let me think again. 
+
+Wait, maybe
+
+---------------
+
+ instead of trying to find an exact formula, I can compute for various values of b (or d = b-1) and count the number of s. 
+
+Given that we need the first b where there are more than ten b-beautiful numbers, perhaps trying
+
+---------------
+
+ b starting from 2 upwards and count until we reach the first b with over ten. 
+
+But that might take a while, but maybe manageable. Let's see. 
+
+Alternatively, let's see if there's a smarter way. Let me think again of the equation:
+
+We have s² = a*b + c, with a + c = s. 
+
+We
+
+---------------
+
+ also have a = (s² - s)/(b -1). 
+
+Since a must be an integer between 1 and b-1, so (s² - s) must be divisible by (b -1). 
+
+Moreover
+
+---------------
+
+, c = s - a must be between 0 and b-1. 
+
+So for each b, the possible s are those where s(s -1) divisible by (b-1). 
+
+So
+
+---------------
+
+ for each b, the number of s is equal to the number of integers s in [ceil(sqrt(b)), b-1] such that (b-1) divides s(s-1). 
+
+Therefore, perhaps the number of such s is equal to the number of divisors of (b-1) in some way? 
+
+Alternatively, for
+
+---------------
+
+ each s between ceil(sqrt(b)) and b-1, check if (b-1) divides s(s-1). 
+
+Alternatively, perhaps
+
+---------------
+
+ think of s(s-1) ≡0 mod (b-1). 
+
+So for a given b, the number of s in that interval is equal to the number of integers s in [ceil(sqrt(b)), b-1] where s ≡0 or 1 mod p for each prime p dividing (b-1). 
+
+Hmm, perhaps I
+
+---------------
+
+ need to look for b where (b-1) has many factors, so that there are many s in the interval that satisfy the congruence. 
+
+Alternatively, since
+
+---------------
+
+ s ranges from about sqrt(b) to b-1, so the length of the interval is roughly b - sqrt(b). 
+
+To have more than 10 solutions, maybe b needs to be large enough so that the interval is large and the modulus (b-1) has many divisors, allowing many s to satisfy s(s-1) divisible by (b-1). 
+
+Alternatively, perhaps choosing
+
+---------------
+
+ (b-1) as a factorial or something with many factors. 
+
+Alternatively, let me consider that (b-1) divides s(s-1). Let me note that s and s-1 are coprime, so (b-1) must divide s or divide s-1, or split into factors dividing each. 
+
+Wait, but since they are coprime, the factors of (b-1) must divide either s or s-1, but not both. 
+
+Therefore, the number of s in the interval is equal to the number of s in [ceil(sqrt(b)), b-1] such that s ≡0 mod d or s≡1 mod d, where d divides (b-1). Wait, not exactly. 
+
+Alternatively, since (b-1) divides s(s-1), then for each divisor d of (b-1), either s ≡0 mod d or s≡1 mod ( (b-1)/d ). Hmm, not sure. 
+
+Alternatively, perhaps for
+
+---------------
+
+ each divisor m of (b-1), the number of s ≡0 mod m or s≡1 mod ( (b-1)/m ). Not sure. 
+
+Alternatively, let me think of (b-1) as some number, say,
+
+---------------
+
+ let me pick a specific value for b and compute the number of s. 
+
+Let me try with b=10. Then d=9. 
+
+So,
+
+---------------
+
+ for b=10, d=9. 
+
+We need s in [ceil(sqrt(10)), 9] = [4,9]. 
+
+We need s(s-1) divisible by 9. 
+
+So check s from 4 to9:
+
+s=4: 4*3=12. 12 mod9=3 → no.
+
+s=5:5*4=20 mod9=2 → no.
+
+s=6:6*5=30 mod9=3 → no.
+
+s=7:7*6=42 mod9=6 → no.
+
+s=8:8*7=56 mod9=2 → no.
+
+s=9:9*8=72 mod9=0 → yes. 
+
+Thus only s=9 is valid. 
+
+So there's only one 10-beautiful number. 
+
+Hmm, so b=10 gives 1. 
+
+Trying
+
+---------------
+
+ b=7 (d=6). 
+
+s from ceil(sqrt(7))=3 to 6.
+
+Check s=3: 3*2=6 divisible by 6 → yes. 
+
+s=4:4*3=12 divisible by6 → yes.
+
+s=5:5*4=20 mod6=2 → no.
+
+s=6:6*5=30 divisible by6 → yes. 
+
+Thus s=3,4,6. So three numbers. 
+
+So b=7 gives 3. 
+
+b=6 (d=5):
+
+s from ceil(sqrt(6))=3 to 5.
+
+Check s=3:3*2=6 mod5=1 → no.
+
+s=4:4*3=12 mod5=2 → no.
+
+s=5:5*4=20 mod5=0 → yes.
+
+Only s=5. So 1.
+
+Hmm, okay. 
+
+Trying b=15 (d=14). 
+
+s from ceil(sqrt(15))=4 to14. 
+
+We need s(s-1) divisible by14. 
+
+14 factors into 2 and7. 
+
+Thus s must satisfy s ≡0 or1 mod2 and mod7. 
+
+Wait, s
+
+---------------
+
+(s-1) divisible by2 and by7. 
+
+For divisibility by2: since s and s-1 are consecutive, one is even, so that's always true. 
+
+For divisibility by7: s ≡0 mod7 or s≡1 mod7. 
+
+Thus in the range s=4 to14, the valid s are those congruent to0 or1 mod7. 
+
+Numbers between 4-14:
+
+s=0 mod7: 7,14
+
+s=1 mod7:1,8,15 (but 15 is beyond 14). So 1 is below 4, so 8.
+
+Thus s=7,8,14. 
+
+Check each:
+
+s=7:7*6=42 divisible by14 → yes. 
+
+s=8:8*7=56 divisible by14 → yes. 
+
+s=14:14*13=182 divisible by14 → yes. 
+
+Thus 3 numbers. 
+
+Hmm, still low. 
+
+Trying b=16 (d=15). 
+
+d=15, so s from 4 to15. 
+
+We need s(s-1) divisible by15. 
+
+15 factors into 3 and5. 
+
+Thus s must be ≡0 or1 mod3 and mod5. 
+
+So solving
+
+---------------
+
+ s ≡0 or1 mod3 and s≡0 or1 mod5. 
+
+Total solutions mod15: 2*2=4 solutions. 
+
+Possible residues mod15:
+
+Looking
+
+---------------
+
+ for s ≡0 or1 mod3 and 0 or1 mod5.
+
+Let me list all possibilities:
+
+Case1: s≡0 mod3 and s≡0 mod5 → s≡0 mod15.
+
+Case2: s≡0 mod3 and s≡1 mod5 → solve s=3k, s=5m+1. 3k ≡1 mod5 ⇒ 3k≡1 ⇒ k≡2 mod5. So k=5n+2 ⇒ s=15n +6.
+
+Case3: s≡1 mod3 and s≡0 mod5 → s=5m, s≡1 mod3 ⇒5m≡1 mod3 ⇒ m≡2 mod3 ⇒ m=3k+2 ⇒ s=15k +10.
+
+Case4: s≡1 mod3 and s≡1 mod5 → s≡1 mod15.
+
+Thus residues mod15 are 0,6,10,1 mod15.
+
+Therefore, in the range 4 to15, the s that
+
+---------------
+
+ satisfy are:
+
+Numbers ≡0,1,6,10 mod15 in that interval. 
+
+Numbers from4-15:
+
+Check residues
+
+---------------
+
+:
+
+Numbers:
+
+s=6:6 mod15 → yes (6 mod15 is 6 which is in the cases above (case2:6 mod15))
+
+s=10:10 mod15 → yes (case3)
+
+s=15:15 mod15=0 → yes (case1)
+
+s=1:1 mod15 → but 1 is below 4.
+
+s= 
+
+---------------
+
+1 mod15 in the interval: s=16 is over, so only s=1, which is too low.
+
+Wait, in
+
+---------------
+
+ 4 to15, the numbers that are 0 mod15:15
+
+1 mod15:1, 16 (out of range). So only 15.
+
+Similarly 6 mod15:6, 21 (out of range). So 6.
+
+10 mod15:10, 25 (out). So 10.
+
+Thus s=6,10,15. 
+
+Wait, but s=15 is included as it's up to 15. 
+
+Wait, let
+
+---------------
+
+'s check each s from4-15:
+
+s=4:4*3=12 mod15=12 → not divisible by15.
+
+s=5:5*4=20 mod15=5 → no.
+
+s=6:6*5=30 mod15=0 → yes.
+
+s=7:7*6=42 mod15=12 → no.
+
+s=8:8*7=56 mod15=11 → no.
+
+s=9:9*8=72 mod15=72-60=12 → no.
+
+s=10:10*9=90 mod15=0 → yes.
+
+s=11:11*10=110 mod15=110-90=20 mod15=5 → no.
+
+s=12:12*11=132 mod15=132-135= -3 mod15 → 12 → no.
+
+s=13:13*12=156 mod15=156-150=6 → no.
+
+s=14:14*13=182 mod15=182-180=2 → no.
+
+s=15:15*14=210 mod15=0 → yes.
+
+Thus, s=6,10,15. So three numbers again. 
+
+Hmm, still not enough. 
+
+Trying b=21 (d=20). 
+
+d=20, so s from ceil(sqrt(21))=5 to20. 
+
+We need s(s-1) divisible by20. 
+
+20 factors into 2^2 and5. 
+
+Thus, s(s-1) must be divisible by4 and5. 
+
+Divisible by4: since s and s-1 are consecutive, one is even. To have divisible by4, either:
+
+- s even and divisible by4, or 
+
+- s-1 even and divisible by4 (i.e., s ≡1 mod4). 
+
+Additionally
+
+---------------
+
+, divisible by5: s ≡0 or1 mod5. 
+
+Therefore, s must satisfy:
+
+Either s ≡0 mod4 or s≡1 mod4,
+
+AND
+
+s ≡0 or1 mod5.
+
+Thus, combining
+
+---------------
+
+ these conditions. 
+
+Let me consider all combinations:
+
+Possible cases mod20 (since 4 and5 are coprime):
+
+First, mod4 and mod5:
+
+We
+
+---------------
+
+ can use Chinese Remainder Theorem. 
+
+Let me list the possible residues mod4 and mod5:
+
+For mod4: s ≡0 or1 mod4.
+
+For mod5: s ≡0 or1 mod5.
+
+Thus, total 2*2=4 combinations:
+
+1. s≡0 mod4 and s≡0 mod5: solve
+
+---------------
+
+ s≡0 mod lcm(4,5)=20. So s≡0 mod20.
+
+2. s≡0 mod4 and s≡1 mod5: find
+
+---------------
+
+ s ≡0 mod4 and 1 mod5. Let s=4k. Then 4k≡1 mod5 ⇒4k≡1 ⇒k≡4^{-1}*1 mod5. Since 4*4=16≡1 mod5 ⇒ inverse of4 is4. Thus k≡4 mod5 ⇒k=5m+4 ⇒ s=4*(5m+4)=20m +16. So s≡16 mod20.
+
+3. s≡1 mod4 and s≡0 mod5: s≡1 mod4 and 0 mod5. Let s=5k. Then 5k≡1 mod4 ⇒5≡1 mod4 ⇒ so 1*k≡1 mod4 ⇒k≡1 mod4 ⇒k=4m+1 ⇒ s=5*(4m+1)=20m +5 ⇒ s≡5 mod20.
+
+4. s≡1 mod4 and s≡1 mod5: s≡1 mod lcm(4,5)=20. So s≡1 mod20.
+
+Thus the solutions mod20 are residues 0,1,5,16 mod20. 
+
+Thus in the interval 5 to20:
+
+Numbers congruent to 0,1,5,16 mod20.
+
+Check
+
+---------------
+
+ each:
+
+Numbers:
+
+0 mod20: 20.
+
+1 mod20:1 (too low), 21 (too high).
+
+5 mod20:5,25 (too high).
+
+16 mod20:16.
+
+Thus in the range 5 to20:
+
+s=5,16,20.
+
+Check these:
+
+s=5:5*4=20 divisible by20 → yes.
+
+s=16:16*15=240 divisible by20 → yes.
+
+s=20:20*19=380 divisible by20 → yes.
+
+Wait, s=5: s
+
+---------------
+
+=5 is in the range (5 to20). 
+
+Wait, s=5: 5 is the lower bound. 
+
+So s=5,16,20. That's three numbers. Hmm, same as before. 
+
+Hmm, not
+
+---------------
+
+ enough. 
+
+Wait, maybe need a higher base. Let me try b=25 (d=24). 
+
+d=24, so s from ceil(sqrt(25))=5 to24. 
+
+Need s(s-1) divisible by24. 
+
+24 factors into 3*8 (2^3*3). 
+
+Thus, s(s-1) divisible by8 and by3. 
+
+Divisible by8: since s and s-1 are consecutive, one even, one odd. The even one must be divisible by8, or the product must have three factors of2. Since only
+
+---------------
+
+ one even term, so that even term must be divisible by8. 
+
+Thus, either s ≡0 mod8 or s≡1 mod8. 
+
+Divisible by3: s≡0 or1 mod3. 
+
+Thus, combining these:
+
+s must satisfy:
+
+(s ≡0 mod8 or s≡1 mod8) AND (s≡0 or1 mod3).
+
+Thus, possible
+
+---------------
+
+ combinations mod 24 (lcm of8 and3 is24):
+
+Let me consider mod8 and mod3:
+
+mod8 options: 0 or1 mod8.
+
+mod3 options:0 or1 mod3.
+
+Total 2*2=4 combinations.
+
+1
+
+---------------
+
+. s≡0 mod8 and s≡0 mod3: solve s≡0 mod24.
+
+2. s≡0 mod8 and s≡1 mod3: s≡0 mod8 ⇒ s=8k. 8k≡1 mod3 ⇒ 8≡2 mod3 ⇒2k≡1 mod3 ⇒k≡2 mod3 ⇒k=3m+2 ⇒ s=8*(3m+2)=24m+16 ⇒ s≡16 mod24.
+
+3. s≡1 mod8 and s≡0 mod3: s=8k+1. Then 8k+1≡0 mod3 ⇒8k≡-1 mod3 ⇒2k≡-1 ⇒2k≡2 mod3 ⇒k≡1 mod3 ⇒k=3m+1 ⇒ s=8*(3m+1)+1=24m+9 ⇒ s≡9 mod24.
+
+4. s≡1 mod8 and s≡1 mod3: s≡1 mod24.
+
+Thus the solutions mod24 are residues 0,9,16,1 mod24. 
+
+Thus in the interval s from5 to24, the s that satisfy are:
+
+Numbers congruent to 0,1,9,16 mod24.
+
+Within 5 to24:
+
+Check residues:
+
+0 mod24:24.
+
+1 mod24:1 (too low),25 (too high).
+
+9 mod24:9, 33 (too high).
+
+16 mod24:16.
+
+Thus s=9,16,24.
+
+Check:
+
+s=9:9*8=72 divisible by24? 72/24=3 → yes.
+
+s=16:16*15=240 divisible by24 → yes (240/24=10).
+
+s=24:24*23=552 divisible by24? 552/24=23 → yes.
+
+Additionally, check if there are other numbers:
+
+Wait, 24 mod24 is 0, so s=24 is included. 
+
+Wait, but
+
+---------------
+
+ in the interval 5 to24, so s=9,16,24. So three again. 
+
+Hmm, same count. 
+
+Hmm, maybe need to go
+
+---------------
+
+ higher. Let me try b=31 (d=30). 
+
+d=30, so s from ceil(sqrt(31))≈6 to30. 
+
+We need s(s-1) divisible by30. 
+
+30 factors into 2,3,5. 
+
+Thus s(s-1) divisible by2,3,5. 
+
+Since they are coprime, each prime factor must divide either s or s-1. 
+
+Thus for primes 2,3,5:
+
+Either s≡0 mod2 or s≡1 mod2,
+
+s≡0 mod3 or1 mod3,
+
+s≡0 mod5 or1 mod5.
+
+But since s and s-1 are consecutive, they can't both be even, etc., but the divisibility conditions are that each prime divides exactly one of s or s-1. 
+
+Therefore, the conditions are:
+
+For each prime p in {2,3,5}, s ≡0 mod p or s≡1 mod p. 
+
+Therefore, the solutions mod30 (lcm of2,3,5) are all combinations of s≡0 or1 mod2, mod3, mod5. 
+
+Total solutions mod30: 2^3=8 solutions. 
+
+Let me compute them:
+
+Possible residues mod30:
+
+We can build
+
+---------------
+
+ them via Chinese Remainder Theorem. Let me list all 8 possibilities:
+
+1. s≡0 mod2, 0 mod3, 0 mod5 ⇒ s≡0 mod30.
+
+2. s≡0 mod2,0 mod3,1 mod5 ⇒ s≡0 mod6, 1 mod5. Solve s=6k≡1 mod5 ⇒6k≡1 mod5 ⇒k≡1 mod5 ⇒k=5m+1 ⇒s=6*(5m+1)=30m+6 ⇒ s≡6 mod30.
+
+3. s≡0 mod2,1 mod3,0 mod5 ⇒ s≡0 mod2,1 mod3,0 mod5. 
+
+s≡0 mod2 and0 mod5 ⇒ s≡0 mod10. Also s≡1 mod3. Let s=10k. 10k≡1 mod3 ⇒10≡1 mod3 ⇒k≡1 mod3 ⇒k=3m+1 ⇒s=10*(3m+1)=30m+10 ⇒ s≡10 mod30.
+
+4. s≡0 mod2,1 mod3,1 mod5 ⇒ s≡0 mod2,1 mod3,1 mod5.
+
+s≡1 mod3 and1 mod5 ⇒ s≡1 mod15. Also even. So s≡16 mod30 (since 1 mod15 and even: 16 mod30).
+
+5. s≡1 mod2,0 mod3,0 mod5 ⇒ s≡1 mod2,0 mod15 ⇒ s≡15 mod30 (since 15 is odd and divisible by15).
+
+6. s≡1 mod2,0 mod3,1 mod5 ⇒ s≡1 mod2,0 mod3,1 mod5.
+
+s≡0 mod3 and1 mod5 ⇒ s≡6 mod15 (since 6 mod15 is 0 mod3 and 1 mod5? Wait 6 mod5 is1, yes. So s≡6 mod15 and s≡1 mod2. Since 6 mod2 is0, so need s≡6+15m ≡1 mod2 ⇒ 6+15m is odd ⇒15m must be odd ⇒ m odd. So m=2k+1 ⇒ s=6+15(2k+1)=30k +21 ⇒ s≡21 mod30.
+
+7. s≡1 mod2,1 mod3,0 mod5 ⇒ s≡1 mod2,1 mod3,0 mod5 ⇒ s≡10 mod15 and 1 mod2. 10 mod2 is0 ⇒ need 10+15m ≡1 mod2 ⇒ 10+15m is odd ⇒15m is odd ⇒m odd ⇒ m=2k+1 ⇒ s=10+15*(2k+1)=30k +25 ⇒ s≡25 mod30.
+
+8. s≡1 mod2,1 mod3,1 mod5 ⇒ s≡1 mod lcm(2,3,5)=30 ⇒ s≡1 mod30.
+
+Thus the residues mod30 are: 0,6,10,16,15,21,25,1 mod30.
+
+Therefore, in the interval s=6 to30:
+
+Numbers congruent to 0,1,6,10,15,16,21,25 mod30. 
+
+Let me list them in 6 to30:
+
+-
+
+---------------
+
+ 0 mod30:30.
+
+-1 mod30:1 (too low),31 (too high).
+
+6 mod30:6.
+
+10 mod30:10.
+
+15 mod30:15.
+
+16 mod30:16.
+
+21 mod30:21.
+
+25 mod30:25.
+
+Thus the valid s values are:6,10,15,16,21,25,30. 
+
+Wait, let's check each:
+
+s=6:6*5=30 divisible by30 → yes.
+
+s=10:10*9=90 divisible by30 → yes.
+
+s=15:15*14=210 divisible by30 → yes.
+
+s=16:16*15=240 divisible by30 → yes.
+
+s=21:21*20=420 divisible by30 → yes.
+
+s=25:25*24=600 divisible by30 → yes.
+
+s=30:30*29=870 divisible by30 → yes.
+
+Additionally, check if 6 is included: yes, since ceil(sqrt(31)) is6. 
+
+So total 7 numbers. 
+
+Hmm, 7, still under 10. 
+
+Hmm, need
+
+---------------
+
+ higher b. 
+
+Let me try b= 49 (d=48). 
+
+d=48. So s from 7 to48. 
+
+Need s(s-1) divisible by48. 
+
+48=16*3=2^4*3.
+
+Thus s(s-1) must be divisible by16 and3. 
+
+Divisible by3: s≡0 or1 mod3. 
+
+Divisible by16: since s and s-1 are consecutive, one even, one odd. The even one must be divisible by16, or the even one divisible by 8 and the other divisible by 2? 
+
+Wait, for
+
+---------------
+
+ divisibility by 16: the even term must be divisible by16, since the other term is odd. Because the product s
+
+---------------
+
+(s-1) has only one even factor, so to have 2^4 divides it, the even term must be divisible by16. 
+
+Thus, s ≡0 mod16 or s≡1 mod16. 
+
+Therefore, combining with mod3:
+
+s must satisfy (s ≡0 mod16 or1 mod16) and (s≡0 or1 mod3). 
+
+Thus mod48 (lcm of16 and3 is48). 
+
+Possible combinations:
+
+mod16:0 or1 mod16
+
+mod3:0 or1 mod3
+
+Total 2*2=4 combinations mod48:
+
+1. s≡0 mod16 and 0 mod3 ⇒ s≡0 mod48.
+
+2. s≡0 mod16 and1 mod3 ⇒ s≡0 mod16, 1 mod3. Let s=16k. 16k≡1 mod3 ⇒16≡1 mod3 ⇒k≡1 mod3 ⇒k=3m+1 ⇒s=16*(3m+1)=48m+16 ⇒ s≡16 mod48.
+
+3. s≡1 mod16 and0 mod3 ⇒ s≡1 mod16, 0 mod3. Let s=16k+1. 16k+1≡0 mod3 ⇒16k≡-1 mod3 ⇒16≡1 ⇒k≡-1 mod3 ⇒k≡2 mod3 ⇒k=3m+2 ⇒ s=16*(3m+2)+1=48m +33 ⇒ s≡33 mod48.
+
+4. s≡1 mod16 and1 mod3 ⇒ s≡1 mod48.
+
+Thus residues mod48:0,16,33,1 mod48.
+
+Thus in the interval s=7 to48:
+
+Numbers congruent to 0,1,16,33 mod48.
+
+Check:
+
+0 mod48:48.
+
+1 mod48:1 (too low), 49 (too high).
+
+16 mod48:16, 64 (too high).
+
+33 mod48:33.
+
+Thus s=16,33,48.
+
+Check each:
+
+s=16:16*15=240 divisible by48? 240/48=5 → yes.
+
+s=33:33*32=1056 divisible by48? 1056/48=22 → yes.
+
+s=48:48*47=2256 divisible by48? 2256/48=47 → yes.
+
+Additionally, check if there's s
+
+---------------
+
+=1 mod48 in the interval? 1 is too low, next is49, too high. 
+
+Thus only three numbers again. 
+
+Hmm, not helpful. 
+
+Wait, perhaps my approach is not working. Maybe I need a different strategy. 
+
+Let me think again of the equation:
+
+a = (s² - s)/(b-1)
+
+Since a must be an integer between 1 and b-1, so:
+
+1 ≤ (s² - s)/(b-1) ≤ b-1
+
+Therefore,
+
+s² - s ≥ b -1 
+
+and 
+
+s² - s ≤ (b -1)^2 
+
+Wait, let
+
+---------------
+
+ me re-express the inequalities:
+
+First inequality: 
+
+(s² - s) ≥ (b -1) ⇒ s² - s - (b -1) ≥0
+
+Second inequality:
+
+(s² - s) ≤ (b -1)^2 ⇒ s² - s - (b-1)^2 ≤0
+
+So for each s, these inequalities must hold. 
+
+But since b = d +1 where d = b-1, so substituting b = d +1:
+
+First inequality:
+
+s² - s ≥ d 
+
+Second inequality:
+
+s² - s ≤ d² 
+
+So, combining these:
+
+d ≤ s² - s ≤ d² 
+
+Also
+
+---------------
+
+, s must be between ceil(sqrt(d +1)) and d. 
+
+Hmm, perhaps this can help bound s. 
+
+Alternatively, let
+
+---------------
+
+ me consider that for a given d, the possible s must satisfy ceil(sqrt(d+1)) ≤ s ≤d, and s² - s must be divisible by d. 
+
+So the number of solutions is the number of s in that interval where d divides s(s-1). 
+
+To
+
+---------------
+
+ find the minimal d where this count exceeds 10. 
+
+Perhaps the number of solutions is maximized when d has many divisors, so that there are many s such that d divides s(s-1). 
+
+So
+
+---------------
+
+ perhaps d needs to be a highly composite number. 
+
+Let me try d=60 (so b=61). 
+
+d=60, so s from ceil(sqrt(61))=8 to60. 
+
+We need s(s-1) divisible by60. 
+
+60 factors into 2²*3*5. 
+
+Thus, s(s-1) divisible by4,3,5. 
+
+Divisible by4: as
+
+---------------
+
+ before, either s≡0 mod4 or s≡1 mod4. 
+
+Divisible by3: s≡0 or1 mod3. 
+
+Divisible by5: s≡0 or1 mod5. 
+
+Therefore, combining these conditions, the solutions mod60 (lcm of4,3,5=60):
+
+Each prime power:
+
+For mod4:0 or1 mod4.
+
+mod3:0 or1 mod3.
+
+mod5:0 or1 mod5. 
+
+Total solutions mod60: 2^3=8 possibilities. 
+
+Wait, but mod
+
+---------------
+
+4 and mod2 are related. Wait, actually, the mod4 condition is already considering divisibility by4. 
+
+Wait, the
+
+---------------
+
+ total combinations are:
+
+mod4:2 choices (0 or1)
+
+mod3:2 choices (0 or1)
+
+mod5:2 choices (0 or1)
+
+Thus total 2^3=8 solutions mod60. 
+
+Let me compute them:
+
+Using Chinese Remainder Theorem:
+
+Let
+
+---------------
+
+ me go through all 8 combinations:
+
+1. s≡0 mod4, 0 mod3, 0 mod5 ⇒ s≡0 mod60.
+
+2. s≡0 mod4,0 mod3,1 mod5 ⇒ s≡0 mod12,1 mod5. 
+
+Let me solve s=12k≡1 mod5 ⇒12k≡1 mod5 ⇒2k≡1 ⇒k≡3 mod5 ⇒k=5m+3 ⇒s=12*(5m+3)=60m+36 ⇒ s≡36 mod60.
+
+3. s≡0 mod4,1 mod3,0 mod5 ⇒ s≡0 mod20,1 mod3. 
+
+s=20k ≡1 mod3 ⇒20k≡2k≡1 mod3 ⇒k≡2 mod3 ⇒k=3m+2 ⇒s=20*(3m+2)=60m+40 ⇒ s≡40 mod60.
+
+4. s≡0 mod4,1 mod3,1 mod5 ⇒ s≡0 mod4,1 mod3,1 mod5.
+
+s≡1 mod3 and1 mod5 ⇒ s≡1 mod15. Also divisible
+
+---------------
+
+ by4. 
+
+Find s≡1 mod15 and0 mod4. 
+
+Let s=15k+1. 15k+1≡0 mod4 ⇒15k≡-1 mod4 ⇒3k≡-1 ⇒3k≡3 mod4 ⇒k≡1 mod4 ⇒k=4m+1 ⇒s=15*(4m+1)+1=60m+16 ⇒ s≡16 mod60.
+
+5. s≡1 mod4,0 mod3,0 mod5 ⇒ s≡1 mod4,0 mod15. 
+
+s≡0 mod15 and1 mod4. Let s=15k. 15k≡1 mod4 ⇒15≡3 ⇒3k≡1 mod4 ⇒k≡3 mod4 ⇒k=4m+3 ⇒s=15*(4m+3)=60m+45 ⇒ s≡45 mod60.
+
+6. s≡1 mod4,0 mod3,1 mod5 ⇒ s≡1 mod4,0 mod3,1 mod5. 
+
+s≡0 mod3 and1 mod5 ⇒ s≡6 mod15. Also s≡1 mod4. 
+
+s=15k+6. 15k+6≡1 mod4 ⇒15k≡-5 mod4 ⇒3k≡-1 ⇒3k≡3 mod4 ⇒k≡1 mod4 ⇒k=4m+1 ⇒s=15*(4m+1)+6=60m+21 ⇒ s≡21 mod60.
+
+7. s≡1 mod4,1 mod3,0 mod5 ⇒ s≡1 mod4,1 mod3,0 mod5 ⇒ s≡1 mod12 and0 mod5. 
+
+s≡0 mod5 and1 mod12. Let s=5k. 5k≡1 mod12 ⇒5k≡1 ⇒k≡5^{-1}*1 mod12. Since 5*5=25≡1 mod12 ⇒ inverse is5. Thus k≡5 mod12 ⇒k=12m+5 ⇒s=5*(12m+5)=60m+25 ⇒ s≡25 mod60.
+
+8. s≡1 mod4,1 mod3,1 mod5 ⇒ s≡1 mod lcm(4,3,5)=60 ⇒ s≡1 mod60.
+
+Thus residues mod60 are 0,16,21,25,36,40,45,1 mod60. 
+
+Now, in the interval s=8 to60:
+
+Numbers congruent to these residues:
+
+0 mod60:60.
+
+1 mod60:1 (too low),61 (too high).
+
+16 mod60:16,76 (too high).
+
+21 mod60:21,81 (too high).
+
+25 mod60:25,85 (too high).
+
+36 mod60:36.
+
+40 mod60:40.
+
+45 mod60:45.
+
+Thus the valid s are:16,21,25,36,40,45,60. 
+
+Wait, let me list each residue:
+
+- 0 mod60:60.
+
+-1 mod60:1
+
+---------------
+
+ (too low).
+
+-16 mod60:16.
+
+-21 mod60:21.
+
+-25 mod60:25.
+
+-36 mod60:36.
+
+-40 mod60:40.
+
+-45 mod60:45.
+
+So s=16,21,25,36,40,45,60. That's seven numbers. 
+
+Still under 10. 
+
+Hmm, maybe
+
+---------------
+
+ need a higher d. Let me try d= 84 (b=85). 
+
+d=84, so s from ceil(sqrt(85))≈10 to84. 
+
+We need s(s-1) divisible by84. 
+
+84 factors into 2²*3*7. 
+
+Thus divisible by4,3,7. 
+
+Divisible by4: s≡0 or1 mod4.
+
+Divisible by3: s≡0 or1 mod3.
+
+Divisible by7: s≡0 or1 mod7.
+
+Total solutions mod84 (lcm of4,3,7 is84). 
+
+Each
+
+---------------
+
+ of the three conditions has two options, so 2^3=8 solutions mod84. 
+
+Let me compute residues mod84:
+
+Following the same method as before:
+
+1. s≡0 mod4,0 mod3,0 mod7 ⇒ s≡0 mod84.
+
+2. s≡0 mod4,0 mod3,1 mod7 ⇒ s≡0 mod12,1 mod7.
+
+Let s=12k≡1 mod7 ⇒12k≡1 mod7 ⇒5k≡1 ⇒k≡3 mod7 ⇒k=7m+3 ⇒s=12*(7m+3)=84m+36 ⇒ s≡36 mod84.
+
+3. s≡0 mod4,1 mod3,0 mod7 ⇒ s≡0 mod28,1 mod3.
+
+s=28k≡1 mod3 ⇒28≡1 mod3 ⇒k≡1 mod3 ⇒k=3m+1 ⇒s=28*(3m+1)=84m+28 ⇒ s≡28 mod84.
+
+4. s≡0 mod4,1 mod3,1 mod7 ⇒ s≡0 mod4,1 mod3,1 mod7.
+
+s≡1 mod3 and1 mod7 ⇒ s≡1 mod21. Also divisible by4.
+
+Find s≡1 mod21 and0 mod4. Let s=21k+1. 21k+1≡0 mod4 ⇒21k≡-1 mod4 ⇒1k≡-1 ⇒k≡3 mod4 ⇒k=4m+3 ⇒s=21*(4m+3)+1=84m+64 ⇒ s≡64 mod84.
+
+5. s≡1 mod4,0 mod3,0 mod7 ⇒ s≡1 mod4,0 mod21 ⇒ s≡21 mod28 (since 21 mod4 is 1). Wait, solving s≡0 mod21 and1 mod4.
+
+s=21k≡1 mod4 ⇒21≡1 mod4 ⇒k≡1 mod4 ⇒k=4m+1 ⇒s=21*(4m+1)=84m+21 ⇒ s≡21 mod84.
+
+6. s≡1 mod4,0 mod3,1 mod7 ⇒ s≡1 mod4,0 mod3,1 mod7.
+
+s≡0 mod3 and1 mod7 ⇒ s≡6 mod21. Also s≡1 mod4.
+
+s=21k+6 ≡1 mod4 ⇒21k +6 ≡(1k +2) mod4 ⇒k+2≡1 ⇒k≡-1≡3 mod4 ⇒k=4m+3 ⇒s=21*(4m+3)+6=84m+69 ⇒ s≡69 mod84.
+
+7. s≡1 mod4,1 mod3,0 mod7 ⇒ s≡1 mod4,1 mod3,0 mod7 ⇒ s≡1 mod12 and0 mod7.
+
+s=7k≡1 mod12. Let me solve 7k ≡1 mod12 ⇒7^{-1} mod12 is7 since 7*7=49≡1 mod12 ⇒k≡7 mod12 ⇒k=12m+7 ⇒s=7*(12m+7)=84m+49 ⇒ s≡49 mod84.
+
+8. s≡1 mod4,1 mod3,1 mod7 ⇒ s≡1 mod lcm(4,3,7)=84 ⇒ s≡1 mod84.
+
+Thus residues mod84:0,21,28,36,49,64,69,1 mod84.
+
+Now, s ranges from10 to84:
+
+Check residues:
+
+0 mod84:84.
+
+1 mod84:1 (too low),85 (too high).
+
+21 mod84:21.
+
+28 mod84:28.
+
+36 mod84:36.
+
+49 mod84:49.
+
+64 mod84:64.
+
+69 mod84:69.
+
+Thus the valid s are:21,28,36,49,64,69,84. 
+
+Wait
+
+---------------
+
+, that's seven numbers again. 
+
+Hmm. Maybe I need to consider d with more prime factors. 
+
+Wait, maybe d= 120 (b=121). 
+
+d=120 factors into 2^3*3*5. 
+
+So s(s-1) must be divisible by8,3,5. 
+
+Divisible by8: s≡0 mod8 or1 mod8.
+
+Divisible by3:0 or1 mod3.
+
+Divisible by5:0 or1 mod5. 
+
+Thus total solutions mod120 (lcm of8,3,5)=120. 
+
+Number
+
+---------------
+
+ of solutions:2^3=8.
+
+Wait, but mod8 has two options, mod3 two, mod5 two. 
+
+Total 2×2×2=8 solutions mod120. 
+
+Let me compute residues:
+
+This will take time, but let's try some:
+
+1. s≡0 mod8,0 mod3,0 mod5 ⇒0 mod120.
+
+2. s≡0 mod8,0 mod3,1 mod5 ⇒0 mod24,1 mod5 ⇒ solving
+
+---------------
+
+ s=24k≡1 mod5 ⇒24k≡1 mod5 ⇒4k≡1 ⇒k≡4 mod5 ⇒k=5m+4 ⇒s=24*(5m+4)=120m+96 ⇒96 mod120.
+
+3. s≡0 mod8,1 mod3,0 mod5 ⇒0 mod40,1 mod3 ⇒40k≡1 mod3 ⇒1k≡1 ⇒k≡1 mod3 ⇒k=3m+1 ⇒s=40*(3m+1)=120m+40 ⇒40 mod120.
+
+4. s≡0 mod8,1 mod3,1 mod5 ⇒0 mod8,1 mod15 ⇒ solving s≡1 mod15 and0 mod8. Let s=15k+1≡0 mod8 ⇒15k≡-1 mod8 ⇒7k≡7 ⇒k≡1 mod8 ⇒k=8m+1 ⇒s=15*(8m+1)+1=120m+16 ⇒16 mod120.
+
+5. s≡1 mod8,0 mod3,0 mod5 ⇒1 mod8,0 mod15 ⇒ s=15k≡1 mod8 ⇒15≡7 ⇒7k≡1 mod8 ⇒k≡7^{-1}*1 mod8 ⇒7^{-1}=7 ⇒k≡7 mod8 ⇒k=8m+7 ⇒s=15*(8m+7)=120m+105 ⇒105 mod120.
+
+6. s≡1 mod8,0 mod3,1 mod5 ⇒1 mod8,0 mod3,1 mod5 ⇒0 mod3 and1 mod5 ⇒0 mod15 and1 mod8. Let s=15k≡1 mod8 ⇒15k≡1 ⇒7k≡1 ⇒k≡7^{-1}*1 mod8 ⇒7*7=49≡1 ⇒k≡7 mod8 ⇒k=8m+7 ⇒s=15*(8m+7)=120m+105 ⇒105 mod120. Wait, same as previous? Hmm, perhaps miscalculation.
+
+Wait, let me re-express:
+
+s≡0 mod3 and1 mod5 ⇒ s≡6 mod15. Also s≡1 mod8. 
+
+So s=15k+6≡1 mod8 ⇒15k +6 ≡(7k +6) mod8 ⇒7k +6 ≡1 ⇒7k≡-5≡3 mod8 ⇒k≡3*7^{-1} mod8 ⇒7^{-1}=7 ⇒3*7=21≡5 mod8 ⇒ so k≡5 mod8 ⇒k=8m+5 ⇒s=15*(8m+5)+6=120m+81 ⇒81 mod120.
+
+7. s≡1 mod8,1 mod3,0 mod5 ⇒1 mod8,1 mod3,0 mod5 ⇒ s≡1 mod24 and0 mod5. 
+
+s=24k +1≡0 mod5 ⇒24k≡-1 mod5 ⇒4k≡-1 ⇒4k≡4 ⇒k≡1 mod5 ⇒k=5m+1 ⇒s=24*(5m+1)+1=120m+25 ⇒25 mod120.
+
+8. s≡1 mod8,1 mod3,1 mod5 ⇒ s≡1 mod lcm(8,3,5)=120 ⇒1 mod120.
+
+Thus residues mod120 are 0,16,25,40,96,81,105,1 mod120.
+
+Now, s from ceil(sqrt(121))=11 to120.
+
+Check which residues fall in that interval:
+
+0 mod120:120.
+
+1 mod120:1 (too low).
+
+16 mod120:16.
+
+25 mod120:25.
+
+40 mod120:40.
+
+81 mod120:81.
+
+96 mod120:96.
+
+105 mod120:105.
+
+Thus the valid s are:16,25,40,81,96,105,120. 
+
+Total of seven numbers again. 
+
+Hmm, still
+
+---------------
+
+ not enough. 
+
+Wait, perhaps I need a different approach. Let me think of the equation again:
+
+We have s(s-1) divisible by (b-1). To have many solutions s in the interval [sqrt(b), b-1], perhaps (b-1) should be a number that has many factors, so that there are many s in that interval divisible by (
+
+---------------
+
+b-1) or s-1 divisible by (b-1). But since s and s-1 are coprime, (
+
+---------------
+
+b-1) must split into factors that divide s and s-1. 
+
+Alternatively, perhaps (b-1) is a factorial number, which has many factors. Let me try b= 40321 (d=40320), but that's too big. 
+
+Alternatively, maybe the
+
+---------------
+
+ minimal b is 242? Not sure. 
+
+Alternatively, perhaps consider that the number of solutions is approximately the number of divisors of (b-1). 
+
+Alternatively, perhaps consider
+
+---------------
+
+ that for (b-1) being a factorial number like 6! =720. 
+
+Wait, let me try b=721 (d=720). 
+
+d=720. 
+
+s from ceil(sqrt(721))≈27 to720.
+
+We need s(s-1) divisible by720. 
+
+720 factors into 2^4*3^2*5. 
+
+Thus, divisible by16,9,5. 
+
+Divisible by16: s≡0 mod16 or1 mod16.
+
+Divisible by9: s≡0 mod9 or1 mod9.
+
+Divisible by5: s≡0 mod5 or1 mod5.
+
+Thus, solutions mod720 (lcm of16,9,5)=720.
+
+Total solutions mod720: 2×2×2=8.
+
+---------------
+
+ 
+
+Hmm, same as before, but with more residues. 
+
+But even so, the number of solutions in the large interval would be 720/720 *8=8, but spread over a large interval, so maybe more.
+
+---------------
+
+ 
+
+Wait, but in reality, the number of solutions in [sqrt(d)+1, d] would be roughly d/(lcm of mod) * number of solutions mod, but since
+
+---------------
+
+ mod is d itself, it's 1 full period. So the number of solutions is exactly the number of solutions mod d, which is 8. 
+
+Hmm, this isn't scaling up. 
+
+Perhaps my initial assumption is wrong. Maybe the number of solutions isn't dependent
+
+---------------
+
+ on the number of factors but something else. 
+
+Wait, let's think of the equation s(s-1) divisible by (b-1). 
+
+Let me consider
+
+---------------
+
+ that (b-1) divides s(s-1). Since s and s-1 are coprime, then (b-1) must be a product of two coprime divisors, one dividing s and the other dividing s-1. 
+
+Therefore, the number of solutions is equal to the number of ways to factor (b-1) into two coprime factors, and
+
+---------------
+
+ for each factor pair (d, e) where d*e=(b-1), d divides s and e divides s-1 or vice versa. 
+
+Each
+
+---------------
+
+ such factorization gives two solutions (except when d=e=1, but since they are coprime, d and e must be 1 and (b-1)). 
+
+The number of coprime pairs (d,e) with d*e=(b-1) is 2^{k}, where k is the number of distinct prime factors of (b-1). 
+
+Therefore
+
+---------------
+
+, the number of solutions mod (b-1) is 2^{k}. 
+
+Hence, the total number of s in the interval [ceil(sqrt(b)), b-1] is approximately 2^{k} *
+
+---------------
+
+ (b-1)/b ≈ 2^{k}. 
+
+To have more than 10 solutions, we need 2^{k} >10 ⇒k≥4. 
+
+Thus, the minimal b-1 must have at least four distinct prime factors. 
+
+The smallest number with four distinct prime factors is 2×3×5×7=210. 
+
+Therefore, if b-1=210, then b=211. 
+
+Let me check this case. 
+
+Take b=211 (d=210). 
+
+d=210 has prime factors 2,3,5,7. 
+
+Thus, the number of solutions mod210 is 2^4=16. 
+
+Thus, in the interval s from ceil(sqrt(211))≈15 to210, there are 16 solutions. 
+
+Therefore
+
+---------------
+
+, the number of b-eautiful numbers is 16, which is more than 10. 
+
+Is there a smaller b? 
+
+The next smaller numbers with four distinct prime factors are: 
+
+The next after 210 is 2×3×5×11=330 (b=331), which is larger. 
+
+Alternatively, numbers
+
+---------------
+
+ like 2×3×5×7=210, 2×3×5×11=330, 2×3×7×5= same as 210, so the next is 330. 
+
+Therefore, the minimal d is 210, so minimal b is211. 
+
+Wait, but maybe
+
+---------------
+
+ there is a number with four prime factors but smaller than210? 
+
+Wait, 2×3×5×7=210 is the smallest with four distinct primes. 
+
+Therefore
+
+---------------
+
+, the minimal b is211. 
+
+But let me verify this with an example. 
+
+Take d=210 (b=211). 
+
+The number of solutions mod210 is 2^4=16. 
+
+So there are 16 solutions between 1 and210. 
+
+The interval we need is from ceil(sqrt(211))=15 to210. 
+
+Thus the number of solutions is 16 minus those below15. 
+
+How many solutions are below15? 
+
+The residues mod210 must be checked. 
+
+The solutions mod210 are all combinations of s≡0 or1 mod2,3,5,7. 
+
+Each
+
+---------------
+
+ prime factor gives a choice of s≡0 or1 mod p. 
+
+Therefore, there are 16 residues mod210. 
+
+The numbers below15 would be s=1,2,...,14. 
+
+Check which of these satisfy s(s-1) divisible by210. 
+
+Since
+
+---------------
+
+ 210=2×3×5×7. 
+
+For s between1-14, s(s-1) must be divisible by2,3,5,7. 
+
+But since s and s-1 are small, it's unlikely except for s=1 and s=0 (but s starts at1). 
+
+Check s=1:1×0=0 divisible by210? Well, technically yes, but s must be at least ceil(sqrt(b))=15. So s=1 is too low. 
+
+Similarly
+
+---------------
+
+ s=0 is not considered. 
+
+Thus, all 16 solutions are in the interval from1 to210, but excluding those below15. 
+
+Thus
+
+---------------
+
+, the number of s from15 to210 is16 minus the solutions below15. 
+
+But since s=1 is the only possible solution below15, which is excluded, so the count is16-1=15. 
+
+Wait, but maybe there are more solutions below15. 
+
+Let me check each s from1 to14:
+
+For s=1:1×0=0 divisible by210 → yes, but s=1 is below15. 
+
+s=2:2×1=2 not divisible by210.
+
+s=3:3×2=6 not divisible by210.
+
+s=4:4×3=12 not divisible by210.
+
+s=5:5×4=20 not divisible by210.
+
+s=6:6×5=30 not divisible by210.
+
+s=7:7×6=42 not divisible by210.
+
+s=8:8×7=56 not divisible by210.
+
+s=9:9×8=72 not divisible by210.
+
+s=10:10×9=90 not divisible by210.
+
+s=11:11×10=110 not divisible by210.
+
+s=12:12×11=132 not divisible by210.
+
+s=13:13×12=156 not divisible by210.
+
+s=14:14×13=182 not divisible by210.
+
+Thus, only s=1 is a solution below15. 
+
+Therefore, in the interval15 to210, there are16 -1=15 solutions. 
+
+Hmm, which is still under10? No, 15 is more than10. 
+
+Wait, so b
+
+---------------
+
+=211 gives15 b-eautiful numbers. 
+
+Is there a smaller b with four prime factors? 
+
+Wait, maybe
+
+---------------
+
+ a number with three prime factors but with exponents allowing more solutions? 
+
+Wait, let me check b= 105+1=106 (d=105). 
+
+d=105 has prime factors3,5,7. 
+
+Thus solutions mod105 would be 2^3=8. 
+
+Thus, in the interval ceil(sqrt(106))≈11 to105:
+
+Total solutions mod105:8. 
+
+Subtract those below11:
+
+Check s=1,…,10:
+
+s=1: yes, but too low.
+
+s= others: none
+
+---------------
+
+ divisible by105. 
+
+Thus, 8-1=7 <10. 
+
+Not enough. 
+
+What
+
+---------------
+
+ about b= 120+1=121 (d=120). 
+
+Wait, d=120 has prime factors2,3,5. 
+
+Thus solutions mod120 are 2^3=8. 
+
+Which
+
+---------------
+
+ we already saw gives7 solutions in the interval. 
+
+Hmm. 
+
+Alternatively, perhaps b= 84+1=85 (d=84) which had7 solutions. 
+
+Alternatively, perhaps
+
+---------------
+
+ the minimal is indeed211. 
+
+Wait, but let's check b= 105+1=106 (d=105). 
+
+Wait, 
+
+---------------
+
+105 has 3 distinct primes, so 8 solutions mod105. 
+
+Thus, in the interval from
+
+---------------
+
+11 to105, 8 solutions minus those below11. 
+
+Only s=1 is a solution below11. 
+
+Thus 7, still under10. 
+
+Thus
+
+---------------
+
+, the next candidate is211. 
+
+Wait, but let me check d= 120. 
+
+Wait, d=120 has four prime factors? No, factors are2,3,5. 
+
+So three primes. 
+
+Thus, the first d with four distinct primes is210. 
+
+Thus, b=211 is the minimal. 
+
+Therefore, the answer is211. 
+
+Wait, but the problem says "the least integer b ≥ 2 for which there are more than ten b-eautiful integers". 
+
+Wait, but according to my calculation for b=211, there are15 solutions. 
+
+Is there a smaller b with four prime factors? 
+
+Wait, 
+
+---------------
+
+2×3×5×7=210. 
+
+The next smaller number with four prime factors would require primes smaller than2,3,5,7, but those are the first four primes. So 2×3×5×7=210 is the smallest composite number with four distinct prime factors. 
+
+Therefore, the minimal b is211. 
+
+Hence, the answer is \boxed{211}
+
+Wait, but let me check with b= 210+1=211. 
+
+Wait, let me confirm with d=210. 
+
+The number of solutions mod210 is 16. 
+
+In the interval from15 to210, there are16 solutions minus those below15. 
+
+Only s=1 is a solution below15, so 16-1=15 solutions. 
+
+15>10, so yes. 
+
+Is there a smaller d with more solutions? 
+
+Wait, what
+
+---------------
+
+ about d= 120, which had 8 solutions. 
+
+Wait, but if d= 180 (b=181). 
+
+d=180 factors into 2²×3²×5. 
+
+Prime factors are2,3,5 (three distinct primes). 
+
+Thus, solutions mod180 would be 2^3=8. 
+
+Thus, in the interval from ceil(sqrt(181))=14 to180. 
+
+Total solutions mod180:8. 
+
+Subtract solutions below14: s=1 only. 
+
+Thus, 7 again. 
+
+Hmm. 
+
+Alternatively, d= 210 is the first with four distinct primes. 
+
+Therefore, I think the minimal b is211. 
+
+But the problem might have a smaller answer. Maybe my assumption
+
+---------------
+
+ is wrong. 
+
+Wait, let me check d= 60 (b=61). 
+
+Earlier, d=60 had8 solutions mod60, giving7 solutions in the interval. 
+
+Wait, but 
+
+---------------
+
+60 has prime factors2,3,5 (three primes). 
+
+Thus, solutions mod60:2^3=8. 
+
+Which
+
+---------------
+
+ gave7 in the interval. 
+
+Hmm, but 2^4=16 is needed for four primes. 
+
+Alternatively, maybe my
+
+---------------
+
+ initial assumption is incorrect. 
+
+Wait, perhaps the count isn't exactly 2^{number of prime factors}. 
+
+Wait, when we have four
+
+---------------
+
+ primes, the number of solutions mod d is 2^4=16. 
+
+But in the case of d=210, that
+
+---------------
+
+'s correct. 
+
+Thus, the first time the count exceeds10 is at d=210 (b=211), with15 solutions. 
+
+Thus, I think the answer is211. 
+
+But I need
+
+---------------
+
+ to confirm with an example. 
+
+Alternatively, perhaps there is a smaller number with multiple exponents allowing more solutions. 
+
+Wait, take d= 240 (b=241). 
+
+Prime factors2^4*3*5. 
+
+Thus distinct primes are2,3,5. 
+
+Thus solutions mod240:2^3=8. 
+
+Thus, in
+
+---------------
+
+ the interval sqrt(241)=~16 to240: 
+
+Total solutions mod240:8. 
+
+Subtract solutions below16: s=1. 
+
+Thus,7 again. 
+
+Hmm. 
+
+Alternatively, d= 360 (b=361). 
+
+Prime factors2^3*3^2*5. 
+
+Distinct primes:2,3,5. 
+
+Thus solutions mod360:8. 
+
+Same as before. 
+
+Hmm, so seems
+
+---------------
+
+ like the minimal is indeed211. 
+
+Thus, I think the answer is211.
+
+
+To determine the least integer \( b \geq 2 \) for which there are more than ten \( b \)-eautiful integers, we analyze the conditions for a number \( n \) to be \( b \)-eautiful. A number \( n \) is \( b \)-eautiful if it has exactly two digits in base \( b \), and the sum of these digits equals \( \sqrt{n} \). 
+
+Expressing \( n \) in base \( b \) as \( n = a \cdot b + c \), where \( a \) and \( c \) are digits (with \( 1 \leq a \leq b-1 \) and \( 0 \leq c \leq b-1 \)), we need \( a + c = \sqrt{n} \). Substituting \( n = (a + c)^2 \), we derive the equation:
+\[
+(a + c)^2 = a \cdot b + c
+\]
+Rearranging and simplifying, we find:
+\[
+a = \frac{s^2 - s}{b - 1} \quad \text{where} \quad s = a + c = \sqrt{n}
+\]
+For \( a \) to be an integer, \( b - 1 \) must divide \( s(s - 1) \). The number of valid \( s \) values (and thus \( b \)-eautiful numbers) depends on the number of divisors of \( b - 1 \).
+
+To have more than ten \( b \)-eautiful numbers, \( b - 1 \) must have enough divisors to allow at least 11 solutions for \( s \). The smallest \( b - 1 \) with four distinct prime factors (ensuring \( 2^4 = 16 \) solutions modulo \( b - 1 \)) is \( 2 \times 3 \times 5 \times 7 = 210 \). Thus, \( b = 210 + 1 = 211 \).
+
+Verification shows \( b = 211 \) yields 15 solutions (more than ten), confirming it as the minimal \( b \).
+
+\boxed{211}<|im_end|>
