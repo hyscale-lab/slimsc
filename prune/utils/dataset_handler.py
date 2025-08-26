@@ -31,15 +31,21 @@ from .aqua_rat_utils import (
     extract_answer_aqua_rat,
     calculate_score_aqua_rat
 )
+from .math_dapo_utils import (
+    load_data_math_dapo,
+    create_prompt_math_dapo,
+    extract_answer_math_dapo,
+    calculate_score_math_dapo
+)
 
 class DatasetHandler:
     def __init__(self, dataset_name: str):
         """Initialize dataset handler with specific type.
         
         Args:
-            dataset_name (str): Type of dataset ("gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt")
+            dataset_name (str): Type of dataset ("gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt", "math_dapo")
         """
-        if dataset_name not in ["gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt"]:
+        if dataset_name not in ["gpqa_diamond", "aime", "math500", "aqua_rat", "hmmt", "math_dapo"]:
             raise ValueError(f"Unknown dataset type: {dataset_name}")
         self.dataset_name = dataset_name
 
@@ -55,6 +61,8 @@ class DatasetHandler:
             return load_data_aqua_rat()
         elif self.dataset_name == "hmmt":
             return load_data_hmmt(dataset_name=self.dataset_name, split=split)
+        elif self.dataset_name == "math_dapo":
+            return load_data_math_dapo(split=split)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in load_dataset method.")
 
@@ -76,6 +84,8 @@ class DatasetHandler:
             return create_prompt_aqua_rat(example)
         elif self.dataset_name == "hmmt":
             return create_prompt_hmmt(example)
+        elif self.dataset_name == "math_dapo":
+            return create_prompt_math_dapo(example)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in create_prompt method.")
 
@@ -91,6 +101,8 @@ class DatasetHandler:
             return extract_answer_aqua_rat(content)
         elif self.dataset_name == "hmmt":
             return extract_answer_hmmt(content)
+        elif self.dataset_name == "math_dapo":
+            return extract_answer_math_dapo(content)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in extract_answer method.")
 
@@ -106,5 +118,7 @@ class DatasetHandler:
             return calculate_score_aqua_rat(extracted_answer, correct_answer)
         elif self.dataset_name == "hmmt":
             return calculate_score_hmmt(extracted_answer, correct_answer)
+        elif self.dataset_name == "math_dapo":
+            return calculate_score_math_dapo(extracted_answer, correct_answer)
         else:
             raise ValueError(f"Unhandled dataset name '{self.dataset_name}' in calculate_score method.")
