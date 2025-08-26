@@ -218,7 +218,7 @@ def main():
     parser.add_argument('--vllm_url', type=str, required=True)
     parser.add_argument('--model_name', type=str, required=True)
     parser.add_argument('--tokenizer_path', type=str, required=True)
-    parser.add_argument('--datasets', type=str, required=True, nargs='+', choices=["aqua_rat", "gpqa_diamond", "aime"])
+    parser.add_argument('--datasets', type=str, required=True, nargs='+')
     parser.add_argument('--profile_dir', type=str, default="prune/analysis/thought_segmentation_comparison/profiles")
     parser.add_argument('--output_dir', type=str, default="prune/analysis/thought_segmentation_comparison/segmented_output")
     parser.add_argument('--num_samples', type=int, default=5)

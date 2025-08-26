@@ -1,0 +1,1477 @@
+Okay, let's see. The problem is about a sequence defined by a_{i+1} = 2^{a_i}, and we need to find how many integers n between 1 and 1000 inclusive
+
+---------------
+
+ satisfy that 100 divides a_{1000} - a_1 when starting with a_0 = n. Hmm, so
+
+---------------
+
+ we need 100 divides a_{1000} - a_1. Since a_1 is 2^{a_0}, so
+
+---------------
+
+ a_{1000} - 2^{a_0} must be divisible by 100. 
+
+
+
+---------------
+
+First, let's understand the sequence. Starting with a_0 = n, then a_1 = 2^n, a_2 = 2^{2^n}, and so on. Each
+
+---------------
+
+ term is a tower of exponents of 2's, getting huge very quickly. Since we're dealing with modulo 100, maybe we can work
+
+---------------
+
+ modulo 100 for these terms. The key is that a_{1000} mod 100 must
+
+---------------
+
+ equal a_1 mod 100, so that their difference is 0 mod 100. So,
+
+---------------
+
+ the condition is a_{1000} ≡ a_1 mod 100. Since the sequence is
+
+---------------
+
+ defined by exponentiation, perhaps we can find a cycle or periodicity in the exponents modulo φ(100), where
+
+---------------
+
+ φ is Euler's totient function. 
+
+Let me recall Euler's theorem: if a and m are coprime, then a^φ(m) ≡ 1 mod m. Since
+
+---------------
+
+ 100 = 2^2 * 5^2, φ(100) = 100*(1 - 1/2)*(1 - 1/5) = 100 * 1/2 * 4/5 = 40. So φ(100) = 40. But
+
+---------------
+
+ since 2 and 100 are not coprime, Euler's theorem doesn't apply directly here. Hmm, so
+
+---------------
+
+ maybe we need to handle modulo 4 and 25 separately, then use the Chinese Remainder Theorem? Since 100 = 4*25,
+
+---------------
+
+ and 4 and 25 are coprime. 
+
+Alternatively, maybe we can compute modulo 4 and modulo 25,
+
+---------------
+
+ then combine the results. Let's try breaking it down. 
+
+First, let's consider modulo 4. Since 100 mod
+
+---------------
+
+ 4 is 0, so modulo 4 is part of the modulus. Let's see what a_{1000} -
+
+---------------
+
+ a_1 mod 4 is. 
+
+Compute a_1 mod 4: a_1 = 2^{a_0}. Since
+
+---------------
+
+ a_0 is an integer. 2^k mod 4 cycles every 2. For k ≥ 2, 2^k mod 4 is 0. For
+
+---------------
+
+ k=0, 1; k=1, 2. So if a_0 is 1, then 2^1 mod
+
+---------------
+
+ 4 is 2. If a_0 is 2, then 2^2=4 mod4=0. Similarly
+
+---------------
+
+, for a_0 ≥2, 2^{a_0} mod4 is 0. 
+
+Then a_{1000} mod
+
+---------------
+
+4: since each term is 2^{previous term}. Let's see. Let's see the sequence mod4. Starting
+
+---------------
+
+ from a_0 = n. 
+
+a1 = 2^{a0} mod4. As above, if a0 ≥2, then a1 mod4 is
+
+---------------
+
+ 0. If a0=1, a1 mod4 is 2. 
+
+Then a2 = 2^{a1} mod4. If
+
+---------------
+
+ a1 mod4 is 0, then a2 mod4 is 0 (since exponent is ≥2). If a1 mod4 is 2, then a
+
+---------------
+
+2 = 2^2 mod4 = 0. So regardless, for a1 ≥2, a2 mod4 is 0. So
+
+---------------
+
+ after the second term, all terms mod4 are 0. 
+
+Therefore, a_{1000} mod4 is 0,
+
+---------------
+
+ except if a0 =1? Let's see. Let me check for a0=1:
+
+a0=1:
+
+---------------
+
+ a1 =2^1=2 mod4. a2=2^2=4 mod4=0, and
+
+---------------
+
+ then all subsequent terms are 0 mod4. So even starting at a0=1, a_{1000} mod4 is 0. 
+
+
+
+---------------
+
+Wait, so for any a0, a_{1000} mod4 is 0. 
+
+Then a1 mod4:
+
+---------------
+
+ 
+
+If a0 ≥2, then a1 mod4 =0. 
+
+If a0=1, a1 mod4=2. 
+
+Therefore
+
+---------------
+
+, the difference a_{1000} -a1 mod4 is: 
+
+If a0 ≥2: 0 -0 =
+
+---------------
+
+0 mod4. 
+
+If a0=1: 0 -2 = -2 mod4 = 2 mod4. 
+
+Therefore
+
+---------------
+
+, in order to have a_{1000} -a1 ≡0 mod4, we need either a0 ≥
+
+---------------
+
+2 (then it works), or if a0=1, then 2 mod4 ≠0, so it doesn't work. 
+
+
+
+---------------
+
+Therefore, modulo4 condition is satisfied when a0 ≠1. But we need to also consider modulo25. 
+
+Now
+
+---------------
+
+, moving on to modulo25. Since 100 =4*25, and we need the difference to
+
+---------------
+
+ be 0 mod25 as well. 
+
+So, the problem reduces to finding n between 1 and 1000 such that a_{1000} ≡ a1 mod25.
+
+---------------
+
+ 
+
+To compute a_{1000} mod25, we can use Euler's theorem here since 2 and25 are coprime. φ(25)=20, so 2^20 ≡1 mod25. 
+
+
+
+---------------
+
+Therefore, exponents can be considered modulo φ(25)=20, but since exponents themselves are also exponents, this
+
+---------------
+
+ becomes a tower. 
+
+Let me try to formalize this. 
+
+We need to compute a_{1000} mod25. Since
+
+---------------
+
+ a_{k} = 2^{a_{k-1}}, so:
+
+a_{1000} mod25 = 2^{a_{999}} mod25. 
+
+To compute this, since
+
+---------------
+
+ 2^20 ≡1 mod25, we can write the exponent a_{999} mod φ(25)=20. 
+
+
+
+---------------
+
+Similarly, a_{999} mod20 = 2^{a_{998}} mod20. 
+
+To
+
+---------------
+
+ compute that, we can use φ(20)=8, so 2^8 ≡1 mod20?
+
+---------------
+
+ Wait, 20 is 4*5, φ(20)=φ(4)*φ(5)=2*4=8. 
+
+
+
+---------------
+
+But 2 and 20 are not coprime, so Euler's theorem doesn't apply here. Hmm. Let
+
+---------------
+
+ me see. 
+
+Wait, when computing 2^k mod20, perhaps we can compute it directly. Let's see:
+
+
+
+---------------
+
+2^1 mod20=2
+
+2^2=4 mod20
+
+2^3=8 mod20
+
+2^4=16 mod20
+
+2^5=32 mod20=12
+
+2^6=24 mod20=4
+
+2
+
+---------------
+
+^7=8 mod20
+
+2^8=16 mod20
+
+2^9=12 mod20
+
+
+
+---------------
+
+Hmm, so starting at exponent 2, the cycle is 4,8,16,12,4,8,16,12,... every
+
+---------------
+
+ 4 terms. Wait, starting from exponent 2:
+
+Exponent 2:4
+
+3:8
+
+4:16
+
+5:12
+
+6:4 (
+
+---------------
+
+since 2^6 mod20=4). So cycle length is 4. 
+
+Therefore, 2^k mod20 cycles with period 4 starting
+
+---------------
+
+ at exponent 2. 
+
+Therefore, for k ≥2, 2^k mod20 cycles every 4. 
+
+
+
+---------------
+
+Thus, to compute a_{999} mod20, which is 2^{a_{998}} mod20. 
+
+
+
+---------------
+
+So first, we can note that if a_{998} ≥2, then the exponent a_{998} is
+
+---------------
+
+ ≥2, so 2^{a_{998}} mod20 cycles with period 4. 
+
+Therefore, to
+
+---------------
+
+ compute 2^{a_{998}} mod20, we can compute a_{998} mod4 (
+
+---------------
+
+since the cycle length is 4). 
+
+Wait, but the cycle length is 4, so exponent mod4? Let me see
+
+---------------
+
+:
+
+The cycle is 4,8,16,12 for exponents 2,3,4,5 mod
+
+---------------
+
+4? Let's see:
+
+If exponent is 2 mod4 (since starting from exponent 2):
+
+Wait exponent k=
+
+---------------
+
+2: 2^2 mod20=4
+
+k=3: 8
+
+k=4:16
+
+k=5:12
+
+k=6:4
+
+---------------
+
+ (since exponent 6: 2^6 mod20=4). So exponent 6 is 6 mod4 =2.
+
+---------------
+
+ So exponent mod4=2 gives 4, mod4=3 gives 8, mod4=0 (since 4 mod4=0)
+
+---------------
+
+ gives 16, mod4=1 (5 mod4=1) gives12. 
+
+Therefore, the value
+
+---------------
+
+ of 2^k mod20 depends on k mod4, but shifted. 
+
+So to compute 2^k mod20,
+
+---------------
+
+ for k ≥2, the result is:
+
+If k ≡2 mod4: 4
+
+k≡3 mod4:8
+
+k≡0 mod4 (i.e. 
+
+---------------
+
+4 mod4):16
+
+k≡1 mod4:12
+
+Thus, to compute 2^k mod20, we
+
+---------------
+
+ need to know k mod4. 
+
+Therefore, to compute a_{999} mod20 = 2^{a_{998}} mod20, we need to know
+
+---------------
+
+ a_{998} mod4. 
+
+Similarly, to compute a_{998} mod4, since a_{998} = 2^{a_{997}} mod4. 
+
+
+
+---------------
+
+Earlier, we saw that for a term in the sequence beyond the second term, all terms are 0 mod4. Wait
+
+---------------
+
+, let me check again:
+
+Starting from a0, a1 is 2^{a0}, so unless a0=1, a
+
+---------------
+
+1 mod4 is 0. If a0=1, then a1=2 mod4, then a2=
+
+---------------
+
+2^2 mod4=0. So from a2 onwards, all terms are 0 mod4. 
+
+Therefore, for
+
+---------------
+
+ k ≥2, a_k mod4 =0. 
+
+Therefore, a_{998} mod4 =0 (
+
+---------------
+
+since 998 ≥2). 
+
+Therefore, to compute a_{999} mod20 = 2^{a_{998}} mod20.
+
+---------------
+
+ Since a_{998} mod4 is 0 (as a_{998} is 0 mod4),
+
+---------------
+
+ so exponent a_{998} mod4 is 0. Therefore, looking at the earlier pattern, exponent k≡
+
+---------------
+
+0 mod4 gives 16 mod20. So 2^{a_{998}} mod20 =16. 
+
+Therefore
+
+---------------
+
+, a_{999} mod20=16. 
+
+Therefore, going back, a_{1000} mod25 =2^{a_{999}} mod25. Since
+
+---------------
+
+ a_{999} mod20=16 (since φ(25)=20), so 2^{16} mod25. Let me compute that:
+
+
+
+---------------
+
+2^10=1024 mod25. 1024 divided by25: 25*40=1000, so 1024-1000=24 mod
+
+---------------
+
+25. So 2^10 ≡24 mod25. 
+
+Then 2^16=2^10 *2^6.
+
+---------------
+
+ 2^6=64 mod25=64-2*25=14. So 24*14=336 mod25. 25*13=325, so 336-325=11 mod25. So
+
+---------------
+
+ 2^16 ≡11 mod25. 
+
+Therefore, a_{1000} mod25=
+
+---------------
+
+11. 
+
+Wait, so regardless of the starting n (as long as the sequence progresses beyond a1?), a_{1000} mod25 is always 11? Let
+
+---------------
+
+ me check if that's the case. 
+
+Wait, let's see. Let's retrace:
+
+We assumed that a_{998} mod4 is
+
+---------------
+
+ 0. Since for any starting n, as long as a_2 is 0 mod4, then all subsequent terms will
+
+---------------
+
+ be 0 mod4. Therefore, for any n ≥1, a_2 is 0 mod4. So even
+
+---------------
+
+ if n=1, a1=2 mod4, a2=2^2=4 mod4=0, so
+
+---------------
+
+ a_2 and beyond are 0 mod4. Therefore, a_{998} mod4=0, so a
+
+---------------
+
+_{999}=2^{a_{998}} mod20=16, so a_{1000}=2^{16} mod25=11. 
+
+Therefore, a
+
+---------------
+
+_{1000} mod25 is always 11, regardless of n? 
+
+Wait, but that can
+
+---------------
+
+'t be. Wait, unless the exponent tower is so tall that it's always reducing to the same value mod25?
+
+---------------
+
+ Hmm, maybe so. Let me confirm with an example. Let's take n=2. Then a0=2, a1=4, a2=16 mod4=0, and
+
+---------------
+
+ so on. Then a_{1000} mod25 would be 11. 
+
+If n=3, a
+
+---------------
+
+0=3, a1=8 mod4=0, so a2=2^8 mod4=0, etc
+
+---------------
+
+., so same result. 
+
+Even n=1, a0=1, a1=2 mod4, then a2=4
+
+---------------
+
+ mod4=0, so the rest follow. So yes, regardless of n, a_{1000} mod25 is 11. 
+
+Therefore
+
+---------------
+
+, a_{1000} mod25 is always 11. 
+
+Therefore, the difference a_{1000} -a1 must
+
+---------------
+
+ be ≡ (11 - a1 mod25) mod25. We need this difference ≡0 mod25, so 11 ≡a1 mod25. 
+
+Therefore, the condition reduces
+
+---------------
+
+ to a1 ≡11 mod25. 
+
+Therefore, the problem becomes: find the number of integers n between 1 and 1000 such that 2^{n} ≡11 mod25. 
+
+Therefore
+
+---------------
+
+, we need to solve 2^{n} ≡11 mod25. 
+
+So now, the problem is
+
+---------------
+
+ reduced to solving for n in 1 ≤n ≤1000 where 2^n ≡11 mod25. 
+
+So
+
+---------------
+
+, first, let's find all n such that 2^n ≡11 mod25. 
+
+To solve 2^n ≡11 mod25. Since
+
+---------------
+
+ 2 and25 are coprime, we can use Euler's theorem. φ(25)=20, so 2^20≡1 mod25. 
+
+
+
+---------------
+
+Therefore, the multiplicative order of 2 modulo25 divides 20. Let's find the order. 
+
+Compute
+
+---------------
+
+ powers of 2 mod25:
+
+2^1=2
+
+2^2=4
+
+2^4=16
+
+2^5=32≡7 mod25
+
+2^10=(2^5)^2≡
+
+---------------
+
+7^2=49≡49-25=24 mod25
+
+2^20=(2^10)^2≡24^2=576≡576-23*25=576-575=1 mod25. 
+
+So
+
+---------------
+
+ the order is indeed 20. 
+
+Therefore, 2 is a primitive root mod25? Wait, since the
+
+---------------
+
+ order is φ(25)=20, so yes, 2 is a primitive root modulo25. 
+
+Therefore, the equation 2^n ≡11 mod25 has a unique solution modulo20.
+
+---------------
+
+ 
+
+Therefore, we can write n ≡k mod20, where k is the discrete logarithm of 11 base2 mod25. 
+
+We
+
+---------------
+
+ need to find k such that 2^k ≡11 mod25. Let's compute 2^k mod25 until
+
+---------------
+
+ we find 11. 
+
+Let's compute step by step:
+
+2^1=2
+
+2^2=4
+
+2^3=8
+
+2^4=16
+
+2^5=32 mod
+
+---------------
+
+25=7
+
+2^6=14
+
+2^7=28 mod25=3
+
+2^8=6
+
+2^9=12
+
+2^10=24
+
+2^11=48 mod25=23
+
+2^12=46 mod25=21
+
+2^13=42 mod25=17
+
+2^14=34 mod25=9
+
+2^15=18
+
+2^16=36 mod25=11
+
+
+
+---------------
+
+Ah, there we go. 2^16 ≡11 mod25. 
+
+Therefore, k=16. 
+
+
+
+---------------
+
+Therefore, the solutions are n ≡16 mod20. 
+
+Therefore, all n such that n ≡16 mod20 will
+
+---------------
+
+ satisfy 2^n ≡11 mod25. 
+
+Therefore, the numbers n between1 and1000 where
+
+---------------
+
+ n ≡16 mod20. 
+
+Now, we need to count how many numbers between1 and1000 inclusive are congruent to16 mod20. 
+
+The numbers
+
+---------------
+
+ are 16,36,56,..., up to the largest number ≤1000. 
+
+Let
+
+---------------
+
+ me compute the first term a=16, common difference d=20. 
+
+The nth term is 16 +20(m
+
+---------------
+
+-1)=20m -4. 
+
+We need 20m -4 ≤1000 =>20m ≤1004 => m ≤1004/20=50.2. So
+
+---------------
+
+ m can be up to50. 
+
+Check for m=50: 20*50 -4=1000-4=996. 
+
+
+
+---------------
+
+m=51 would be 20*51 -4=1020-4=1016>1000. 
+
+Therefore
+
+---------------
+
+, there are50 terms. 
+
+Wait, but let me check starting from m=1:
+
+Term1:16=
+
+---------------
+
+16+20*(1-1)=16
+
+Term2:36=16+20*1=36
+
+...
+
+Term50:16+20*(49)=16+980=996. 
+
+Yes
+
+---------------
+
+, so 50 terms. 
+
+But wait, let me count using another method. The numbers congruent to16 mod20 between
+
+---------------
+
+1 and1000. 
+
+The first number is16, the last is996. 
+
+The count
+
+---------------
+
+ is ((last - first)/difference)+1 = ((996-16)/20)+1=(980/20)+1=49 +1=50. 
+
+Therefore
+
+---------------
+
+, 50 numbers. 
+
+However, remember that earlier we had the modulo4 condition. The problem required that 100 divides a
+
+---------------
+
+_{1000}-a1, so both mod4 and mod25 must hold. 
+
+Earlier, we saw
+
+---------------
+
+ that mod4 requires that a0 ≠1. But in the mod25 condition, we found that n must be ≡16 mod20. 
+
+
+
+---------------
+
+Wait, but when n=16 mod20, does that exclude n=1? Since 16 mod20≠
+
+---------------
+
+1 mod20. So n=16 mod20 numbers are okay for mod4? 
+
+Wait, let's check
+
+---------------
+
+: the mod4 condition requires that a0 ≠1. But the numbers we're counting are n≡16 mod20. Since
+
+---------------
+
+ 16 mod20≠1, so none of them are 1. Therefore, all n≡16 mod20 automatically
+
+---------------
+
+ satisfy the mod4 condition (since they are not 1). 
+
+Therefore, the total numbers are exactly 50. 
+
+Wait, but hold
+
+---------------
+
+ on. Let me confirm if n=1 is included in our count. Since 1 mod20 is 1, which
+
+---------------
+
+ is different from16, so n=1 is excluded. So yes, all the 50 numbers are valid.
+
+---------------
+
+ 
+
+Wait, but wait another thing: the problem states "the number of integers 1 ≤n ≤1000".
+
+---------------
+
+ So the answer is 50? Hmm. 
+
+Wait, but let me check again. Let me confirm with n=16:
+
+
+
+---------------
+
+If n=16, then a1=2^16. Let's compute a1 mod25. Since
+
+---------------
+
+ 2^16 mod25=11 as before, so a1 mod25=11. Then
+
+---------------
+
+ a_{1000} mod25 is also11, so the difference mod25 is0. 
+
+
+
+---------------
+
+Mod4: a_{1000} mod4=0, a1=2^16 mod4=0 (since exponent1
+
+---------------
+
+6≥2), so a1 mod4=0. Therefore difference mod4=0. 
+
+Thus, n=16 is good
+
+---------------
+
+. 
+
+Another test case: n=36. 2^36 mod25. Since 36 mod20=16, so 2^36=
+
+---------------
+
+2^(20+16)=2^20*2^16≡1*11 mod25=11. So yes
+
+---------------
+
+, same. 
+
+Similarly, n=16 +20*(m) up to 996, so all
+
+---------------
+
+ those n's satisfy 2^n ≡11 mod25, and mod4 they are okay. 
+
+Therefore, the total
+
+---------------
+
+ numbers are 50. 
+
+Wait, but hold on. Let me check n=16. 
+
+Wait, but
+
+---------------
+
+ let me think again: when n=16, a1 =2^16. Let me compute 2^16 mod2
+
+---------------
+
+5. Earlier, we saw 2^16 mod25=11, so that's correct. 
+
+Therefore
+
+---------------
+
+, yes, the count is50. 
+
+Wait, but the problem says "the number of integers 1 ≤n ≤1000".
+
+---------------
+
+ So 50 is the answer? Hmm. 
+
+Wait, but hold on a second. Let me check if n=16 mod
+
+---------------
+
+20 is the only solution. Suppose someone made a mistake in the exponent. Let me retrace solving 2^n ≡11 mod25. 
+
+We found that 2^16 mod
+
+---------------
+
+25=11, so the solution is n≡16 mod20. Since the order is20. So
+
+---------------
+
+ yes, solutions are n≡16 mod20. 
+
+Therefore, the numbers are 16,36,...,996.
+
+---------------
+
+ 
+
+Total numbers: (996-16)/20 +1 = (980)/20 +1=49+1=50. 
+
+H
+
+---------------
+
+ence, the answer is50. 
+
+Wait, but the problem says "the number of integers 1 ≤ n ≤1000".
+
+---------------
+
+ So 50? 
+
+Wait, but perhaps I missed something. Let me check n=16+20*50=16+1000=1016,
+
+---------------
+
+ which is over 1000, so the last term is16+20*49=16+980=996, which
+
+---------------
+
+ is correct. 
+
+Wait, but let me check if there are other solutions. Suppose 2^k ≡11 mod25.
+
+---------------
+
+ Since the order is20, the solutions are k≡16 mod20. So only numbers congruent to16 mod20. 
+
+
+
+---------------
+
+Therefore, yes, only 50 numbers. 
+
+Wait, but let me check with another exponent. Let's take n=16+
+
+---------------
+
+20=36. 
+
+Compute 2^36 mod25. Since 36 mod20=16, so 
+
+---------------
+
+2^36≡2^16≡11 mod25, correct. 
+
+Similarly, n=56:
+
+---------------
+
+ 56 mod20=16, so same. 
+
+Therefore, all those n's will satisfy the condition. 
+
+Therefore
+
+---------------
+
+, the answer should be 50. 
+
+Wait, but the problem says "Find the number of integers 1 ≤ n ≤ 1000 such
+
+---------------
+
+ that if a_0 = n, then 100 divides a_{1000} - a_1".
+
+---------------
+
+ 
+
+Wait, so the answer is 50? Hmm, but let me think again. 
+
+Wait, but let me check
+
+---------------
+
+ n=16 mod20, but n can be 16,36,...,996. 
+
+
+
+---------------
+
+Wait, 16 to 996 with step20: (996-16)/20 =
+
+---------------
+
+ 980/20=49, so 49+1=50 numbers. 
+
+Therefore, yes
+
+---------------
+
+. 
+
+Therefore, the answer is 50. 
+
+Wait, but let me confirm with n=16. 
+
+
+
+---------------
+
+If n=16, then a0=16, a1=2^16. 
+
+a_{1000} mod100.
+
+---------------
+
+ Since mod4 and mod25. 
+
+We already know mod4 it's0, mod25 it's11. 
+
+
+
+---------------
+
+So 100 divides a_{1000} -a1 requires that a_{1000} ≡a1 mod100. 
+
+Therefore
+
+---------------
+
+, a_{1000} mod25 must equal a1 mod25 and a_{1000} mod4 must
+
+---------------
+
+ equal a1 mod4. 
+
+We have a_{1000} mod25=11, and a1 mod25=11,
+
+---------------
+
+ so that's good. 
+
+a_{1000} mod4=0, and a1 mod4=0
+
+---------------
+
+ (since a0=16, which is ≥2, so a1 mod4=0). 
+
+Thus, yes
+
+---------------
+
+, 0≡0 mod4. 
+
+Therefore, 100 divides the difference. 
+
+Another test case: n=1. 
+
+
+
+---------------
+
+a0=1, a1=2^1=2. 
+
+a_{1000} mod4=0, a
+
+---------------
+
+1 mod4=2. 
+
+So mod4 difference is -2 mod4≠0. So n=1 is excluded, which is correct
+
+---------------
+
+. 
+
+Another test case: n=17. 
+
+17 mod20=17≠16, so 
+
+---------------
+
+2^17 mod25. 17 mod20, so exponent 17. 
+
+2^17 mod25=
+
+---------------
+
+2^16*2 mod25=11*2=22 mod25. Not 11, so it
+
+---------------
+
+'s excluded. 
+
+Therefore, yes, only numbers congruent to16 mod20. 
+
+Therefore, I think the answer is 50. 
+
+Wait, but hold
+
+---------------
+
+ on. Wait, in the problem statement, the sequence is defined as a_{i+1}=2^{a_i}. 
+
+
+
+---------------
+
+Wait, but in the problem statement, a_{i+1}=2^{a_i}, so the first term is a0
+
+---------------
+
+, then a1=2^{a0}, a2=2^{a1}, etc. 
+
+Therefore, when considering
+
+---------------
+
+ a_{1000}, that's 2^{a_{999}}, and so on. 
+
+Therefore, my
+
+---------------
+
+ previous analysis holds. 
+
+Therefore, the answer is 50. 
+
+Wait, but the problem says "the number of integers 1 ≤ n ≤1000". So
+
+---------------
+
+ unless there's an error in my calculation, the answer is 50. 
+
+Wait, but let me check the count
+
+---------------
+
+ again. Let me list some terms:
+
+Start at 16, next 36, 56,... up to 996. 
+
+Number
+
+---------------
+
+ of terms: Let me see how many terms between16 and996 inclusive with step20. 
+
+The formula is ((
+
+---------------
+
+last - first)/step)+1 = ((996-16)/20)+1= (980/20)+1=49+1=50. 
+
+Yes
+
+---------------
+
+, that's correct. 
+
+Alternatively, the numbers can be represented as n=20k +16, where k is
+
+---------------
+
+ from0 to49. 
+
+Because 20*0 +16=16, 20*49 +16=980+16=996. 
+
+Therefore
+
+---------------
+
+, k=0,...,49, so 50 numbers. 
+
+Therefore, the answer is 50. 
+
+Wait
+
+---------------
+
+, but I feel like maybe I made a mistake because 50 seems low, but given the modulus conditions, maybe it
+
+---------------
+
+'s correct. Let me think again. 
+
+Alternatively, perhaps the problem requires n such that 2^n ≡11 mod100?
+
+---------------
+
+ Wait no, the problem requires 100 divides a_{1000}-a1, so we split into
+
+---------------
+
+ mod4 and mod25. 
+
+We found that mod25 requires 2^n≡11 mod25, which
+
+---------------
+
+ gives n≡16 mod20. 
+
+Mod4 requires n≠1, which is already satisfied because n≡16 mod20 implies
+
+---------------
+
+ n is 16 mod20, so n mod4=0 (since 16 mod4=0). 
+
+
+
+---------------
+
+Wait, hold on. Wait, n≡16 mod20 implies n mod4=0. 
+
+Wait a second,
+
+---------------
+
+ if n≡16 mod20, then n mod4=0. 
+
+Therefore, n must be divisible by4? Because
+
+---------------
+
+ 16 mod4=0. 
+
+Wait, so actually n must be ≡0 mod4. 
+
+Wait, but
+
+---------------
+
+ 16 mod20 is 0 mod4. 
+
+Therefore, all the n's we are counting are multiples of4 plus
+
+---------------
+
+ 16 mod20, which are 0 mod4. 
+
+Wait, so n must be ≡0 mod4.
+
+---------------
+
+ 
+
+Wait, but 16 mod20 is 0 mod4. 
+
+Therefore, the numbers n≡16 mod20 are exactly
+
+---------------
+
+ the numbers ≡0 mod4 and ≡16 mod20. 
+
+So, in other words, n≡
+
+---------------
+
+16 mod20 is stricter than just mod4. 
+
+Therefore, all n in the count are divisible by4,
+
+---------------
+
+ so a1=2^n mod4=0, so mod4 is okay. 
+
+Therefore, the count is indeed50. 
+
+Hmm
+
+---------------
+
+, so I think the answer is 50. But let me check with another example. 
+
+Suppose n=16,
+
+---------------
+
+ which is included. 
+
+n=16 mod20. 
+
+Another number, say n=4: 4 mod20=
+
+---------------
+
+4. Then 2^4 mod25=16 mod25. So 16≠11,
+
+---------------
+
+ so not included. 
+
+n=8: 8 mod20=8. 2^8 mod25=256 mod25=256-10*25=6,
+
+---------------
+
+ so 6≠11. 
+
+n=12: 2^12 mod25=4096 mod25. 
+
+---------------
+
+2^10=24 mod25, so 2^12=24*4=96 mod25=21.
+
+---------------
+
+ 
+
+21≠11. 
+
+n=16: 2^16 mod25=11,
+
+---------------
+
+ which works. 
+
+So that's correct. 
+
+Therefore, yes, the answer is50. 
+
+Wait, but the
+
+---------------
+
+ problem says "the number of integers 1 ≤ n ≤ 1000". 
+
+Wait, but maybe I missed
+
+---------------
+
+ n=16 + 20*50=1016, but that's over 1000, so the
+
+---------------
+
+ last term is 996. So the count is indeed50. 
+
+Therefore, I think the answer is 
+
+---------------
+
+50. 
+
+**Final Answer**
+Answer: 50
+
+
+To solve the problem, we need to find the number of integers \(1 \le n \le 1000\) such that \(100\) divides \(a_{1000} - a_1\) where the sequence \(a_i\) is defined by \(a_{i+1} = 2^{a_i}\) and \(a_0 = n\).
+
+### Key Steps:
+
+1. **Modulo 4 Analysis**:
+   - \(a_1 = 2^n \mod 4\):
+
+
+---------------
+
+     - If \(n \ge 2\), \(a_1 \equiv 0 \mod 4\).
+     - If \(n = 1\), \(a_1 \equiv 2 \mod 4\).
+   - For \(i
+
+---------------
+
+ \ge 2\), \(a_i \equiv 0 \mod 4\). Thus, \(a_{1000} \equiv 0 \mod 4\).
+   - The
+
+---------------
+
+ condition \(a_{1000} \equiv a_1 \mod 4\) requires \(a_1 \equiv 0 \mod 4\), so
+
+---------------
+
+ \(n \neq 1\).
+
+2. **Modulo 25 Analysis**:
+   - Using Euler's theorem, since
+
+---------------
+
+ \(\phi(25) = 20\), we need \(a_{1000} \equiv a_1 \mod 25\).
+   - \(a_{1000} \mod 25\) is
+
+---------------
+
+ always \(11\) regardless of \(n\) (computed using properties of exponents modulo 20 and 25).
+   - Therefore
+
+---------------
+
+, \(a_1 \equiv 11 \mod 25\), which translates to solving \(2^n \equiv 11 \mod 25\).
+
+3. **Solving \(2^n \equiv 11 \mod 25\)**:
+   - The order
+
+---------------
+
+ of 2 modulo 25 is 20. Finding \(k\) such that \(2^k \equiv 11 \mod 25\) gives \(k = 16\).
+   - Solutions are \(n \equiv 16 \mod 20\).
+
+4. **Counting Valid \(n\)**:
+   - Numbers between 1 and 1000 congruent to 16 modulo 20 are: 16, 36, 56, ..., 996.
+   - This forms an arithmetic sequence with first term 16, common difference 20, and last term 996.
+   - Number of terms: \(\frac{996 - 16}{20} + 1 = 50\).
+
+### Conclusion:
+The number of integers \(1 \le n \le 1000\) that satisfy the condition is \(\boxed{50}\).
+
+Answer: 50<|im_end|>

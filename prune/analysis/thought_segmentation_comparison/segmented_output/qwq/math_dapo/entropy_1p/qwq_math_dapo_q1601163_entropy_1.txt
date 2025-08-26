@@ -1,0 +1,592 @@
+Okay, so I have this problem where a rectangular piece of paper with width 8 inches is folded so that corner A ends up at point C on the opposite side. They tell me that BC is 5 inches, and I need to find the length of the fold l. Hmm, let me try to visualize this. The Asy code draws the rectangle with A at (8,10), C at (0,6), and B at (3,10). Wait, so the rectangle is 8 inches wide (the base is from (0,0) to (8,0)), but the height is 10 inches? Because the coordinates go up to (8,10). So the rectangle is 8 by 10 inches. 
+
+Alright, so when they fold corner A (which is at (8,10)) over to point C (which is at (0,6)), the fold line l is the crease formed by this fold. The question is asking for the length of this fold. 
+
+First, I need to recall how folding over a point works. When you fold a point over a line, the line is the perpendicular bisector of the segment connecting the original point and its image after folding. So in this case, the fold line l should be the perpendicular bisector of the segment AC. Wait, is that right? Let me think. 
+
+Actually, when you fold point A onto point C, the crease line l must be the set of points equidistant from A and C. That is, it's the perpendicular bisector of the segment AC. So if I can find the equation of the perpendicular bisector of AC, then that line is the fold l. Once I have the equation, I can find where it intersects the sides of the rectangle, and then compute the distance between those two intersection points to get the length of the fold.
+
+Alternatively, maybe coordinate geometry can help here. Let me try to set up coordinates. Let me note the coordinates of all the points given. 
+
+The rectangle has corners at (0,0), (8,0), (8,10), and (0,10). So point A is (8,10). Point C is at (0,6), and point B is at (3,10). The fold is from some line l, which is drawn as dashed from (8,0) to (3,10), but actually, looking at the Asy code, the fold line is drawn from (0,6) to (8,0), but there
+
+---------------
+
+'s also a dashed line from (8,0) to (3,10). Wait, maybe I need to parse the Asy code more carefully.
+
+Wait the Asy code says:
+
+draw( (0,0) -- (8,0) -- (8, 10) -- (0, 10) -- cycle);
+So that's the rectangle. Then:
+
+draw((0,0)--(8,0)); draw((0,0)--(0,6)); draw((0,10)--(3,10));
+draw((8,0)--(3,10), 1pt+dashed);
+draw((0,6)--(3,10)); draw((0,6)--(8,0));
+label ("$l$", (6,6), SE);
+
+Hmm, so the fold line l is the dashed line from (8,0) to (3,10)? Or is it the line from (0,6) to (8,0)? Wait the label "l" is placed at (6,6), which is in the middle of the rectangle. The Asy code draws (0,6)--(8,0) and labels that as l? Let me check the code again:
+
+draw((0,6)--(8,0));
+label ("$l$", (6,6), SE);
+
+Ah, yes, so the fold line l is the line connecting (0,6) and (8,0). Wait, but (
+
+---------------
+
+0,6) is point C, and (8,0) is another corner. So the fold line is from point C to (8,0)? That seems conflicting with the problem statement. Wait, maybe I need to think
+
+---------------
+
+ again.
+
+Wait the problem says "Corner A of a rectangular piece of paper of width 8 inches is folded over so that it coincides with point C on the opposite side. If BC = 5 inches, find the length in inches of fold l."
+
+Looking at the Asy code, point B is at (3,10), which is on the top side from (0,10) to (8,10). Since the rectangle is 8 inches wide, the length along the top is 8 inches. So point B is 3 inches from the left? Wait no, (3,10) is 3 units from the left?
+
+---------------
+
+ Since the rectangle's top side is from (0,10) to (8,10), so (3,10) is 3 inches from the left corner (0,10). Wait but point A is (8,10). So the distance from A to B would be 5 inches? Let me check the coordinates. The distance between (8,10) and (3,10) is 5 inches. Oh, so BC is 5 inches. Wait, BC is given as 5 inches. Wait point B is (3,10), and point C is (0,6). So the distance between B and C is sqrt((3-0)^2 + (10-6)^2) = sqrt(9 + 16) = 5. So that checks out. So BC is indeed 5 inches. So the problem is set up correctly.
+
+Now, the fold is such that when you fold corner A (8,10) over to point C (0,6), the crease is the fold line l, which is drawn from (0,6) to (8,0). Wait, but according to the Asy code, the fold line l is drawn from (0,6) to (8,0). So that's the line we need to find the length of? Wait but the problem says "find the length in inches of fold l". So if the fold is from (0,6) to (8,0), then the length is the distance between those two points. Let me compute that distance: sqrt((8-0)^2 + (0-6)^2) = sqrt(64 + 36) = sqrt(100) = 10. But that can't be the answer because the problem says the answer is in the form k√m + n. Hmm, maybe my assumption is wrong here.
+
+Alternatively, perhaps the fold line isn't the
+
+---------------
+
+ straight line from (0,6) to (8,0). Maybe the Asy code is just illustrative, but the actual fold line is different? Wait, the Asy code draws (8,0)--(3,10) as dashed, and also (0,6)--(8,0) as solid with the label l. Maybe the fold line is actually the dashed line? Wait the label l is on the line from (0,6) to (8,0). The problem says "the fold l". Let me check again.
+
+Wait the Asy code says:
+
+draw((0,6)--(8,0));
+label ("$l$", (6,6), SE);
+
+So the line from (0,6) to (8,0) is labeled l. So that's the fold. But then the length would be 10 inches, which is just 10, so in
+
+---------------
+
+ the form k√m +n, that would be 10 = 10√1 +0, so k + m +n would be 10 +1 +0 =11. But that seems too straightforward, and the problem mentions "the answer is in the form k√m +n,", so maybe they
+
+---------------
+
+ expect a more complicated answer. 
+
+Alternatively, perhaps my understanding is incorrect. Maybe the fold line isn't that straight line. Let me think again.
+
+When folding point A over to point C, the fold line should be the perpendicular bisector of the segment AC. Let me confirm that. The fold line is the set of points equidistant from A and C. So,
+
+---------------
+
+ yes, that's the definition of perpendicular bisector. So let's compute that.
+
+Coordinates of A: (8,10), coordinates of C: (0,6). The midpoint of AC is ((8+0)/2, (10+6)/2) = (4,8). The slope of AC is (6 -10)/(0 -8) = (-4)/(-8) = 0.5. Therefore, the perpendicular bisector will have a slope of -2 (negative reciprocal). 
+
+So the equation of the perpendicular bisector (the fold line l) is:
+
+y - 8 = -2(x -4)
+
+Simplify: y = -2x +8 +8 → y = -2x +16. Wait, that can't be right. Wait let's check again.
+
+Wait midpoint is (4,8). The slope of AC is 0.5, so the perpendicular slope is -2. Therefore, the equation is:
+
+y - 8 = -2(x -4). So expanding, y = -2x +8 +8 → y = -2x +16. Hmm, but let me check if this line actually passes through (0,6) and (8,0). Let's plug in x=0: y= -2*0 +16 =16, which is not 6. Wait that's a problem. Wait
+
+---------------
+
+ so perhaps my assumption is wrong?
+
+Wait if the fold line is the perpendicular bisector, then the line should pass through the midpoint (4,8). But in the Asy code, the line l is drawn from (0,6) to (8,0), which does pass through (4, 6.5)?
+
+---------------
+
+ Wait let me check. Let's compute the equation of the line from (0,6) to (8,0). The slope is (0-6)/(8-0) = -6/8 = -3/4. So the equation is y = (-3/4)x +6. Let's see if that is the perpendicular bisector? The midpoint of AC is (4,8). Plugging into this line: y = (-3/4)(4) +6 = -3 +6 = 3. But the midpoint is (4,8), so it doesn't lie on that line. Therefore, the line from (0,6) to (8,0) is not the perpendicular bisector. So perhaps my initial thought was wrong?
+
+Hmm, so maybe I need to think differently. Let's consider
+
+---------------
+
+ the folding process. When you fold A over to C, the crease line l must be such that it is the set of points equidistant from A and C. So that is indeed the perpendicular bisector. But according to the coordinates, that line would be y = -2x +16, but that line doesn't pass through (0,6) or (8,0). Wait, so perhaps the Asy drawing is misleading? Or maybe I made a mistake in coordinates?
+
+Wait let me recast the problem. Let me consider
+
+---------------
+
+ the coordinates again. The rectangle is from (0,0) to (8,0) to (8,10) to (0,10). So the coordinates are correct. Point A is (8,10), point C is (0,6). The midpoint between A and C is indeed (4,8). The perpendicular bisector of
+
+---------------
+
+ AC is the line we need. Let me check the equation again. Slope of AC is (6 -10)/(0-8)= (-4)/(-8)=0.5. So perpendicular slope is -2. Midpoint (4,8). So equation is y -8 = -2(x -4). So that's y = -2x +8 +8 → y = -2x +16. Let me see where this line intersects the sides of the rectangle. Because the fold line must be along the edge of the paper, so it must be between two points on the sides of the rectangle.
+
+So let's find the intersections of the line y = -2x +16 with the rectangle's sides.
+
+The rectangle's sides are at x=0, x=8, y=0, y=10.
+
+Let me check intersection with top side y=10:
+
+Set y=10: 10 = -2x +16 → -2x = -6 → x =3. So point (3,10). 
+
+Intersection with the right side x=8:
+
+x=8: y= -2(8)+16= -16 +16 =0 → (8,0).
+
+Wait a second! So the perpendicular bisector intersects the top side at (3,10) and the bottom right corner at (8,0). Therefore, the fold line is from (3,10) to (8,0). Wait but in the Asy code, the dashed line is drawn from (8,0) to (3,10), which is exactly that. However, the label "l" is placed at (6,6), which is along the line from (0,6) to (8,0). Hmm, so
+
+---------------
+
+ maybe there's confusion here. The Asy code draws both (0,6)--(8,0) and (8,0)--(3,10) as lines. The label "l" is on the line from (0,6) to (8,0), but according to the problem's description, the fold line should be the perpendicular bisector, which is (3,10) to (8,0). 
+
+Wait, perhaps the Asy code is incorrect
+
+---------------
+
+? Or maybe I'm misunderstanding the problem. Let me read the problem again. 
+
+"Corner A of a rectangular piece of paper of width 8 inches is folded over so that it coincides with point C on the opposite side. If BC = 5 inches, find the length in inches of fold l."
+
+Point B is labeled at (3,10). Since BC is 5, and point C is at (0,6), the distance between (3,10) and (0,6) is indeed 5, so that's correct. 
+
+Wait, when folding A over to C, the crease should be the perpendicular bisector between A and C, so that point is correct. So the fold line is from (3,10) to (8,0). Therefore, its length would be the distance between those two points. Let me calculate that distance. 
+
+Distance between (3,10) and (8,0):
+
+sqrt[(8-3)^2 + (0 -10)^2] = sqrt[25 + 100] = sqrt(125) = 5*sqrt(5). 
+
+But the problem says the answer is in the form k√m +n. Hmm, 5√5 is already in that form with k=5, m=5, n=0, so 5+5+0=10? But the problem might be expecting a different form? Wait, but maybe my assumption is wrong here. 
+
+Alternatively, perhaps the fold line is not from (3,10) to (8,0). Let me see. If the fold is such that when you fold A over to C, then the crease must lie on the paper. The line y=-2x +16 is passing through (3,10) and (8,0), so those are the endpoints on the rectangle. Therefore, that should be the fold line. So
+
+---------------
+
+ its length is sqrt(125)=5√5. 
+
+But the problem mentions the answer is in the form k√m +n. If
+
+---------------
+
+ that's the case, then 5√5 +0, so k=5, m=5, n=0, so total 5+5+0=10. However, maybe the answer is presented differently? Let me check the Asy code again. The Asy code draws the line (0,6)--(8,0) as well
+
+---------------
+
+, which is labeled as l. Wait, but according to the problem's Asy code, the fold l is that line. But according to the math
+
+---------------
+
+, it should be the perpendicular bisector. 
+
+Wait, maybe I made a mistake here. Let me think again. Let
+
+---------------
+
+ me consider coordinates. Let me denote the fold line as l. When folding A over to C, the fold line must be the set of points equidistant from A and C. Therefore, any point on the fold line is equidistant to A and C. Let me pick a point on the line l given
+
+---------------
+
+ in Asy code: say (0,6). The distance from (0,6) to A (8,10) is sqrt(8² +4²)=sqrt(80). The distance from (0,6) to C (0,6) is 0. So clearly, (0,6) is not equidistant to A and C. Therefore, that line can't be the fold line. 
+
+Alternatively, the fold line must be the perpendicular bisector. The line from (3,10) to (8,0) is the perpendicular bisector. Let me check if a point on that line is equidistant to A and C. Let's take the midpoint (4,8). Distance to A: sqrt((8-4)^2 + (10-8)^2)=sqrt(16 +4)=sqrt(20). Distance to C: sqrt((0-4)^2 + (6-8)^2)=sqrt(16 +4)=sqrt(20). So that works. Another point: (3,10). Distance to A is sqrt((8-3)^2 +0)=5, distance to C is sqrt((0-3)^2 + (6-10)^2)=sqrt(9+16)=5. So that works. Similarly, (8,0): distance to A is sqrt(0 +100)=10, distance to C is sqrt(64 +36)=sqrt(100)=10. So that also works. Therefore, the fold line is indeed the perpendicular bisector between A and C, which is the line from (3,10) to (8,0). 
+
+Therefore, the length of the fold l is the distance between (3,10) and (8,0). As calculated before, sqrt( (8-3)^2 + (0 -10)^2 ) = sqrt(25 +100) = sqrt(125) = 5*sqrt(5). Therefore, the answer is 5√5, so k=5, m=5, n=0, so 5+5+0=10. But the problem says "the answer is in the form k√m +n," so maybe there's another way to express it? Wait, perhaps I made an error here. Let me check once again. 
+
+Alternatively, maybe the fold line isn't from (3,10) to (8,0). Let me think of the As
+
+---------------
+
+y code again. The Asy code draws the line from (0,6) to (8,0) as l, which is labeled as l. But according to the math, that can't be. Wait
+
+---------------
+
+, but perhaps the Asy code is incorrect, or the problem is different? Wait, maybe the fold is such that when folding A over to C, the crease must intersect the sides at different points. 
+
+Alternatively, perhaps I need to use coordinate geometry to set up equations for the fold line. Let me consider the fold line as a line that when folded over, point A maps to point C. Let me denote the fold line as l. Let me suppose that l intersects the top side (y=10) at point D and the bottom side (y=0) at point E. Then the fold line is DE. 
+
+Since
+
+---------------
+
+ folding over A to C, the line l is the perpendicular bisector of AC. Therefore, as before, the perpendicular bisector passes through (3,10) and (8,0). Therefore, the fold line is DE where D is (3,10) and E is (8,0). So the length DE is sqrt(125)=5√5. 
+
+Alternatively, maybe the problem is considering the fold line as going
+
+---------------
+
+ from (0,6) to (8,0), but that can't be because that line isn't the perpendicular bisector. Let
+
+---------------
+
+ me check coordinates again. 
+
+Wait, perhaps there's a miscalculation here. Let me recalculate the perpendicular bisector. The coordinates of A (8,10) and C (0,6). The midpoint is (4,8). The slope of AC is (6-10)/(0-8)= (-4)/(-8)=0.5, so the perpendicular slope is -2. 
+
+Therefore, the equation is y -8 = -2(x -4). Let me check
+
+---------------
+
+ if (3,10) is on that line: plug x=3, y=10. 
+
+Left side: 10 -8 =2. Right side: -2*(3 -4)= -2*(-1)=2. So yes, (3,10) is on the line. 
+
+Check (8,0): plug x=8, y=0. Left side: 0-8=-8. Right side: -2*(8-4)= -2*4=-8. Correct. 
+
+Therefore, the line passes through those two points, so that's correct. 
+
+Therefore, the length of the fold is the distance between (3,10) and (8,0). Which is sqrt( (8-3)^2 + (0-10)^2 ) = sqrt(25 +100)=sqrt(125)=5*sqrt(5). 
+
+Therefore, the answer is 5√5, so k=5, m=5, n=0, so 5+5+0=10. But the problem says "the answer is in the form k√m +n," so perhaps they want it written as 5√5 +0, so indeed the sum is 10. 
+
+Wait but maybe I misread BC? Let me confirm. BC is 5. The coordinates of B are (3,10), C is (0,6). The distance between them is sqrt( (3)^2 + (4)^2 )=5, which is correct. So that's consistent. 
+
+Alternatively, perhaps the problem is in 3D, but no, it's a flat piece of paper. Hmm. Alternatively, maybe the rectangle is 8 inches in height? Wait the problem says "width 8 inches". The Asy code shows the base as 8 units. So width is 8, height is 10. 
+
+Alternatively, maybe I misapplied the perpendicular bisector? Let me think of another approach. Let me denote the fold line as l. Let me suppose that after folding, point A coincides with point C. So the fold line l is the set of points equidistant from A and C. Therefore, for any point P on l, PA = PC. 
+
+Let me parametrize the fold line. Let me suppose the fold line intersects the top side (y=10) at point D and the right side (x=8) at point E. Wait, but in our previous calculation, it intersects the top side at (3,10) and the bottom side at (8,0). Wait, so
+
+---------------
+
+ perhaps the fold line goes from (3,10) to (8,0). 
+
+Alternatively, maybe the fold line intersects the left side (x=0) at some point and the bottom side (y=0) at another point. Let me check. Let me see where the perpendicular bisector intersects the left side (x=0). 
+
+The
+
+---------------
+
+ equation of the fold line is y = -2x +16. At x=0, y=16, but the rectangle only goes up to y=10, so that's outside the rectangle. Therefore, the fold line only intersects the top side at (3,10) and the bottom side at (8,0). Therefore, those are the endpoints. 
+
+Therefore, the length is indeed 5√5. So the answer is 5√5, which is in the form k√m +n with k=5, m=5, n=0. Hence, k + m +n =5+5+0=10. 
+
+But wait, the problem's Asy code draws the line from (0,6) to (8,0) as l. Maybe the problem is different? Let me check the problem statement again. It says "find the length in inches of fold l." If in the Asy code, the fold line is drawn as that line, but according to the math, it's another line. 
+
+
+
+---------------
+
+Wait, perhaps there's a misunderstanding. Let me consider that when folding corner A to point C, the fold line might not be the perpendicular bisector but something else. Wait, but
+
+---------------
+
+ in folding, the crease must be the perpendicular bisector. Let me think of the reflection: point A reflects over line l to point C. So line l is the perpendicular bisector of AC, so that's correct. 
+
+Alternatively, perhaps the problem is not
+
+---------------
+
+ in the way I thought. Let me try using coordinate geometry to find the equation of the fold line. Let me suppose that the fold line is some line, and when you fold over that line, point A maps to point C. 
+
+Suppose the fold line is y
+
+---------------
+
+ = mx + b. The reflection of point A (8,10) over this line must be point C (0,6). 
+
+The formula for reflection over a line ax + by + c =0 is known, but maybe it's easier to use vector projections. 
+
+Alternatively, the midpoint between A and C must lie on the fold line. The midpoint is (4,8), so that point must be on the fold line. Also, the fold line must be perpendicular to the vector AC. 
+
+Vector AC is from A to C: (-8, -4). The direction of AC is (-8, -4), so the direction perpendicular to that is (4, -8) or (1, -2). Therefore, the slope of the fold line is -2, which matches previous calculation. 
+
+So the fold line has slope -2 and passes through (4,8). So the equation is y = -2x + 16. 
+
+Now
+
+---------------
+
+, to find where this line intersects the rectangle. The rectangle has sides at x=0, x=8, y=0, y=10. 
+
+Intersection with the top edge (y=10):
+
+Set y=10: 10 = -2x +16 → -2x = -6 → x=3 → (3,10). 
+
+Intersection with the bottom edge (y=0):
+
+0 = -2x +16 → x=8 → (8,0). 
+
+Intersection with the left edge (x=0):
+
+y = -2*0 +16 =16, which is above the rectangle. 
+
+Intersection with the right edge (x=8):
+
+y= -2*8 +16 =0 → (8,0), which is already considered. 
+
+Therefore, the fold line only intersects the top at (3,10) and the bottom at (8,0). So the length between these points is sqrt( (8-3)^2 + (0 -10)^2 ) = sqrt(25 + 100)=sqrt(125)=5√5. 
+
+Therefore, the answer must be 5√5, so k + m +n =5+5+0=10. 
+
+But the problem's Asy code shows the fold line as from (0,6) to (8,0). Maybe the Asy code is incorrect, or perhaps I'm missing something. Alternatively, maybe the question is asking
+
+---------------
+
+ for a different fold? Let me read the problem again. 
+
+"Corner A of a rectangular piece of paper of width 8 inches is folded over so that it coincides with point C on the opposite side. If BC = 5 inches, find the length in inches of fold l."
+
+Wait, point C is on the "opposite side". Since A is on the top right corner (8,10), the opposite side would be the bottom left side? Wait, the rectangle has four sides. The opposite side of the top side (where A is) is the bottom side. So point C is on the opposite side (the bottom side). But in the coordinates given, point C is at (0,6), which is on the left side (x=0). Hmm, so maybe "opposite side" is ambiguous? The problem might mean the opposite edge, but in the Asy code, point C is on the left side, which is adjacent, not opposite. 
+
+Alternatively, perhaps the problem is in 3D, but no. Wait, perhaps the width
+
+---------------
+
+ is 8 inches, so the sides with length 8 are the bottom and top. Therefore, the opposite side of A (which is on the top side) would be the bottom side. But point C is on the left side, which is not the opposite. Maybe there's a misinterpretation here. 
+
+Alternatively, maybe the problem is in the Asy code. The Asy code draws the rectangle with width 8 (from (0,0) to (8,0)), and height 10. Point C is at (0,6) on the left side, which is adjacent to the bottom-left corner. 
+
+Wait, perhaps "opposite side" refers to the side opposite to corner A's corner. Since corner A is at (8,10), which is the top-right corner, the opposite corner is (0,0). So the opposite side would be the side at (0,0). But point C is at (0,6), which is on the left side. 
+
+Alternatively, maybe "opposite side" just means any side not containing A. Since A is on the top side, the opposite sides would be the bottom, left, or right? Not sure. 
+
+Alternatively, maybe the problem is correct, and the Asy code's fold line is not
+
+---------------
+
+ the actual fold. Maybe the fold line is from (3,10) to (8,0), which is the perpendicular bisector, so the length is 5√5. 
+
+Alternatively, let me think of another approach. Let me suppose that when folding A to C, the crease line is the fold l. Let me denote the coordinates of the fold line as some
+
+---------------
+
+ line, and then use the reflection condition. 
+
+Let me suppose that the fold line intersects the top edge at point D (x1,10) and the bottom edge at point E (x2,0). The line DE is the fold line l. 
+
+When folding A over DE to point C, the reflection of A over DE is C. 
+
+The midpoint between A and C must lie on DE. The midpoint is (4,8). Therefore, DE must pass through (4,8). 
+
+The line DE has two points: D (x1,10) and E (x2,0). 
+
+The midpoint (4,8) must lie on DE. Therefore, the midpoint between D and E must be (4,8). Wait no, the midpoint between A and C is (4,8), which is on DE. 
+
+Also, the line DE must be perpendicular to the vector AC. 
+
+Vector AC is from A (8,10) to C (0,6): (-8, -4). The direction of AC is (-8, -4), so the direction perpendicular is (4, -8). 
+
+Therefore, the slope of DE is ( -8 / 4 ) = -2, which matches previous calculation. 
+
+So the line DE has slope -2 and passes through (4,8). 
+
+Therefore
+
+---------------
+
+, the equation is y -8 = -2(x -4). 
+
+To find points D and E: 
+
+Point D is on the top edge (y=10):
+
+10 = -2(x -4) +8 → 10 -8 = -2x +8 → 2 = -2x +8 → -6 = -2x → x=3. So D=(3,10). 
+
+Point E is on the bottom edge (y=0):
+
+0 = -2(x -4) +8 → -8 = -2(x -4) → 4 = x -4 → x=8. So E=(8,0). 
+
+Therefore, DE is from (3,10) to (8,0), distance sqrt( (5)^2 + (-10)^2 )=sqrt(125)=5√5. 
+
+Therefore, the answer is 5√5. 
+
+Given
+
+---------------
+
+ that the problem mentions the answer is in the form k√m +n, then 5√5 can be written as 5√5 +0, so k=5, m=5, n=0. Thus, k + m +n =5 +5 +0=10. 
+
+Therefore, I think the answer is 10. 
+
+Wait, but just to confirm, since the problem's Asy code draws another line, but according to the mathematics, it should be 5√5. Maybe
+
+---------------
+
+ the problem's Asy code is just illustrative, and the fold line is indeed that. So I think the answer is 5√5, so the sum is 10. 
+
+Wait, but let me check if I have another possible fold line. Suppose the fold line is from (0,6) to (8,0), which is length sqrt( (8)^2 + ( -6)^2 )=sqrt(64 +36)=sqrt(100)=10. But 
+
+---------------
+
+10 can be written as 10√1 +0, so k=10, m=1, n=0, so 10+1+0=11. 
+
+But that
+
+---------------
+
+ contradicts the previous result. So which is correct? 
+
+Wait, according to the problem, when you fold A to C, the crease must be the perpendicular bisector, so the fold
+
+---------------
+
+ line is from (3,10) to (8,0). The length is 5√5. Therefore, the answer must be 5√5. 
+
+Alternatively, maybe the problem is considering
+
+---------------
+
+ the fold line as the line BC? But BC is from (3,10) to (0,6), which is length 5. Not the
+
+---------------
+
+ case. 
+
+Alternatively, maybe I made a mistake in the perpendicular bisector calculation. Wait, let me recalculate the distance between (3,10) and (8,0):
+
+Difference in x: 8-3=5, difference in y: 0-10= -10. So squared differences: 25 +100=125. Square root is sqrt(125)=5√5. Correct. 
+
+Alternatively, perhaps the problem states the width is 8 inches, but in the Asy code, the rectangle's height is 10. If the width is 8, the other side (the height) is 10? Then the rectangle is 8x10. So the
+
+---------------
+
+ previous calculations hold. 
+
+Therefore, I think the correct answer is 5√5, so 5+5+0=10. 
+
+But let
+
+---------------
+
+ me check online for similar problems. Wait, perhaps the problem is from an Olympiad, and the answer is 13? Hmm, but without access. Alternatively, let me think again. 
+
+Wait, perhaps I miscalculated the coordinates. Let me see, the fold line from (3,10) to (8,0). The distance between these two points is sqrt( (8-3)^2 + (0-10)^2 ) = sqrt(25 + 100)=sqrt(125)=5√5. 
+
+Alternatively, the problem might be expecting the length along the fold line which
+
+---------------
+
+ is inside the paper. Since the fold line goes from (3,10) to (8,0), which is entirely within the rectangle except for the endpoints. Wait no, those endpoints are on the edges. 
+
+Alternatively, maybe the fold line is not along that line. Let me think of the fold
+
+---------------
+
+ another way. Let me suppose that when folding corner A over to point C, the crease line must form a triangle with the sides. 
+
+Alternatively, using coordinate geometry, suppose the fold line is from
+
+---------------
+
+ point (x,0) on the bottom edge to point (0,y) on the left edge. Wait but according to previous calculations, the fold line doesn't reach the left edge. 
+
+Alternatively, perhaps parametrize the fold line as follows: Let me suppose that when folding A over to C, the crease line is l, and the image
+
+---------------
+
+ of A is C. Therefore, for any point on the crease line, it is equidistant to A and C. 
+
+Let me suppose
+
+---------------
+
+ that the crease line intersects the bottom edge (y=0) at point E (a,0) and the top edge (y=10) at point D (b,10). 
+
+The crease line must satisfy that the midpoint between A(8,10) and C(0,6) lies on the crease. The midpoint is (4,8), so this must lie on the line connecting (a,0) and (b,10). 
+
+The line from (a,0) to (b,10) must pass through (4,8). 
+
+The slope of the line is (10 -0)/(b -a) = 10/(b -a). The slope between (a,0) and (4,8) must be the same as between (4,8) and (b,10). 
+
+So:
+
+Slope from (a,0) to (4,8): (8-0)/(4 -a) =8/(4 -a).
+
+Slope from (4,8) to (b,10): (10-8)/(b -4)=2/(b -4).
+
+These slopes must be equal:
+
+8/(4 -a) = 2/(b -4)
+
+Cross multiply: 8(b -4)=2(4 -a)
+
+Divide both sides by 2: 4(b-4)=4 -a → 4b -16 =4 -a → a +4b =20 → equation 1.
+
+Also, the line must have slope perpendicular to AC. The direction of AC is (-8, -4), so the crease line must have direction perpendicular to that, so direction (4, -8). Therefore, the slope of crease is -2. 
+
+The slope of crease line is (10 -0)/(b -a) = 10/(b -a). This must equal -2. 
+
+Therefore, 10/(b -a)= -2 → b -a= -5 → b =a -5. 
+
+Now, substitute into equation1: a +4b =20 → a +4(a-5)=20 → a +4a -20=20 →5a=40 →a=8. 
+
+Then, b =8 -5=3. 
+
+Therefore, points are E=(8,0) and D=(3,10). So the crease line is between (8,0) and (3,10), confirming previous results. 
+
+Thus, distance is sqrt( (8-3)^2 + (0-10)^2 )=5√5. 
+
+Therefore, the answer is indeed 5√5. So the problem's Asy code must have a mistake in labeling the fold line as from (0,6) to (8,0), but according to the math, it's from (3,10) to (8,0). 
+
+Therefore, the final answer is 5√5, so k + m + n =5 +5 +0=10. 
+
+Wait, but the problem mentions "the answer is in the form k√m +n," so maybe they want it written as 5√5 +0, so indeed 5+5+0=10. 
+
+Alternatively, maybe I missed a term? Wait 5√5 is already in simplest form. 
+
+Alternatively, perhaps I made an error in the
+
+---------------
+
+ problem interpretation. The problem says "the opposite side." Since A is on the top side, the opposite side would be the bottom side. But point C is on the left side. Hmm, but the problem says "point C on the opposite side," so maybe "opposite side" is the side opposite to where A is. Since A is on the top side, the opposite side is the bottom side, so C should be on the bottom side. But in the Asy code, C is at (0,6) on the left side. 
+
+Wait, this might be the key. Maybe there's a misinterpretation here. If the problem states that point C is on the opposite side of A, then opposite side would mean the side not containing A. Since A is on the top side (the top edge), then the opposite side is the bottom side (the bottom edge). Therefore, point C should be on the bottom edge. However, in the Asy code, point C is at (0,6), which is on the left edge. That might be an error in the problem statement or the diagram. 
+
+If point C were on the bottom side, say (x,0), then the problem would be different. Let me check
+
+---------------
+
+. If point C is on the bottom side (y=0), then coordinates of C would be (something,0). But
+
+---------------
+
+ the problem says BC=5. Point B is at (3,10). If C is on the bottom, then distance from B(3,10) to C(x,0) is sqrt( (x-3)^2 + (0-10)^2 ) = sqrt( (x-3)^2 +100 ). Setting this equal to 5 would require (x-3)^2 +100 =25 → (x-3)^2= -75, which is impossible. 
+
+Therefore, point C cannot be on the bottom side. Therefore, the problem must mean that the opposite side is the left side (since A is on the right side). The rectangle's sides are left (x=0), right (x=8), top (y=10), bottom (y=0). So the opposite side of the right side (where A is) is the left side. So point C is on the left side (x=0). Therefore
+
+---------------
+
+, the coordinates given in the Asy code are correct. 
+
+Therefore, the answer must be 5√5, so the sum is 10. 
+
+Therefore
+
+---------------
+
+, I think the correct answer is 10.
+
+**Final Answer**
+\boxed{10}
+
+
+To solve the problem of finding the length of the fold \( l \) when corner \( A \) of a rectangular piece of paper (8 inches wide and 10 inches tall) is folded over to point \( C \) on the opposite side, we start by identifying the coordinates of the points involved. 
+
+- Corner \( A \) is at \( (8, 10) \).
+- Point \( C \) is at \( (0, 6) \).
+- Point \( B \) is at \( (3, 10) \), and \( BC = 5 \) inches is confirmed by calculating the distance between \( (3, 10) \) and \( (0, 6) \).
+
+The fold line \( l \) must be the perpendicular bisector of the segment \( AC \). 
+
+1. **Midpoint Calculation**:
+   - The midpoint of \( AC \) is \( \left( \frac{8+0}{2}, \frac{10+6}{2} \right) = (4, 8) \).
+
+2. **Slope Calculation**:
+   - The slope of \( AC \) is \( \frac{6 - 10}{0 - 8} = \frac{-4}{-8} = 0.5 \).
+   - The slope of the perpendicular bisector is the negative reciprocal, \( -2 \).
+
+3. **Equation of the Perpendicular Bisector**:
+   - Using the midpoint \( (4, 8) \) and slope \( -2 \), the equation is \( y - 8 = -2(x - 4) \).
+   - Simplifying, we get \( y = -2x + 16 \).
+
+4. **Intersection Points with the Rectangle**:
+   - **Top side (y = 10)**:
+     - Solving \( 10 = -2x + 16 \) gives \( x = 3 \). Thus, the intersection point is \( (3, 10) \).
+   - **Bottom side (y = 0)**:
+     - Solving \( 0 = -2x + 16 \) gives \( x = 8 \). Thus, the intersection point is \( (8, 0) \).
+
+5. **Length Calculation**:
+   - The distance between the points \( (3, 10) \) and \( (8, 0) \) is calculated as:
+     \[
+     \sqrt{(8 - 3)^2 + (0 - 10)^2} = \sqrt{25 + 100} = \sqrt{125} = 5\sqrt{5}
+     \]
+
+The length of the fold \( l \) is \( 5\sqrt{5} \), which is in the form \( k\sqrt{m} + n \) with \( k = 5 \), \( m = 5 \), and \( n = 0 \). Therefore, \( k + m + n = 5 + 5 + 0 = 10 \).
+
+\[
+\boxed{10}
+\]<|im_end|>

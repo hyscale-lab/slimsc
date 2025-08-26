@@ -1,381 +1,500 @@
-Okay, let me try to tackle this problem. We need to find the number of triples of nonnegative integers (a, b, c) such that:
+Okay, so I need to find the number of triples (a, b, c) of nonnegative integers such that a + b + c = 300 and the expression a²b + a²c + b²a + b²c + c²a + c²b equals 6,000,000. Hmm, that seems a bit complex at first glance, but maybe I can break it down.
 
-1. a + b + c = 300
-2. a²b + a²c + b²a + b²c + c²a + c²b = 6,000,000
-
-Hmm, that
+First, let me note
 
 ---------------
 
-'s a bit intimidating, but let's break it down step by step.
-
-First, let's recall that the problem involves symmetric
+ that the problem is about three variables adding up to 300, and a symmetric expression involving their squares and products. Since the equation
 
 ---------------
 
- expressions in a, b, and c. The first equation is straightforward—it's the sum of the three variables. The second equation is a bit more complex;
+ is symmetric in a, b, and c, maybe there's a way to exploit that symmetry. Perhaps I can assume some ordering,
 
 ---------------
 
- it's the sum of all possible terms where two variables are squared and multiplied by the third. Since the equation is symmetric, maybe there's a way to simplify
+ like a ≤ b ≤ c, solve it under that condition, and then multiply by the number of permutations? But before jumping into that, let me see if I can manipulate the given equations algebra
 
 ---------------
 
- it using some algebraic identities.
+ically.
 
-Let me think about the second equation. Let's denote S = a + b + c. We know S = 300 here. Maybe
-
----------------
-
- we can express the second equation in terms of S and other symmetric sums?
-
-The second equation is:
-
-a²b + a²c + b²a + b²c + c²a + c²b = 6,000,000.
-
-I
+The first equation is straightforward: a + b + c = 300. The second equation is a²b + a²c + b²a + b²c + c²a + c²b = 6,000,000. Let me see if I can factor or rewrite that expression to
 
 ---------------
 
- notice that each term is of the form (variable squared) times (another variable). Let me see if I can factor this expression or relate it to known symmetric sums.
+ make it simpler.
 
-Another
+Looking at the terms in the second equation, each term is of the form (variable)^2 multiplied by another variable. For
 
 ---------------
 
- thought: perhaps we can factor this expression. Let me try grouping terms:
+ example, a²b and a²c are terms where a is squared and multiplied by the other variables. Since the expression is symmetric, maybe we
 
-a²b + a²c = a²(b + c)
-Similarly, b²a + b²c = b²(a + c)
-And c²a + c²b = c²(a + b)
+---------------
 
-So the entire expression becomes:
+ can factor it somehow?
+
+Alternatively, notice that the expression can be rewritten as:
 
 a²(b + c) + b²(a + c) + c²(a + b)
 
-Hmm, that
+Yes
 
 ---------------
 
-'s a bit better. Since we know that a + b + c = 300, then b + c = 300 - a, a + c = 300 - b, and a + b = 300 - c. Let's substitute these into the expression:
+, that seems right. Let me check:
 
-a
+a²b + a²c = a²(b + c)
 
----------------
-
-²(300 - a) + b²(300 - b) + c²(300 - c)
-
-So the equation becomes:
-
-a²(300 - a) + b²(300 - b) + c²(300 - c) = 6,000,000
-
-Hmm, that
+Similarly for the other terms. So the
 
 ---------------
 
-'s a good simplification. Let me write that down:
+ entire expression is:
+
+a²(b + c) + b²(a + c) + c²(a + b)
+
+Now
+
+---------------
+
+, since a + b + c = 300, we can substitute (b + c) with (300 - a), (a + c) with (300 - b), and (a + b) with (300 - c). Let me try that substitution.
+
+So substit
+
+---------------
+
+uting:
 
 a²(300 - a) + b²(300 - b) + c²(300 - c) = 6,000,000.
 
-
-
----------------
-
-Now, since a, b, c are nonnegative integers adding up to 300, each of them is between 0 and 300. Maybe
+Hmm, that
 
 ---------------
 
- there's a way to express this equation in terms of S and other known terms?
+'s interesting. So now the equation becomes:
 
-Alternatively, perhaps we can consider substituting variables.
-
----------------
-
- Let me think if there's a substitution that can make this easier.
-
-Alternatively, maybe consider that since the equation is symmetric, perhaps
-
----------------
-
- the solutions have some symmetry themselves. For example, maybe two variables are equal, or all three are equal? Let's check if
-
----------------
-
- all three variables equal could be a solution.
-
-If a = b = c, then each would be 100,
-
----------------
-
- since 3*100 = 300. Let's check the second equation:
-
-Each term would be 100²*100 + 100²*100 + ... Wait
-
----------------
-
-, no, hold on. Wait, actually, each term in the original expression is of the form a²b, so if
-
----------------
-
- all variables are 100, then each term would be 100²*100. There are six terms,
-
----------------
-
- so total would be 6*(100^3). But 100^3 is 1,000,000, so 6*1,000,000 is 6,000,000. Oh
-
----------------
-
-! That's exactly the value given in the problem. So (100, 100, 100) is a solution.
-
-So
-
----------------
-
- that's one solution. But the problem is asking for all triples, so there might be more. Let's see.
-
-Since
-
----------------
-
- the problem is symmetric, perhaps all permutations of some triples where two variables are equal, or maybe other configurations?
-
-Alternatively, maybe there
-
----------------
-
-'s another approach. Let's consider expanding the expression or trying to relate it to (a + b + c)^3 or something like
-
----------------
-
- that.
-
-Wait, let's recall that:
-
-(a + b + c)^3 = a^3 + b^3 + c^3 + 3(a²b + a²c + b²a + b²c + c²a + c²b) + 6abc.
-
-Hmm, that's
-
----------------
-
- a standard identity. Let me verify that:
-
-Yes, (a + b + c)^3 expands to:
-
-a^3 + b^3 + c^3 + 3a²b + 3a²c + 3b²a + 3b²c + 3c²a + 3c²b + 6abc.
-
-So,
-
----------------
-
- rearranged:
-
-(a + b + c)^3 = a^3 + b^3 + c^3 + 3*(a²b + a²c + b²a + b²c + c²a + c²b) + 6abc.
-
-Therefore
-
----------------
-
-, the term we have in the problem, which is a²b + a²c + ... + c²a, is equal to [ (a + b + c)^3 - (a^3 + b^3 + c^3) - 6abc ] / 3.
-
-But
-
----------------
-
- since we know a + b + c = 300, perhaps this identity can help us?
-
-Given that, let's denote
-
----------------
-
-:
-
-Let me write down the identity again:
-
-Let S = a + b + c = 300.
-
-Then,
-
-S^3 = a^3 + b^3 + c^3 + 3*(expression
-
----------------
-
-) + 6abc,
-
-so,
-
-expression = [S^3 - (a^3 + b^3 + c^3) - 6abc]/3.
-
-We
-
----------------
-
- know the expression is given as 6,000,000. Let me plug in S = 300:
-
-So
-
----------------
-
-,
-
-6,000,000 = [300^3 - (a^3 + b^3 + c^3) - 6abc]/3.
-
-Multiply both sides by 3:
-
-18,000,000 = 300^3 - (a^3 + b^3 + c^3) - 6abc.
-
-Compute
-
----------------
-
- 300^3: 300*300*300 = 27,000,000.
-
-Therefore:
-
-18,000,000 = 27,000,000 - (a^3 + b^3 + c^3) - 6abc
-
-Rearranged:
-
-(a^3 + b^3 + c^3) + 6abc = 27,000,000 - 18,000,000 = 9,000,000.
-
-So,
-
-
-
----------------
-
-a^3 + b^3 + c^3 + 6abc = 9,000,000.
-
-Hmm, interesting
-
----------------
-
-. Now, perhaps we can find a relationship here?
-
-Alternatively, perhaps we can use another identity. There's an identity that relates
-
----------------
-
- a^3 + b^3 + c^3 - 3abc = (a + b + c)(a^2 + b^2 + c^2 - ab - bc - ca).
-
-But here, we have a^3 + b^3 + c^3 + 6abc. Hmm. Let me see.
-
-Alternatively
-
----------------
-
-, let's consider that:
-
-a^3 + b^3 + c^3 + 6abc = ?
-
-Hmm, perhaps
-
----------------
-
- we can relate this to (a + b + c)^3 somehow?
-
-Wait, we already used that. Alternatively, perhaps factor
-
----------------
-
- differently?
-
-Alternatively, perhaps let me think of the equation:
-
-a^3 + b^3 + c^3 + 6abc = 9,000,000.
+a²(300 - a) + b²(300 - b) + c²(300 - c) = 6,000,000.
 
 Hmm
 
 ---------------
 
-, but maybe this is a bit too abstract. Let's see if we can find another equation involving a, b, c.
-
-We know
+. Maybe I can consider each term individually. Let me denote S = a + b + c = 300, so each term is like
 
 ---------------
 
- that a + b + c = 300. Let me also consider the sum of squares or products.
+ x²(S - x). Let me see if I can find some relationship here.
 
-Alternatively, maybe
-
----------------
-
- let's consider variables in terms of two variables. Since a + b + c = 300, we can set
+Alternatively, perhaps expanding the original expression might
 
 ---------------
 
- c = 300 - a - b, and then express everything in terms of a and b. But this might get complicated, but perhaps manageable?
+ help? Let me see:
 
-Alternatively, maybe
-
----------------
-
- let's think of the case where two variables are equal, since the problem is symmetric. Let me try that approach first,
+Wait, the original expression is a²b + a²c + b²a + b²c + c²a + c²b. Let me note
 
 ---------------
 
- as the solution (100,100,100) is symmetric.
+ that this can also be written as (a + b + c)(ab + bc + ca) - 3abc. Wait, let me verify that.
 
-Suppose two variables are equal, say a = b. Then c = 300 - 2a.
-
-Then
+Let
 
 ---------------
 
-, let's plug into the second equation.
+ me compute (a + b + c)(ab + bc + ca):
 
-First, compute the expression a²b + a²c + b²a + b²c + c²a + c²b.
+(a + b + c)(ab + bc + ca) = a(ab) + a(bc) + a(ca) + b(ab) + b(bc) + b(ca) + c(ab) + c(bc) + c(ca)
 
-Since a = b,
+Simplify each term:
 
-=
+= a²b + abc + a²c + ab² + b²c + abc + abc + bc² + c²a
 
----------------
-
- a²a + a²c + a²a + a²c + c²a + c²a
-
-= 2a³ + 2a²c + 2a c²
-
-=
+Wait
 
 ---------------
 
- 2a³ + 2a²c + 2a c²
+, that's a bit messy. Let me collect like terms:
 
-Factor 2a:
-
-= 2a(a² + a c + c²)
-
-But c = 300 - 2a, so substituting:
-
-= 2a [a² + a(300 - 2a) + (300 - 2a)^2 ]
-
-Let me compute that
+The terms with a²b, a²c, b²a, b²c, c²a, c²b are
 
 ---------------
 
- step by step.
+ all present once, except for the cross terms like abc. How many abc terms are there?
 
-First, compute the terms inside the brackets:
-
-a² + a(300 - 2a) + (300 - 2a)^2
-
-First
+Looking at the expansion, each
 
 ---------------
 
- term: a²
+ of the three variables (a, b, c) is multiplied by the other two terms, so:
 
-Second term: 300a - 2a²
+Each term like a*(bc) gives
 
-Third term: Let's expand (300 - 2a)^2 = 300² - 4*300a + 4a² = 90,000 - 1200a + 4a²
+---------------
+
+ abc, similarly for b*(ac) and c*(ab). So there are three abc terms. So the total expansion is:
+
+(a + b + c)(ab + bc + ca) = (a²b + a²c + b²a + b²c + c²a + c²b) + 3abc
+
+Therefore, rearranged:
+
+a²b + a²c + b²a + b²c + c²a + c²b = (a + b + c)(ab + bc + ca) - 3abc
 
 So
 
 ---------------
 
- adding all three terms:
+ that's a useful identity! Therefore, the given equation can be rewritten as:
 
-a² + (300a - 2a²) + (90,000 - 1200a + 4a²)
+(a + b + c)(ab + bc + ca) - 3abc = 6,000,000
+
+But
+
+---------------
+
+ we know that a + b + c = 300, so substituting that in:
+
+300*(ab + bc + ca) - 3abc = 6,000,000
+
+Hmm
+
+---------------
+
+, so that gives another equation involving ab + bc + ca and abc. Let me write that down:
+
+300*(ab + bc + ca) - 3abc = 6,000,000
+
+Let
+
+---------------
+
+ me divide both sides by 3 to simplify:
+
+100*(ab + bc + ca) - abc = 2,000,000
+
+So now
+
+---------------
+
+, the problem reduces to solving the system:
+
+1. a + b + c = 300
+
+2. 100*(ab + bc + ca) - abc = 2,000,000
+
+Hmm. Now
+
+---------------
+
+, perhaps I can let variables x = a, y = b, z = c. But maybe there's a substitution here. Let me think.
+
+
+
+---------------
+
+Alternatively, let me denote S = a + b + c = 300, P = abc, and Q = ab + bc + ca. Then the
+
+---------------
+
+ second equation becomes:
+
+100*Q - P = 2,000,000
+
+So,
+
+---------------
+
+ P = 100*Q - 2,000,000
+
+But we also know that in terms of symmetric sums, for three variables:
+
+(a + b + c)^2 = a² + b² + c² + 2(ab + bc + ca)
+
+So, S
+
+---------------
+
+² = (a² + b² + c²) + 2Q
+
+Therefore, a² + b² + c² = S² - 2Q = 300² - 2Q = 90,000 - 2Q
+
+But I'm not sure if that helps yet
+
+---------------
+
+. Alternatively, perhaps we can think of variables in terms of symmetric polynomials. But maybe we can consider some substitution here.
+
+Alternatively, perhaps
+
+---------------
+
+ we can let variables be in terms of two variables. Since a + b + c = 300, we can express
+
+---------------
+
+ c = 300 - a - b. Then substitute into the second equation and see if we can find possible integer
+
+---------------
+
+ solutions.
+
+Let me try that approach. Let me set c = 300 - a - b. Then substitute into the second equation.
+
+
+
+---------------
+
+First, let me recall that the second equation is:
+
+100*(ab + bc + ca) - abc = 2,000,000
+
+Let
+
+---------------
+
+ me compute ab + bc + ca and abc in terms of a and b.
+
+First, compute ab + bc + ca:
+
+ab + bc + ca = ab + b*(300 - a - b) + a*(300 - a - b)
+
+Let me expand each term:
+
+ab + [300b - ab - b²] + [300a - a² - ab]
+
+Combine terms
+
+---------------
+
+:
+
+ab + 300b - ab - b² + 300a - a² - ab
+
+Combine
+
+---------------
+
+ like terms:
+
+The ab terms: ab - ab - ab = -ab
+
+The 300b and 300a: 300a
+
+---------------
+
+ + 300b
+
+The -a² - b² terms
+
+So altogether:
+
+-ab + 300a + 300b - a² - b²
+
+Therefore
+
+---------------
+
+, ab + bc + ca = -a² - b² - ab + 300a + 300b
+
+Hmm
+
+---------------
+
+, okay. Then, the term abc is a*b*(300 - a - b)
+
+Therefore, substituting into the equation:
+
+100*(ab + bc + ca) - abc = 100*(-a² - b² - ab + 300a + 300b) - [a*b*(300 - a - b)] = 2,000,000
+
+This
+
+---------------
+
+ looks complicated, but let me try expanding it step by step.
+
+First, compute 100*(ab + bc + ca):
+
+100*(-a² - b² - ab + 300a + 300b) = -100a² - 100b² - 100ab + 30,000a + 30,000b
+
+Then subtract abc:
+
+
+
+---------------
+
+- [a*b*(300 - a - b)] = -300ab + a²b + ab²
+
+Therefore, the
+
+---------------
+
+ entire left-hand side becomes:
+
+(-100a² - 100b² - 100ab + 30,000a + 30,000b) + (-300ab + a²b + ab²) = 2,000,000
+
+Combine
+
+---------------
+
+ like terms:
+
+First, the a² terms: -100a² + a²b (Wait, a²b is a cubic term, so
+
+---------------
+
+ actually, let me re-express all terms properly:
+
+Wait, perhaps I need to group all terms by their degrees. Let me see
+
+---------------
+
+:
+
+Starting from the first part:
+
+-100a² -100b² -100ab + 30,000a + 30,000b
+
+Then
+
+---------------
+
+ the second part:
+
+-300ab + a²b + ab²
+
+So combining all together:
+
+-100a² -100b² -100ab -300ab + a²b + ab² + 30,000a + 30,000b
+
+Combine
+
+---------------
+
+ like terms:
+
+The a² terms: -100a² + a²b (Wait, a²b is degree 3, so
+
+---------------
+
+ maybe better to list terms by degree:
+
+First, cubic terms: a²b + ab²
+
+Quadratic terms: -100a² -100b² - (100ab + 300ab) = -100a² -100b² -400ab
+
+Linear terms: 30,000a + 30,000b
+
+So
+
+---------------
+
+ putting it all together:
+
+a²b + ab² -100a² -100b² -400ab + 30,000a + 30,000b = 2,000,000
+
+Hmm, this still
+
+---------------
+
+ looks quite complicated. Maybe there's a better way. Alternatively, perhaps I can consider symmetry here.
+
+Alternatively, maybe if I
+
+---------------
+
+ assume two variables are equal. Since the problem is symmetric, perhaps the solutions occur when two variables are equal? Let me test
+
+---------------
+
+ that idea.
+
+Suppose that two variables are equal, say a = b. Then, since a + b + c = 300, we
+
+---------------
+
+ have c = 300 - 2a. Then, let's substitute into the equation.
+
+Let me try that
+
+---------------
+
+. Let a = b. Then c = 300 - 2a. Let me compute the second equation:
+
+Original
+
+---------------
+
+ equation: a²b + a²c + b²a + b²c + c²a + c²b = 6,000,000
+
+Since a = b, this becomes:
+
+a²a + a²c + a²a + a²c + c²a + c²a = 6,000,000
+
+Wait, let
+
+---------------
+
+ me compute term by term:
+
+a²b = a^3
+
+a²c = a²c
+
+b²a = a^3
+
+b²c = a²c
+
+c²a = c²a
+
+c²b = c²a (since a = b)
+
+So altogether
+
+---------------
+
+, the terms are:
+
+a^3 + a²c + a^3 + a²c + c²a + c²a
+
+Combine
+
+---------------
+
+ like terms:
+
+2a^3 + 2a²c + 2a c²
+
+Factor out 2a:
+
+2a(a² + a c + c²) = 6,000,000
+
+But
+
+---------------
+
+ c = 300 - 2a, so substitute that in:
+
+2a[ a² + a(300 - 2a) + (300 - 2a)^2 ] = 6,000,000
+
+Let me compute the
+
+---------------
+
+ expression inside the brackets step by step.
+
+First term: a²
+
+Second term: a*(300 - 2a) = 300a - 2a²
+
+Third term: (300 - 2a)^2 = 300² - 4*300a + 4a² = 90,000 - 1200a + 4a²
+
+Adding
+
+---------------
+
+ all three terms together:
+
+a² + (300a - 2a²) + (90,000 - 1200a + 4a²) =
 
 Combine like terms:
 
@@ -387,31 +506,29 @@ And
 
 ---------------
 
- the constant term 90,000.
+ the constant term: 90,000
 
-Therefore, total inside the brackets is 3a² - 900a + 90,000.
+So altogether, the expression inside the brackets is 3a² - 900a + 90,000.
 
-Therefore
+Therefore, the equation becomes:
 
----------------
+2a*(3a² - 900a + 90,000) = 6,000,000
 
-, the entire expression becomes:
-
-2a*(3a² - 900a + 90,000) = 6a³ - 1800a² + 180,000a
-
-We
+S
 
 ---------------
 
- know this equals 6,000,000, so:
+implify left side:
+
+Multiply 2a with each term:
 
 6a³ - 1800a² + 180,000a = 6,000,000
 
-Divide both sides by 6:
+Bring all terms to left side:
 
-a³ - 300a² + 30,000a = 1,000,000
+6a³ - 1800a² + 180,000a - 6,000,000 = 0
 
-Bring all terms to left-hand side:
+Divide both sides by 6 to simplify:
 
 a³ - 300a² + 30,000a - 1,000,000 = 0
 
@@ -419,813 +536,401 @@ Hmm, so
 
 ---------------
 
- we have a cubic equation here. Let me see if I can factor this or find integer roots.
+ we have a cubic equation here. Let me see if I can factor this.
 
-Possible rational roots are factors of 1,000,000 divided by factors of 1, so possible integer roots could be divisors of 1,000,000. Since
-
----------------
-
- a must be an integer between 0 and 150 (since c = 300 - 2a must be non-negative, so 300 - 2a ≥ 0 => a ≤ 150).
-
-Let
+Looking for rational roots using Rational Root Theorem. The possible roots are factors of 1,000,000 divided by 1, so possible integer roots are ±1, ±2, ..., up to ±1,000,000. But given
 
 ---------------
 
- me test a = 100:
+ the context, a must be a nonnegative integer such that c = 300 - 2a is also nonnegative. So 300 - 2a ≥ 0 → a ≤ 150. So a is
+
+---------------
+
+ between 0 and 150.
+
+Therefore, possible integer roots between 0 and 150. Let me test a = 100.
+
+---------------
+
+ Let me plug in a=100:
 
 100³ - 300*(100)^2 + 30,000*100 - 1,000,000
 
 = 1,000,000 - 300*10,000 + 3,000,000 - 1,000,000
 
-= 1,000,000 - 3,000,000 + 3,000,000 - 1,000,000 = 0. So
+= 1,000,000 - 3,000,000 + 3,000,000 -1,000,000 = 0
+
+Oh
 
 ---------------
 
- a = 100 is a root. That's the symmetric case.
+! So a=100 is a root. Therefore, (a - 100) is a factor.
 
-Therefore, (a - 100) is a factor. Let's perform polynomial division or factor it out.
-
-Let me write the cubic as (a - 100)(a² + pa + q) = a³ - 300a² + 30,000a -1,000,000.
-
-Exp
+Let me perform polynomial division or use synthetic division to factor the
 
 ---------------
 
-anding the left side:
+ cubic.
 
-a³ + (p - 100)a² + (q - 100p)a - 100q
+Dividing a³ - 300a² + 30,000a - 1,000,000 by (a - 100):
 
-Set equal to original
+Using synthetic division:
 
----------------
+100 | 1  -300   30,000   -1,000,000
 
- cubic:
-
-a³ - 300a² + 30,000a -1,000,000
-
-Therefore, equate coefficients:
-
-p - 100 = -300 ⇒ p = -200
-
-q - 100p = 30,000 ⇒ q - 100*(-200) = q + 20,000 = 30,000 ⇒ q = 10,000
-
--
+Multiply
 
 ---------------
 
-100q = -1,000,000 ⇒ -100*10,000 = -1,000,000,
+ 100*1 = 100, add to -300 → -200
 
----------------
+100*(-200) = -20,000; add to 30,000 → 10,000
 
- which holds.
+100*(10,000) = 1,000,000; add to -1,000,000 → 0
 
-Thus, the cubic factors as (a - 100)(a² - 200a + 10,000) = 0
+So the cubic factors as (a - 100)(a² - 200a + 10,000)
 
 Now
 
 ---------------
 
-, set each factor to zero:
+, factor the quadratic: a² - 200a + 10,000
 
-a - 100 = 0 ⇒ a = 100, which we already knew
-
----------------
-
-.
-
-Then, the quadratic: a² - 200a + 10,000 = 0
-
-Let's solve this
+Let me see if this factors.
 
 ---------------
 
- quadratic:
+ The discriminant is (200)^2 - 4*1*10,000 = 40,000 - 40,000 = 0. So it's a perfect square.
 
-a = [200 ± √(200² - 4*1*10,000)] / 2
 
-Compute discriminant:
-
-200² - 40,000 = 40,000 - 40,000 = 0
-
-So
 
 ---------------
 
-, discriminant is zero, so a = 200/2 = 100.
+Thus, quadratic is (a - 100)^2. Therefore, the cubic factors as (a - 100)^3 = 0.
 
-Therefore, the quadratic has a double root at a = 100. Therefore
-
----------------
-
-, the cubic equation only has a = 100 as a root (with multiplicity 3?), but in reality
+Therefore
 
 ---------------
 
-, the quadratic factor gives only a = 100 again. So essentially, the only solution when a = b is a = 100, leading to c = 300 - 200 = 100. So that's the symmetric solution again.
-
-Hmm, so when
+, the only real root is a = 100 (with multiplicity 3). Therefore, the only solution when
 
 ---------------
 
- two variables are equal, the only solution is the fully symmetric case. Therefore, perhaps the only solution with two variables equal is the
+ a = b is a = 100, so then c = 300 - 2*100 = 100. So
 
 ---------------
 
- all-equal case. Therefore, maybe all solutions must have all variables equal? But that might not be the case. Let's check
+ (a, b, c) = (100, 100, 100). But wait
 
 ---------------
 
- another case.
+, if a = b = c = 100, then that's a valid solution. Let me check if this satisfies the original equation.
 
-Suppose one variable is zero. Let's see if that can lead to a solution.
+Check
 
-Suppose c = 0, then a + b = 300, and the equation becomes:
+---------------
 
-a²b + a²*0 + b²a + b²*0 + 0²a + 0²b = a²b + ab² = ab(a + b) = ab*300 = 6,000,000
+ the second equation: a²b + a²c + ... etc. Let's compute:
+
+Each term like a²b would
+
+---------------
+
+ be 100²*100 = 1,000,000. Since there are six terms (each permutation), total
+
+---------------
+
+ is 6*1,000,000 = 6,000,000. Yes
+
+---------------
+
+, that works. So that's one solution where all three variables are equal to 100.
+
+But are there other solutions where variables are not all equal? Because
+
+---------------
+
+ the problem says "triples of nonnegative integers", so maybe there are more solutions where two variables are equal but different from 100, or maybe
+
+---------------
+
+ all different?
+
+Hmm. Since when assuming a = b, the only solution is a = b = c = 100, but
+
+---------------
+
+ perhaps there are solutions where variables are not equal. Let me think.
+
+Alternatively, maybe we can consider the case where one variable is zero. Let's suppose
+
+---------------
+
+ c = 0. Then the equations become:
+
+a + b = 300,
+
+and the second equation becomes a²b + a²*0 + b²a + b²*0 + 0²a + 0²b = a²b + ab² = ab(a + b) = ab*300 = 6,000,000.
+
+Therefore, ab*300 = 6,000,000 → ab = 20,000.
 
 So,
 
 ---------------
 
- 300ab = 6,000,000 ⇒ ab = 20,000.
+ we need two nonnegative integers a and b such that a + b = 300 and ab = 20,000.
 
-So we need non
+So
 
 ---------------
 
-negative integers a, b such that a + b = 300 and ab = 20,000.
+ solving for a and b. Let me set up equations:
+
+Let a and b be such that:
+
+a + b = 300
+
+ab = 20,000
+
+These
+
+---------------
+
+ are the standard equations for quadratic: x² - 300x + 20,000 = 0
 
 Let
 
 ---------------
 
- me see if this is possible.
+ me compute discriminant D = 300² - 4*1*20,000 = 90,000 - 80,000 = 10,000
 
-Let me set variables: Let a and b be roots of the quadratic equation x² - 300x + 20,000 = 0.
-
-Compute discriminant: 300² - 4*1*20,000 = 90,000 - 80,000 = 10,000.
-
-Square
+sqrt
 
 ---------------
 
- root of discriminant is 100. Therefore,
+(D) = 100
 
-x = [300 ± 100]/2 ⇒ x = (400)/2 = 200 or x = 200/2 = 100.
-
-Wait, so
+Therefore, solutions are x = [300 ± 100]/2 → (400)/2 = 200 or (200)/2 = 100.
 
 ---------------
 
- the roots are 200 and 100. Therefore, (a, b) can be (200, 100) or (100, 200). Therefore
+ So a and b are 200 and 100. So the solutions when c=0 are (200, 100, 0) and (100, 200, 0). But
 
 ---------------
 
-, when c = 0, we have two solutions: (200, 100, 0) and (100, 200, 0). But
+ since variables are nonnegative integers and order matters, but in the problem statement, the triples are ordered, so (200,100,0), (100,200,0), and
 
 ---------------
 
- since variables are ordered, but in the problem, the triples are considered as ordered triples? Wait, the problem says "triples of nonnegative integers (a, b, c)", so order
+ similarly with c in other positions.
+
+Wait, but if c = 0, then the triples would have c in any of the three positions. So
 
 ---------------
 
- matters. So each permutation counts as different.
-
-Wait, actually, when c=0, we have (200,100,0), (100,200,0), (
+ actually, the solutions when one variable is zero would be permutations of (200, 100, 0). How
 
 ---------------
 
-200,0,100), (100,0,200), (0,200,100), (0,100,200). Wait
+ many permutations are there?
+
+Since two variables are distinct (200 and 100) and the third is zero. The number of distinct permutations is 3 (cho
 
 ---------------
 
-, but actually, if we set c=0, then the first two variables must be 200 and 100 in some order, so there
+osing which variable is zero) multiplied by 2 (the arrangement of the other two), so total 3*2=6?
 
 ---------------
 
- are two ordered triples with c=0. Similarly, if we set a=0 or b=0, each would give similar solutions.
-
-Wait, let
+ Wait, no: actually, if one variable is fixed as zero, the other two can be arranged in 2 ways, so for each choice of which variable is zero, there
 
 ---------------
 
- me clarify. Let me consider the case when one variable is zero. Suppose c = 0, then as above, a
+ are two permutations. Since there are three variables that could be zero, total is 3*2 = 6.
+
+But let
 
 ---------------
 
- and b must be 200 and 100. So the triples where c=0 are (200,100,0), (100,200,0). Similarly, if a=0, then b + c = 300 and bc = 20,000, so same
+ me confirm. For example, if c is zero, then (a,b,c) can be (200,100,0) or (100,200,0). Similarly, if b is zero, then (a,0,c) can
 
 ---------------
 
- as above: (0,200,100), (0,100,200). Similarly, if b=0, then (200,0,100), (100,0,200). So total of 6 triples where one variable is zero.
+ be (200,0,100) or (100,0,200). And if a is zero, then (0,200,100) or (0,100,200). So total
+
+---------------
+
+ 6 solutions where one variable is zero and the other two are 200 and 100.
+
+Therefore, these
+
+---------------
+
+ are valid solutions. So that's another set of solutions. So now, we have at least 7 solutions: the all-100s
+
+---------------
+
+ triple, and the six permutations with two variables 200, 100, and 0. But maybe
+
+---------------
+
+ there are more solutions?
+
+Wait, let me see if there are solutions where two variables are zero. Suppose two variables are zero, say b = c = 0. Then a = 300. Then compute
+
+---------------
+
+ the second equation:
+
+a²b + ... all terms would be zero except terms with a²*0 etc., so the
+
+---------------
+
+ entire expression is zero, which is not 6,000,000. So that doesn't work. Similarly, any two
+
+---------------
+
+ variables being zero would result in the expression being zero. So no solutions there.
+
+Alternatively, what if all three variables are different?
+
+---------------
+
+ Let me see.
+
+Alternatively, perhaps there are other solutions where variables are not equal and none are zero. Let me consider.
 
 
 
 ---------------
 
-Wait, so these are valid solutions. Therefore, there are solutions where variables are not all equal. So that's good to
+Suppose that a, b, c are all different and non-zero. Let me see if such a solution exists.
+
+Alternatively, maybe
 
 ---------------
 
- know.
-
-Therefore, the problem has more solutions than just the symmetric one.
-
-So, so far, we have the symmetric solution (100,100,100) and six solutions where one variable is zero and the other two are 200 and 100. But
+ there are solutions where two variables are equal but not 100. Wait, when we assumed a = b, we only got the solution where
 
 ---------------
 
- perhaps there are other solutions where none of the variables are zero and not all equal?
+ all three are 100, so perhaps that's the only case when two variables are equal. Hmm.
 
-Hmm, let's check.
-
-Alternatively, maybe there
+Alternatively, maybe
 
 ---------------
 
- are solutions where two variables are non-zero and equal but not 100?
+ another case where variables are in some other proportion. Let me think of another approach.
 
-Wait, let me think. Let's suppose
-
----------------
-
- that two variables are equal, but not 100. Let's suppose a = b ≠ 100. Then,
+Let me recall that the equation after substitution became
 
 ---------------
 
- as before, c = 300 - 2a. Then, the equation reduces to the cubic, but we
+ 100Q - P = 2,000,000 where Q = ab + bc + ca and P = abc.
+
+Also
 
 ---------------
 
- saw that the only solution is a = 100. So in that case, the only case when two variables are equal is the symmetric case. Therefore, other
+, we know that a + b + c = 300.
+
+Perhaps we can use some inequality here? Let me see.
+
+Alternatively, maybe
 
 ---------------
 
- solutions must have all variables distinct and non-zero, or have one zero.
+ we can think in terms of variables x, y, z, but I need to think differently.
 
-Alternatively, perhaps there are solutions where two variables are equal
-
----------------
-
- but not 100? Wait, but according to the cubic equation, only a=100 gives a solution. So perhaps
+Alternatively, let me consider
 
 ---------------
 
- not.
-
-Alternatively, perhaps the case where one variable is zero gives all non-symmetric solutions. Let me see.
-
-Wait, let
-
----------------
-
-'s check another scenario. Let me see if there are solutions where all variables are different and non-zero.
-
-Suppose all variables are different and non-zero. Let me see
-
----------------
-
- if such triples exist.
-
-Alternatively, let me consider the equation again:
-
-We have the equation a + b + c = 300 and
-
----------------
-
- the expression equals 6,000,000.
-
-Alternatively, perhaps we can use the equation we derived earlier:
-
-a^3 + b^3 + c^3 + 6abc = 9,000,000.
-
-Hmm
-
----------------
-
-, maybe this can be related to another identity?
-
-Wait, I recall that:
-
-(a + b + c)^3 = a^3 + b^3 + c^3 + 3(a + b)(b + c)(c + a)
-
-Wait, is that true
+ that when all variables are equal, that gives one solution. When one variable is zero, that gives six solutions. Are there others
 
 ---------------
 
 ?
 
-Wait, let me check:
-
-Let me compute (a + b)(b + c)(c + a).
-
-First, expand (a + b)(b + c) = ab + a c + b² + b c
-
-Then multiply by (c + a):
-
-=
-
----------------
-
- (ab + ac + b² + bc)(c + a)
-
-= ab*c + ab*a + ac*c + ac*a + b²*c + b²*a + bc*c + bc*a
-
-= abc + a²b + a c² + a²c + b²c + a b² + b c² + a b c
-
-Combine like terms:
-
-Terms
-
----------------
-
- with a²b: a²b + a b² = ab(a + b)
-
-Similarly, a²c + a c² = ac(a + c)
-
-b²c + b c² = bc(b + c)
-
-Plus
-
----------------
-
- 2abc.
-
-Hmm, so overall:
-
-(a + b)(b + c)(c + a) = (a + b)(b + c)(c + a) = (a + b + c)(ab + bc + ca) - abc
+Wait, let me check another case. Suppose two variables are equal but not 100. Let me see.
 
 
 
 ---------------
 
-Wait, perhaps another identity. Let me recall:
+Suppose a = b, but not 100, so then c = 300 - 2a.
 
-Alternatively, maybe (a + b)(b + c)(c + a) = (a + b + c)(ab + bc + ca) - abc.
+---------------
 
-Let me verify this
+ Let me see if there are other a where the equation holds. Wait, earlier when we set a = b, the equation reduced
+
+---------------
+
+ to (a - 100)^3 = 0, so only a =100 is a solution. Therefore, no
+
+---------------
+
+ other solutions with two variables equal except when all three are equal. So that case only gives the all 100s triple
 
 ---------------
 
 .
 
-Left side: (a + b)(b + c)(c + a)
-
-Right side: (a + b + c)(ab + bc + ca) - abc
-
-Let
+So maybe the only solutions are the all 100s and the permutations with 200,100,0. Let
 
 ---------------
 
- me compute the right side:
+ me check another case where maybe one variable is 150. Let me try some numbers.
 
-First, expand (a + b + c)(ab + bc + ca):
-
-= a(ab + bc + ca) + b(ab + bc + ca) + c(ab + bc + ca)
-
-= a²b + a b c + a²c + a b² + b²c + b c a + a c² + b c² + c²a
-
-Wait
+Suppose a = 150, b = 150, then c = 0. Then
 
 ---------------
 
-, this seems messy, but grouping terms:
+ check the second equation.
 
-= a²b + a²c + ab² + b²c + a c² + b c² + 3a b c
+a²b + a²c + ... Let's see:
 
-Then
-
----------------
-
- subtract abc:
-
-= a²b + a²c + ab² + b²c + a c² + b c² + 3abc - abc
-
-= a²b + a²c + ab² + b²c + a c² + b c² + 2abc
-
-Now
-
----------------
-
-, compare to left side:
-
-Left side expansion earlier was:
-
-abc + a²b + a c² + a²c + b²c + a b² + b c² + a b c
-
-=
-
----------------
-
- a²b + a²c + ab² + b²c + a c² + b c² + 2abc
-
-Which matches the right side. Therefore, the
-
----------------
-
- identity holds:
-
-(a + b)(b + c)(c + a) = (a + b + c)(ab + bc + ca) - abc.
-
-Therefore
-
----------------
-
-, perhaps this can be useful?
-
-Wait, let's see. Let me think of the equation we had:
-
-a^3 + b^3 + c^3 + 6abc = 9,000,000.
-
-Hmm
-
----------------
-
-, also, note that:
-
-We have another identity:
-
-a^3 + b^3 + c^3 - 3abc = (a + b + c)(a^2 + b^2 + c^2 - ab - bc - ca).
-
-Therefore
-
----------------
-
-, if we can express a^3 + b^3 + c^3 + 6abc in terms of that.
+a = 150, b = 150, c =0.
 
 
 
 ---------------
 
-Let me see:
+Compute the expression:
 
-a^3 + b^3 + c^3 + 6abc = (a^3 + b^3 + c^3 - 3abc) + 9abc
-
-= (a + b + c)(a^2 + b^2 + c^2 - ab - bc - ca) + 9abc
-
-Hmm, but
+a²b = 150²*150 = 150^3 =
 
 ---------------
 
- I'm not sure if that helps directly.
+ 3,375,000
 
-Alternatively, maybe express in terms of (a + b + c), ab + bc + ca, and abc.
+a²c = 0
 
-Let me denote:
-
-Let S = a + b + c = 300,
-
-P = ab + bc + ca,
-
-Q = abc.
-
-Then,
-
-We can
+Similarly, b²a = same as a²b,
 
 ---------------
 
- write a^3 + b^3 + c^3 = S^3 - 3SP + 3Q.
+ so another 3,375,000
 
-Wait, let me confirm
+b²c = 0
 
----------------
+c²a + c²b = 0
 
- that:
-
-Yes, using the identity:
-
-a^3 + b^3 + c^3 = (a + b + c)^3 - 3(a + b + c)(ab + bc + ca) + 3abc.
-
-Therefore,
-
-a^3 + b^3 + c^3 = S³ - 3 S P + 3 Q.
-
-So then
+Total sum
 
 ---------------
 
-,
+: 3,375,000 + 3,375,000 = 6,750,000 which is more than 6,000,000. So that's too big.
 
-a^3 + b^3 + c^3 + 6 Q = S³ - 3 S P + 3 Q + 6 Q = S³ - 3 S P + 9 Q.
-
-Therefore
+Hmm. How
 
 ---------------
 
-, according to our equation,
+ about a = 150, b = 100, c = 50.
 
-S³ - 3 S P + 9 Q = 9,000,000.
+Check the sum: 150 + 100 +50 = 300. Okay.
 
-We
-
----------------
-
- know S = 300, so substituting:
-
-300³ - 3*300*P + 9 Q = 9,000,000.
-
-Compute 300³:
-
----------------
-
- 27,000,000.
-
-So,
-
-27,000,000 - 900 P + 9 Q = 9,000,000.
-
-Rearranged:
-
--900 P + 9 Q = 9,000,000 - 27,000,000 = -18,000,000.
-
-Divide both sides by 9:
-
--100 P + Q = -2,000,000.
-
-So
-
----------------
-
-,
-
-Q = 100 P - 2,000,000.
-
-Hmm, so we have a
-
----------------
-
- relationship between Q and P: Q = 100 P - 2,000,000.
-
-Now
-
----------------
-
-, perhaps we can relate this to other expressions. Since S = 300, P = ab + bc + ca, and Q = abc.
-
-We
-
----------------
-
- also know that for three variables,
-
-(a + b + c)^2 = a² + b² + c² + 2(ab + bc + ca),
-
-so,
-
-a² + b² + c² = S² - 2 P = 300² - 2 P = 90,000 - 2 P.
-
-But
-
----------------
-
- not sure if that helps here.
-
-Alternatively, perhaps we can use the equation Q = 100 P - 2,000,000 and
-
----------------
-
- combine it with other equations involving P and Q.
-
-Alternatively, perhaps think of variables in terms of P and Q. Let me see.
-
-Alternatively, let
-
----------------
-
- me consider that in the case where one variable is zero, say c=0, then:
-
-Then, P = ab + 0 + 0 = ab,
-
-Q = abc = 0,
-
-and S
-
----------------
-
- = a + b = 300.
-
-In that case, substituting into Q = 100 P - 2,000,000,
-
-0 = 100 ab
-
----------------
-
- - 2,000,000,
-
-so ab = 20,000,
-
-which matches our
-
----------------
-
- previous result. So that's consistent.
-
-Alternatively, in the symmetric case, where a = b = c = 100,
-
-then P = 3*(100*100) = 30,000,
-
-Q = 100*100*100 = 1,000,000,
-
-then
-
----------------
-
- 100 P - 2,000,000 = 100*30,000 - 2,000,000 = 3,000,000 - 2,000,000 = 1,000,000 = Q. So that also
-
----------------
-
- holds.
-
-Therefore, the equation Q = 100 P - 2,000,000 is valid in
-
----------------
-
- both cases.
-
-Now, perhaps we can find another equation involving P and Q?
-
-Alternatively, perhaps we can use the equation from
-
----------------
-
- the original problem's second condition. Wait, but that's already how we derived the Q = 100 P - 2,000,000.
-
-
-
----------------
-
-Alternatively, perhaps we can use the relation between P and Q with the variables.
-
-Alternatively, perhaps consider that for three variables a, b, c with a
-
----------------
-
- + b + c = S, we can parametrize them in terms of two variables, and then set up equations. Let
-
----------------
-
- me try that.
-
-Let me set variables as a and b, so c = 300 - a - b.
-
-Then, P = ab + bc + ca = ab + b(300 - a - b) + a(300 - a - b)
-
-Let me compute that:
-
-ab + 300b - ab - b² + 300a - a² - ab
-
-Wait, let
-
----------------
-
-'s do it step by step:
-
-First term: ab
-
-Second term: b*c = b*(300 - a - b) = 300b - ab - b²
-
-Third term: a*c = a*(300 - a - b) = 300a - a² - ab
-
-Adding
-
----------------
-
- all three terms:
-
-ab + (300b - ab - b²) + (300a - a² - ab)
-
-Combine like terms:
-
-ab - ab - ab = -ab
-
-300b + 300a
-
-- b² - a²
-
-So total
-
----------------
-
-:
-
-- ab + 300(a + b) - (a² + b²)
-
-Hmm, that seems a
-
----------------
-
- bit complex. Maybe better to just write P in terms of a and b:
-
-P = ab + b(300 - a - b) + a(300 - a - b)
-
-= ab + 300b -ab - b² + 300a -a² -ab
-
-Wait, let
-
----------------
-
- me compute again:
-
-First term: ab
-
-Second term: b*(300 - a - b) = 300b -ab - b²
-
-Third term: a*(300 - a - b) = 300a -a² -ab
-
-Now
-
----------------
-
-, adding all three terms:
-
-ab + (300b -ab - b²) + (300a -a² -ab)
-
-Let
-
----------------
-
- me combine term by term:
-
-ab - ab - ab = -ab
-
-300b + 300a
-
-- b² - a²
-
-Thus,
-
----------------
-
- P = -ab + 300(a + b) - (a² + b²)
-
-Alternatively, we can write P
-
----------------
-
- = 300(a + b) - (a² + b² + ab)
-
-Hmm, perhaps not so helpful.
-
-
-
----------------
-
-Alternatively, let me note that Q = abc = ab(300 - a - b).
-
-So, Q = ab(300 - a - b)
-
-So
-
----------------
-
-, if we can express Q in terms of P, maybe?
-
-Alternatively, since we have Q = 100 P - 2,000,000, perhaps
-
----------------
-
- we can set up an equation with variables a and b.
-
-Alternatively, maybe this is getting too involved. Let me think of possible
-
----------------
-
- integer solutions.
-
-We already have two types of solutions: the symmetric triple (100,100,100) and the six triples with one zero and the other two as 200 and 100.
-
-Are
-
----------------
-
- there any other triples?
-
-Suppose there exists a triple where none of the variables are zero and all are different. Let me see
-
----------------
-
- if such triples can exist.
-
-Suppose a, b, c are all positive integers, distinct, adding to 300, and satisfying the given
-
----------------
-
- equation.
-
-Let me try to find such a solution.
-
-Suppose a = 150, b = 100, then c = 50.
-
-Check if this works.
-
-Compute the expression a²b + a²c + b²a + b²c + c²a + c²b.
-
-Let
-
----------------
-
- me compute each term:
+Compute the expression:
 
 a²b = 150²*100 = 22500*100 = 2,250,000
 
@@ -1233,11 +938,705 @@ a²c = 150²*50 = 22500*50 = 1,125,000
 
 b²a = 100²*150 = 10,000*150 = 1,500,000
 
-b²c = 100²*50 = 10,000*50 = 500,000
+b²c = 100²*50 = 500,000
 
-c²a = 50²*150 = 2500*150 = 375,000
+c²a =50²*150 =2,500*150 = 375,000
 
-c²b = 50²*100 = 2500*100 = 250,000
+c²b =50²*100 =2,500*100 =250,000
+
+Total sum: 2,250,000 + 1,125,000 +1,500,000 +500,000 +375,000 +250,000
+
+
+
+---------------
+
+Let me add step by step:
+
+2,250,000 + 1,125,000 = 3,375,000
+
++1,500,000 → 4,875,000
+
++500,000 → 5,375,000
+
++375,000 → 5,750,000
+
++250,000 → 6,000,000.
+
+---------------
+
+ Oh! Wait, that works!
+
+Wait, so (150, 100, 50) gives
+
+---------------
+
+ exactly 6,000,000. So that's another solution. Hmm, so my previous thought that only the all
+
+---------------
+
+ 100s and the permutations with 200,100,0 were solutions is incorrect. There's
+
+---------------
+
+ another solution here. So now I need to explore further.
+
+Wait a second, so (150, 100, 50) works
+
+---------------
+
+. Let me check my previous assumption. So maybe there are more solutions where variables are all different and none are zero. So
+
+---------------
+
+ my earlier approach was incomplete.
+
+Hmm, so I need a better approach here.
+
+Let me think again. Let me note that in
+
+---------------
+
+ the case where variables are 150,100,50, the sum is 300, and the expression
+
+---------------
+
+ is 6,000,000. So that's valid. Let me see if there are permutations of this as
+
+---------------
+
+ well. Since all three numbers are distinct, the number of permutations is 6. So that's 6 solutions.
+
+Similarly
+
+---------------
+
+, maybe there are other triples like this. Let me see.
+
+Alternatively, let me consider that in this case, the numbers
+
+---------------
+
+ 150,100,50 can be thought of as multiples of 50. Let me see
+
+---------------
+
+:
+
+150 = 3*50, 100 = 2*50, 50 =1*50. So scaling
+
+---------------
+
+ down by 50, the triple (3,2,1) scaled by 50 gives (150,100,50). Let me check if (3,2,1) scaled
+
+---------------
+
+ by some factor k would give solutions.
+
+Suppose that a = kx, b = ky, c = kz where x, y, z are integers and
+
+---------------
+
+ x + y + z = 300/k. Wait, but scaling complicates things. Alternatively, maybe there is a pattern
+
+---------------
+
+ here.
+
+Alternatively, let me think of variables in terms of ratios. Let me suppose that the variables are in arithmetic progression?
+
+---------------
+
+ Let me try.
+
+Suppose a = d - e, b = d, c = d + e, so that they form an arithmetic progression. Then a
+
+---------------
+
+ + b + c = 3d = 300 ⇒ d = 100. So then a = 100 - e, b = 100, c = 100 + e.
+
+Then
+
+---------------
+
+, let me compute the expression a²b + a²c + b²a + b²c + c²a + c²b.
+
+Pl
+
+---------------
+
+ugging in:
+
+a = 100 - e, b = 100, c = 100 + e
+
+First compute each term:
+
+a²b = (100 - e)^2 * 100
+
+a²c = (100 - e)^2 * (100 + e)
+
+b²a = 100²*(100 - e)
+
+b²c = 100²*(100 + e)
+
+c²a = (100 + e)^2*(100 - e)
+
+c²b = (100 + e)^2 * 100
+
+Adding
+
+---------------
+
+ all terms together:
+
+Let me compute term by term:
+
+First, a²b + c²b = 100*( (100 - e)^2 + (100 + e)^2 )
+
+Similarly, a²c + b²c = (100 + e)*[ (100 - e)^2 + 100² ]
+
+Wait, perhaps
+
+---------------
+
+ this is getting too convoluted. Alternatively, maybe compute each term:
+
+Alternatively, let me compute each term step by step.
+
+Compute
+
+---------------
+
+ a²b = (100 - e)^2 * 100
+
+= [100² - 200e + e²] * 100
+
+= 100³
+
+---------------
+
+ - 20,000e + 100e²
+
+a²c = (100 - e)^2*(100 + e) = [ (100 - e)^2 ]*(100 + e )
+
+Let
+
+---------------
+
+ me expand (100 - e)^2*(100 + e):
+
+First, (100 - e)^2 = 10,000 - 200e + e²
+
+
+
+---------------
+
+Multiply by (100 + e):
+
+= (10,000)(100 + e) - 200e(100 + e) + e²(100 + e)
+
+= 1,000,000 + 10,000e - 20,000e - 200e² + 100e² + e³
+
+= 1,000,000 - 10,000e - 100e² + e³
+
+Similarly, b²a = 100²*(100 - e) = 10,000*(100 - e) = 1,000,000 -10,000e
+
+b²c = 10,000*(100 + e) = 1,000,000 +10,000e
+
+c²a = (100 + e)^2*(100 - e)
+
+---------------
+
+ = similar to a²c but with e replaced by -e?
+
+Wait, let me compute:
+
+(100 + e)^2*(100 - e) = [10,000 + 200e + e²]*(100 - e)
+
+=
+
+---------------
+
+ 10,000*(100 - e) + 200e*(100 - e) + e²*(100 - e)
+
+= 1,000,000 -10,000e + 20,000e - 200e² + 100e² - e³
+
+= 1,000,000 +10,000e -100e² - e³
+
+c²b = (100 + e)^2 *100 = [10,000 + 200e + e²]*100 = 1,000,000 + 20,000e + 100e²
+
+Now, adding
+
+---------------
+
+ all six terms together:
+
+Let me list all terms:
+
+1. a²b: 100³ -20,000e +100e²
+
+
+
+---------------
+
+Wait, 100³ is 1,000,000, so:
+
+a²b: 1,000,000 -20,000e +100e²
+
+2. a²c: 1,000,000 -10,000e -100e² + e³
+
+3. b²a: 1,000,000 -10,000e
+
+4. b²c: 1,000,000 +10,000e
+
+5. c²a: 1,000,000 +10,000e -100e² -e³
+
+6. c²b: 1,000,000 +20,000e +100e²
+
+Now let me sum all these terms:
+
+Let
+
+---------------
+
+'s first count the constants (terms without e):
+
+Each of the six terms has 1,000,000 except
+
+---------------
+
+ maybe?
+
+Wait term1: 1,000,000
+
+term2: 1,000,000
+
+term3: 1,000,000
+
+term4: 1,000,000
+
+term5: 1,000,000
+
+term6: 1,000,000
+
+Total constants: 6*1,000,000 = 6,000,000
+
+Now the
+
+---------------
+
+ terms with e:
+
+term1: -20,000e
+
+term2: -10,000e
+
+term3: -10,000e
+
+term4: +10,000e
+
+term5: +10,000e
+
+term6: +20,000e
+
+Adding these
+
+---------------
+
+:
+
+-20,000e -10,000e -10,000e +10,000e +10,000e +20,000e
+
+Let me compute step by step:
+
+Start with -20,000e -10,000e = -30,000e
+
+-30,000e -10,000e = -40,000e
+
+-40,000e +10,000e = -30,000e
+
+-30,000e +10,000e = -20,000e
+
+-20,000e +20,000e = 0. So all the e terms cancel out.
+
+Now terms with e²:
+
+term1: +100e²
+
+term2: -100e²
+
+term3: 0
+
+term4: 0
+
+term5: -100e²
+
+term6: +100e²
+
+Adding these:
+
+100e² -100e² -100e² +100e² = (100 -100 -100 +100)e² = 0
+
+
+
+---------------
+
+Terms with e³:
+
+term2: +e³
+
+term5: -e³
+
+So total e³ terms: e³ - e³ = 0
+
+Therefore, the
+
+---------------
+
+ total sum of all terms is 6,000,000 + 0 + 0 +0 =6,000,000,
+
+---------------
+
+ which is exactly the required value.
+
+Therefore, for any e, as long as a, b, c are nonnegative integers, this
+
+---------------
+
+ holds. Wait, that can't be. Wait, but in the arithmetic progression case, the expression is always equal to 6,000,000?
+
+
+
+---------------
+
+Wait, but that's only when variables are in arithmetic progression around 100. Wait, but in this case, a
+
+---------------
+
+ + b + c = 3d = 300 ⇒ d =100. So variables are (100 - e, 100, 100 + e). Therefore
+
+---------------
+
+, for any e where 100 - e ≥0 and 100 + e ≤ 300?
+
+---------------
+
+ Wait, but since a + b + c = 300, the maximum e can be is 100 (
+
+---------------
+
+so that a =0 when e=100, but c=200). Wait, but in this setup, e
+
+---------------
+
+ can range from 0 up to 100, because if e >100, then a would be negative. So
+
+---------------
+
+ e can be from 0 to 100 inclusive.
+
+Therefore, for each integer e from 0 to 100, the
+
+---------------
+
+ triple (100 - e, 100, 100 + e) will satisfy both equations.
+
+---------------
+
+ However, we need the variables to be nonnegative integers, so e can be 0 to 100.
+
+But wait
+
+---------------
+
+, when e=0, that gives (100,100,100), which is the all
+
+---------------
+
+ equal case. When e=100, that gives (0,100,200). Which is one
+
+---------------
+
+ of the earlier cases. Similarly, when e=50, that gives (50,100,150), which is the example
+
+---------------
+
+ I had before. So this shows that all triples where the numbers form an arithmetic progression with common difference 2e (since
+
+---------------
+
+ difference between a and b is e, between b and c is e) around the central term 100 are solutions.
+
+Therefore, the
+
+---------------
+
+ arithmetic progression solutions are parameterized by e from 0 to 100. Each e gives a unique solution (up
+
+---------------
+
+ to ordering). However, the triples (100 - e, 100, 100 + e) are ordered
+
+---------------
+
+, but actually, the variables can be permuted. Wait, but in this setup, the variables are in a specific order.
+
+---------------
+
+ However, in the problem statement, the triples (a, b, c) are unordered? Wait no, the problem says "triples of nonnegative integers (a, b, c)", so ordered
+
+---------------
+
+ triples. Therefore, each permutation is a distinct solution. However, in the arithmetic progression setup, the triples are ordered as (a, b, c) = (100 - e, 100, 100 + e). But
+
+---------------
+
+ since the problem allows any ordering, each such arithmetic progression can be arranged in different ways.
+
+Wait, actually, the arithmetic progression case
+
+---------------
+
+ gives specific triples where the numbers are in AP, but since the problem counts ordered triples, each permutation of such a triple is
+
+---------------
+
+ a different solution. Except when all three are equal, which only has one permutation.
+
+Therefore, first, let's consider the
+
+---------------
+
+ case when e =0: (100, 100, 100). Only one ordered triple here.
+
+For e from 1 to 99: each
+
+---------------
+
+ e gives a triple with distinct elements (since 100 - e, 100, 100 + e are distinct when
+
+---------------
+
+ e≠0). The number of ordered permutations for each such triple is 6 (since all three elements are distinct). However
+
+---------------
+
+, the arithmetic progression triple as given (100 - e, 100, 100 + e) is just one specific
+
+---------------
+
+ permutation. So for each e from 1 to 99, there are 6 ordered triples corresponding to the permutations.
+
+Wait
+
+---------------
+
+, but actually, when e is varied, each distinct set {100 - e, 100, 100 + e} corresponds
+
+---------------
+
+ to a unique multiset. However, when e and (100 - e) are considered, they might produce the same multiset?
+
+---------------
+
+ Wait no, because e is from 1 to 100, so for e and (100 - e),
+
+---------------
+
+ the multisets would be different unless e =50. Wait, let me see:
+
+Suppose e=1 and e=99:
+
+
+
+---------------
+
+For e=1: the numbers are 99, 100, 101
+
+For e=99: numbers are 1, 100, 199
+
+These are different multisets. So each e from 1 to 100 gives a unique multiset,
+
+---------------
+
+ except when e and (100 - e) might produce same multiset? Wait, no. For example, e=50 gives
+
+---------------
+
+ 50,100,150, which is different from e=50's counterpart? Wait,
+
+---------------
+
+ actually, e=50 is in the middle. So each e from 1 to 100 gives a unique multiset.
+
+---------------
+
+ Wait, but when e=50, the multiset is {50,100,150}, which
+
+---------------
+
+ is same as e=50, but when e=25, it's {75, 100, 125}, which
+
+---------------
+
+ is different from e=75's {25, 100, 175}. So all are
+
+---------------
+
+ distinct.
+
+Therefore, for e from 1 to 100, each gives a unique multiset. However, when
+
+---------------
+
+ e=100, the multiset is {0,100,200}, which is the same as the
+
+---------------
+
+ case when one variable is zero. Earlier, we had found that (200,100,0) etc
+
+---------------
+
+. are solutions. So this arithmetic progression approach includes those as well.
+
+Therefore, the arithmetic progression approach gives all solutions where the numbers are in an arithmetic progression with
+
+---------------
+
+ common difference 2e, centered at 100. Each such triple (in any order) is a solution. So
+
+---------------
+
+ how many ordered triples does this account for?
+
+First, for e from 0 to 100:
+
+- e=0: (
+
+---------------
+
+100,100,100). Only 1 ordered triple.
+
+- e from 1 to 99: For
+
+---------------
+
+ each e, there are 6 permutations. So total 99*6 = 594.
+
+- e=100: The
+
+---------------
+
+ triple is (0,100,200). The permutations of this are 3! /1! (since all distinct) so
+
+---------------
+
+ 6 permutations. Wait but earlier when I considered c=0, I found that (200,100,0) etc. are
+
+---------------
+
+ solutions, which is exactly the case here. So e=100 gives 6 ordered triples.
+
+Therefore total from arithmetic progression approach
+
+---------------
+
+: 1 + 594 + 6 = 601.
+
+Wait, but wait, 1 (for e=0) + 99*6 (for e=1 to 99) + 6 (for e=100) =
+
+---------------
+
+ 1 + 594 +6 = 601. Hmm, but let me check e=100:
+
+
+
+---------------
+
+Wait, when e=100, the triple is (100 - 100, 100, 100 +100) = (0, 100, 200). So
+
+---------------
+
+ that is one multiset, which has 6 permutations. So that's correct.
+
+So total of 601 ordered triples from arithmetic progression.
+
+
+
+---------------
+
+But wait, but earlier when I found (150,100,50), which is e=50, so
+
+---------------
+
+ that's included in the arithmetic progression case. So that's accounted for.
+
+However, there might be other solutions outside of this arithmetic progression.
+
+---------------
+
+ For example, the case where one variable is zero, but not part of an arithmetic progression?
+
+Wait, no, the case
+
+---------------
+
+ where variables are (200,100,0) is part of the arithmetic progression when e=100.
+
+---------------
+
+ So that's included. The other solutions with a zero variable are exactly when e=100. So the arithmetic progression covers
+
+---------------
+
+ all those cases.
+
+Wait, but are there solutions not in arithmetic progression? Let me see.
+
+Suppose we have a triple (
+
+---------------
+
+a,b,c) not in arithmetic progression, but still satisfies the equations. Let me try to find such a triple.
+
+Suppose a
+
+---------------
+
+=150, b=150, c=0. Wait, we tried this earlier, but the sum
+
+---------------
+
+ was 6,750,000 which was too big. Not a solution.
+
+How about a= 12
+
+---------------
+
+0, b= 100, c=80. Let's see.
+
+Check sum: 120+100+80=300. Good.
+
+Compute the expression:
+
+a²b +a²c +b²a +b²c +c²a +c²b
+
+Compute
+
+---------------
+
+ term by term:
+
+a²b = 120²*100 = 14,400*100 = 1,440,000
+
+a²c =120²*80 =14,400*80=1,152,000
+
+b²a =100²*120 =10,000*120=1,200,000
+
+b²c =100²*80=800,000
+
+c²a =80²*120=6,400*120=768,000
+
+c²b =80²*100=6,400*100=640,000
 
 Adding
 
@@ -1245,1965 +1644,620 @@ Adding
 
  all together:
 
-2,250,000 + 1,125,000 = 3,375,000
+1,440,000 + 1,152,000 = 2,592,000
 
-+1,500,000 = 4,875,000
++1,200,000 → 3,792,000
 
-+500,000 = 5,375,000
++800,000 → 4,592,000
 
-+375,000 = 5,750,000
++768,000 →5,360,000
 
-+250,000 = 6,000,000.
-
-Wait a second! That adds
++640,000 →6,000,000. Oh
 
 ---------------
 
- up to exactly 6,000,000!
-
-So (150, 100, 50) is another solution.
+! That works too. Wait, so (120,100,80) is another solution, which
 
 ---------------
 
- And since the variables are all different and non-zero, this is a new solution.
+ is not in an arithmetic progression.
 
-Hmm, so this is another solution. Therefore
+Wait, let me check if this is part of the arithmetic progression framework. Let's see:
 
----------------
 
-, there are more solutions than previously thought.
-
-Therefore, my initial thought that only the symmetric case and the cases with a zero were
 
 ---------------
 
- solutions was incorrect. There are more solutions where all variables are different and non-zero.
-
-Therefore, I need to consider such cases as well.
-
-So
+Suppose the triple (120,100,80). Let me see if they form an arithmetic progression. The numbers are 80,100,120, which is an arithmetic progression with common difference 20. So
 
 ---------------
 
- let's analyze this example. The triple (150, 100, 50) gives the required sum and product.
+ yes, it is an arithmetic progression. The common difference here is 20, so the middle term is 100, so e=
 
 ---------------
 
- Let me check the other permutations of this as well.
-
-Indeed, any permutation of (150, 100, 50) will also satisfy the equations since
+20. So (100 -20, 100, 100+20)
 
 ---------------
 
- the problem is symmetric. So there are 6 permutations (since all three numbers are distinct), so that's 6 more solutions.
-
-Wait
+ = (80,100,120). Therefore, it is indeed part of the arithmetic progression case. So that
 
 ---------------
 
-, but let me confirm with another permutation. Let's take (100, 150, 50):
+'s accounted for.
+
+Hmm, so perhaps all solutions are indeed covered by the arithmetic progression case. Let me try another triple not
+
+---------------
+
+ in AP.
+
+Suppose (180, 60, 60). Let me check:
+
+Sum: 180+60+60=300.
 
 Compute the expression:
 
-a²b + a²c + b²a + b²c + c²a + c²b
+a²b +a²c +b²a +b²c +c²a +c²b
 
-
-
----------------
-
-a=100, b=150, c=50.
-
-a²b = 100²*150 = 1,000,000*0.15 =
+=
 
 ---------------
 
- 150,000? Wait, no, 100^2 is 10,000,
+ 180²*60 +180²*60 +60²*180 +60²*60 +60²*180 +60²*60
 
----------------
-
- so 10,000*150 = 1,500,000
-
-a²c = 10,000*50 = 500,000
-
-b²a = (150)^2 *100 = 22,500*100 = 2,250,000
-
-b²c = 22,500*50 = 1,125,000
-
-c²a = 2500*100 = 250,000
-
-c²b = 2500*150 = 375,000
-
-Adding them
-
----------------
-
- up:
-
-1,500,000 + 500,000 = 2,000,000
-
-+2,250,000 = 4,250,000
-
-+1,125,000 = 5,375,000
-
-+250,000 = 5,625,000
-
-+375,000 = 6,000,000.
-
-Yes, that
-
----------------
-
- works too. So indeed, all permutations of (150,100,50) are valid. So
-
----------------
-
- that's 6 solutions.
-
-Hmm, so this is a new family of solutions. So now we have:
-
-1. The symmetric solution: (100,100,100) – 1 solution.
-
-2. Solutions with a zero: (
-
----------------
-
-200,100,0) and permutations – 6 solutions.
-
-3. Solutions with (150,100,50) and permutations – 6 solutions.
-
-Wait, but
-
----------------
-
- maybe there are more such solutions? Let's see.
-
-Let me check another example. Let me see if (200, 50, 50) works. Wait, sum
-
----------------
-
- is 200 +50 +50=300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b.
-
-Let
-
----------------
-
- a=200, b=50, c=50.
-
-Compute each term:
-
-200²*50 + 200²*50 + 50²*200 + 50²*50 + 50²*200 + 50²*50
-
-First
-
----------------
-
- term: 40,000*50 = 2,000,000
-
-Second term: same as first: 2,000,000
-
-Third term: 2500*200 = 500,000
-
-Fourth term: 2500*50 = 125,000
-
-Fifth term same as third: 500,000
-
-Sixth term same as fourth: 125,000
-
-Total: 2,000,000 + 2,000,000 = 4,000,000
-
-+500,000 +125,000 = 4,625,000
-
-+500,000 +125,000 = 5,375,000
-
-
-
----------------
-
-Hmm, which is less than 6,000,000. So that's not a solution.
-
-Alternatively, maybe
-
----------------
-
- another triplet. Let's see.
-
-Suppose (180, 90, 30). Let's check sum
-
----------------
-
-: 180+90+30=300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b
-
-a
-
----------------
-
-=180, b=90, c=30.
-
-Compute each term:
-
-a²b = 180²*90 = (32,400)*90 = 2,916,000
-
-a²c = 32,400*30 = 972,000
-
-b²a = 8100*180 = 1,458,000
-
-b²c = 8100*30 = 243,000
-
-c²a = 900*180 = 162,000
-
-c²b = 900*90 = 81,000
-
-Adding
-
----------------
-
- them all:
-
-2,916,000 + 972,000 = 3,888,000
-
-+1,458,000 = 5,346,000
-
-+243,000 = 5,589,000
-
-+162,000 = 5,751,000
-
-+81,000 = 5,832,000.
-
-
-
----------------
-
-Still less than 6,000,000. Hmm.
-
-Alternatively, let me think of the example (
-
----------------
-
-150, 100, 50). Let me see if there's a pattern here. The numbers are in a
-
----------------
-
- ratio 3:2:1 (150:100:50). Let me see if scaling that ratio
-
----------------
-
- might give another solution.
-
-Suppose we try (225, 75, 0). Wait, but that
-
----------------
-
- has a zero. Let's see:
-
-Wait, 225 +75 +0=300. The
-
----------------
-
- product terms would be:
-
-a²b + a²c + ... But since c=0, similar to previous cases.
-
-
-
----------------
-
-Wait, but if we set variables as multiples, maybe?
-
-Alternatively, let me see if there's another triplet like (150,100,50). Let's see
-
----------------
-
- if (120, 120, 60) works.
-
-Sum: 120+120+60=300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b.
-
-a
-
----------------
-
-=120, b=120, c=60.
-
-Compute each term:
-
-a²b = 120²*120 = 14,400*120 = 1,728,000
-
-a²c = 14,400*60 = 864,000
-
-b²a = same as a²b =
-
----------------
-
- 1,728,000
-
-b²c = same as a²c = 864,000
-
-c²a = 60²*120 = 3,600*120 = 432,000
-
-c²b = same as c²a = 432,000
-
-Adding all terms:
-
-1,728,000 + 864,000 = 2,592,000
-
-+1,728,000 = 4,320,000
-
-+864,000 = 5,184,000
-
-+432,000 = 5,616,000
-
-+432,000 = 6,048,000.
-
-Hmm
-
----------------
-
-, that's over. 6,048,000 which is more than 6,000,000. Close but not exact.
-
-Hmm, so
-
----------------
-
- that's not a solution.
-
-Alternatively, maybe (160, 80, 60). Let's see
-
----------------
-
- sum is 160+80+60=300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b
-
-a=160, b=80, c=60.
-
-Compute
-
----------------
-
- each term:
-
-160²*80 = 25,600*80 = 2,048,000
-
-160²*60 = 25,600*60 = 1,536,000
-
-80²*160 = 6,400*160 = 1,024,000
-
-80²*60 = 6,400*60 = 384,000
-
-60²*160 = 3,600*160 = 576,000
-
-60²*80 = 3,600*80 = 288,000
-
-Adding all
-
----------------
-
- terms:
-
-2,048,000 +1,536,000 = 3,584,000
-
-+1,024,000 = 4,608,000
-
-+384,000 = 4,992,000
-
-+576,000 = 5,568,000
-
-+288,000 = 5,856,000.
-
-
-
----------------
-
-Still under 6,000,000. Hmm.
-
-Alternatively, let's think of another approach. Since
-
----------------
-
- we found (150,100,50) works, perhaps this is part of a family where variables are in an
-
----------------
-
- arithmetic progression?
-
-Wait, 50, 100, 150 is an arithmetic progression with difference 50. Maybe other
-
----------------
-
- arithmetic progressions?
-
-Suppose variables are x - d, x, x + d. Then their sum is 3x = 300 ⇒ x = 100. So the
-
----------------
-
- variables would be 100 - d, 100, 100 + d. Let's check if
-
----------------
-
- this works.
-
-Let me set a = 100 - d, b = 100, c = 100 + d. Then sum
-
----------------
-
- is 300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b.
-
-Let me compute term by term.
-
-First, compute a²b:
-
-
-
----------------
-
-(100 - d)^2 * 100
-
-Similarly, a²c = (100 - d)^2*(100 + d)
-
-b²a = 100²*(100 - d)
-
-b²c = 100²*(100 + d)
-
-c²a = (100 + d)^2*(100 - d)
-
-c²b = (100 + d)^2*100
-
-Let
+Wait, let
 
 ---------------
 
  me compute each term:
 
-1. a²b = (10000 - 200d + d²)*100 = 1,000,000 - 20,000d + 100d²
+a²b = (180)^2 *60 = 32,400 *60 =1,944,000
 
-2. a²c = (100 - d)^2*(100 + d) = [(
+a²c = same as a²b since
 
 ---------------
 
-100 - d)(100 - d)]*(100 + d) = (100 - d)^2*(100 + d)
+ c=60: another 1,944,000
 
-Let
+b²a = (60)^2 *180 = 3,600 *180 =648,000
 
----------------
-
- me expand (100 - d)^2*(100 + d):
-
-First compute (100 - d)^2 = 10,000 - 200d + d²
-
-Multiply by (100 + d):
-
-= (10,000 - 200d + d²)(100 + d)
-
-= 10,000*100 + 10,000*d - 200d*100 -200d*d + d²*100 + d^3*1
-
-= 1,000,000 + 10,000d - 20,000d - 200d² + 100d² + d³
-
-Simplify:
-
-1,000,000 - 10,000d - 100d² + d³
-
-So term 2: 1,000,000 -10,000d -100d² + d³
-
-3. b²a = 10,000*(100 - d) = 1,000,000 -10,000d
-
-4. b²c = 10,000*(100 + d) = 1,000,000 + 10,000d
-
-5. c²a = (100 + d)^2*(100 - d)
-
-Similarly to term 2, let
-
----------------
-
-'s compute:
-
-(100 + d)^2 = 10,000 + 200d + d²
-
-Multiply by (100 - d):
-
-= (10,000 + 200d + d²)(100 - d)
-
-= 10,000*100 -10,000*d + 200d*100 -200d² + d²*100 -d^3
-
-= 1,000,000 -10,000d + 20,000d -200d² +100d² -d³
-
-Simplify:
-
-1,000,000 +10,000d -100d² -d³
-
-6
-
----------------
-
-. c²b = (100 + d)^2*100 = (10,000 + 200d + d²)*100 = 1,000,000 + 20,000d + 100d²
-
-Now, let
-
----------------
-
-'s add all six terms:
-
-Term1 + Term2 + Term3 + Term4 + Term5 + Term6
-
-Let
-
----------------
-
- me write each term:
-
-Term1: 1,000,000 -20,000d +100d²
-
-Term2: 1,000,000 -10,000d -100d² +d³
-
-Term3: 1,000,000 -10,000d
-
-Term4: 1,000,000 +10,000d
-
-Term5: 1,000,000 +10,000d -100d² -d³
-
-Term6: 1,000,000 +20,000d +100d²
-
-Now, let's combine term
-
----------------
-
- by term:
-
-Start with the constants:
-
-1,000,000 (Term1) +
-
-1,000,000 (Term2) +
-
-1,000,000 (Term3) +
-
-1,000,000 (Term4) +
-
-1,000,000 (Term5) +
-
-1,000,000 (Term6) =
-
-6,000,000
-
-Now the
-
----------------
-
- terms with d:
-
-Term1: -20,000d
-
-Term2: -10,000d
-
-Term3: -10,000d
-
-Term4: +10,000d
-
-Term5: +10,000d
-
-Term6: +20,000d
-
-Adding these:
-
--20,000d -10,000d -10,000d +10,000d +10,000d +20,000d
-
-Let me compute step by step:
-
-Start with -20k -10k = -30k
-
--30k -10k = -40k
-
--40k +10k = -30k
-
--30k +10k = -20k
-
--20k +20k = 0
-
-
-
----------------
-
-So the total for d terms is 0.
-
-Now the terms with d²:
-
-Term1: +100d²
-
-Term2: -100d²
-
-Term3: 0
-
-Term4: 0
-
-Term5: -100d²
-
-Term6: +100d²
-
-Adding these:
-
-100d² -100d² -100d² +100d² = 0
-
-Now
-
----------------
-
- terms with d³:
-
-Term2: +d³
-
-Term5: -d³
-
-Total: d³ -d³ = 0
-
-Therefore, the
-
----------------
-
- total sum is 6,000,000 regardless of d?
-
-Wait a minute! That's fascinating. That
-
----------------
-
- means, if the three numbers are in arithmetic progression around 100, then the expression will always equal 6,000,000?
-
-
-
----------------
-
-But in our earlier example with d = 50 (so numbers 50, 100, 150), that
-
----------------
-
- gives 6,000,000. Similarly, if d=0 (all 100s), also
-
----------------
-
- gives 6,000,000. So actually, any arithmetic progression centered at 100 with
-
----------------
-
- common difference d will satisfy the equation?
-
-Wait, but then why when I tried d=25, like (75, 100, 125), let
-
----------------
-
-'s check:
-
-Compute the expression for (75, 100, 125):
-
-a=75, b=100, c=125.
-
-Compute each
-
----------------
-
- term:
-
-a²b = 75²*100 = 5625*100 = 562,500
-
-a²c = 75²*125 = 5625*125 = 703,125
-
-b²a = 100²*75 = 10,000*75 = 750,000
-
-b²c = 10,000*125 = 1,250,000
-
-c²a = 125²*75 = 15,625*75 = 1,171,875
-
-c²b = 125²*100 = 15,625*100 = 1,562,500
-
-Now add
-
----------------
-
- all terms:
-
-562,500 + 703,125 = 1,265,625
-
-+750,000 = 2,015,625
-
-+1,250,000 = 3,265,625
-
-+1,171,875 = 4,437,500
-
-+1,562,500 = 6,000,000.
-
-Yes
-
----------------
-
-! It works. So that's another solution. So actually, any arithmetic progression with a common difference d will satisfy the equation.
-
----------------
-
- Therefore, all triples where the numbers are in arithmetic progression adding to 300 will satisfy the equation?
-
-Wait, but
-
----------------
-
- let me confirm with another d.
-
-Take d = 10: (90, 100, 110).
-
-Compute the expression:
-
-a=90, b=100, c=110.
-
-a²b = 8100*100 = 810,000
-
-a²c =8100*110 = 891,000
-
-b²a =10000*90 = 900,000
-
-b²c =10000*110 =1,100,000
-
-c²a =12,100*90 = 1,089,000
-
-c²b =12,100*100 =1,210,000
-
-Adding them
-
----------------
-
- up:
-
-810,000 + 891,000 = 1,701,000
-
-+900,000 = 2,601,000
-
-+1,100,000 = 3,701,000
-
-+1,089,000 =4,790,000
-
-+1,210,000 =6,000,000.
-
-Yes
-
----------------
-
-! Perfect. So indeed, any arithmetic progression centered at 100 with any difference d will satisfy the equation. Therefore
-
----------------
-
-, all triples where a, b, c form an arithmetic progression summing to 300 are solutions.
-
-Therefore, the
-
----------------
-
- solutions are:
-
-1. The symmetric triple (100, 100, 100).
-
-2. All triples where the numbers form an arithmetic progression with
-
----------------
-
- common difference d (including zero difference, which is the symmetric case).
-
-Wait, but arithmetic progression can also have negative differences? But
-
----------------
-
- since we need non-negative integers, the common difference must be such that all terms are non-negative.
-
-Given that the three terms are 
-
----------------
-
-100 - d, 100, 100 + d. To have non-negative integers, we need:
-
-100 - d ≥ 0 ⇒ d ≤ 100,
-
-and 100 + d ≤ 300?
-
----------------
-
- Wait, no, the sum is fixed at 300. Wait, actually, the three terms add to 300 regardless
-
----------------
-
- of d, since (100 - d) + 100 + (100 + d) = 300.
-
-So
-
----------------
-
- the only constraint is that each term is non-negative:
-
-100 - d ≥ 0 ⇒ d ≤ 100,
-
-and 100 + d ≥ 0 ⇒ d
-
----------------
-
- ≥ -100,
-
-but since d is an integer and the terms are non-negative, d can be from 0 up to 100,
-
----------------
-
- inclusive.
-
-Wait, but d can also be negative? Wait, if d is negative, say d = -k where k is
-
----------------
-
- positive, then the terms would be 100 +k, 100, 100 -k, which is the same as d
-
----------------
-
- =k but with the order reversed. Since the problem allows any permutation, considering d positive is sufficient.
-
-Therefore, d can range from 0 to 100, but
-
----------------
-
- when d=0, it's the symmetric case. For each d from 1 to 100, we get an
-
----------------
-
- arithmetic progression with difference d, but since the variables are ordered, each d gives a unique triple up to permutation.
-
-Wait, actually, for
-
----------------
-
- each d from 0 to 100, the triplet (100 -d, 100, 100 +d) is a distinct solution
-
----------------
-
-, but since the problem counts ordered triples, each permutation of such a triplet counts as a different solution.
-
-Wait, but actually
-
----------------
-
-, the arithmetic progression can be in any order. For example, if d=50, the triplet is (50, 100, 150), which can be arranged in any order, so
-
----------------
-
- all permutations are allowed. But when considering d as a parameter, each d gives a unique set of values, and the number of ordered triples would
-
----------------
-
- depend on whether the terms are distinct.
-
-Wait, let's clarify:
-
-For d = 0: all terms are 100. So
-
----------------
-
- only one ordered triple: (100,100,100).
-
-For d ≠ 0: the triplet has three distinct numbers (
-
----------------
-
-since 100 -d, 100, 100 +d are all different if d ≠0). Therefore
-
----------------
-
-, each such triplet can be permuted in 6 ways (since all three are distinct). However, when d = 100, the terms would be (0, 100, 200). This
-
----------------
-
- is similar to the case where one variable is zero. Indeed, when d=100, we get the triplet (0, 100, 200), which is one
-
----------------
-
- of the cases we considered earlier with a zero.
-
-Therefore, the arithmetic progression approach actually encompasses both the cases with a zero and the cases
-
----------------
-
- with all distinct non-zero terms.
-
-Therefore, the total number of solutions from arithmetic progressions is:
-
-For each d from 0 to 100:
-
-- When d=0: 1 solution.
-
-- When 1 ≤ d ≤ 99: each d gives 6 ordered triples (since all three terms are distinct).
-
-- When d=100: the triplet is (0,100,200), which can
-
----------------
-
- be arranged in 3! /1! (since all distinct) = 6 ways, but actually, since 0 is one
-
----------------
-
- of the terms, the number of permutations is 3 (the zero can be in any of the three positions, and the other two numbers
-
----------------
-
- are distinct). Wait, no: the triplet (0,100,200) has all distinct elements, so number
-
----------------
-
- of permutations is 3! =6. For example, (0,100,200), (0,200,100), (100,0,200), (100,200,0), (200,0,100), (200,100,0). So yes
-
----------------
-
-, 6 permutations.
-
-Therefore, for d=100, it's still 6 ordered triples.
-
-Therefore, total solutions from arithmetic progressions would be:
-
-1 (for d=0) + 6*(100) (
-
----------------
-
-for d from 1 to 100).
-
-Wait, but hold on:
-
-Wait, d ranges from 0 to 100 inclusive, so
-
----------------
-
- that's 101 values of d.
-
-For each d from 1 to 100, there are 6 ordered triples.
-
----------------
-
- For d=0, 1 triple.
-
-Therefore total is 1 + 6*100 = 601?
-
-
-
----------------
-
-Wait, but that can't be right, because when d=50, for example, we have (50,100,150), which is counted
-
----------------
-
- in the arithmetic progression, but also when d=100, we have (0,100,200), which is
-
----------------
-
- also counted here. But this seems to include all the cases we considered earlier.
-
-Wait, but let me check with d=50:
-
-
-
----------------
-
-d=50 gives (50,100,150), which is one of the cases we found earlier
-
----------------
-
-, and there are 6 permutations, so yes, that's accounted for.
-
-Similarly, d=100 gives (0,100,200), which
-
----------------
-
- also has 6 permutations. So, indeed, this counts all the solutions where the numbers form an arithmetic progression, which includes
-
----------------
-
- the symmetric case and the cases with a zero.
-
-Therefore, according to this, the total number of solutions from arithmetic progressions is 1 + 6*100 = 601.
-
-Wait, but hold
-
----------------
-
- on: but in the problem statement, the variables are nonnegative integers. So when d=100, we have 
-
----------------
-
-0, which is allowed. But what about when d=101? Wait, d can't be more than 100, because 100 -d must be non-negative, so d_max
-
----------------
-
- is 100.
-
-Therefore, the total number of triples from arithmetic progression is indeed 1 + 6*100 = 601.
-
-But wait a second,
-
----------------
-
- that can't be correct because when d=1 and d'= something else, the triplets might overlap?
-
-Wait no, each
-
----------------
-
- d gives a distinct set of numbers. For example, d=1 gives (99, 100, 101), which
-
----------------
-
- is different from d=2's (98,100,102), etc. So each d gives
-
----------------
-
- a unique set of numbers, hence unique permutations.
-
-Therefore, the total number of triples would be 1 + 6*100 = 601.
-
-However, this
-
----------------
-
- contradicts our earlier findings where we found two distinct cases: the symmetric case (1 solution), the zero cases (6 solutions when
-
----------------
-
- d=100), and other cases like (150,100,50) which are included
-
----------------
-
- in the arithmetic progression counts (as d=50).
-
-Wait, but according to this arithmetic progression approach, all solutions are captured
-
----------------
-
- by this method. So why do we have 601 solutions? But the problem might have more solutions outside of arithmetic progressions?
-
-Wait, but
-
----------------
-
- earlier when I tried (160, 80, 60), it didn't work, so perhaps arithmetic
-
----------------
-
- progression is the only way?
-
-Wait, let me think. Suppose there exists a solution that is not an arithmetic progression. Let me see
-
----------------
-
-.
-
-Suppose a triplet like (120, 100, 80). Let me check if this works.
-
-Sum is 120+100+80=300.
-
-Compute the expression:
-
-a²b + a²c + b²a + b²c + c²a + c²b.
-
-a
-
----------------
-
-=120, b=100, c=80.
-
-Compute each term:
-
-120²*100 = 14400*100 = 1,440,000
-
-120²*80 =14400*80 = 1,152,000
-
-100²*120 =10,000*120 = 1,200,000
-
-100²*80 =10,000*80 = 800,000
-
-80²*120 =6,400*120 = 768,000
-
-80²*100 =6,400*100 = 640,000
-
-Adding all terms:
-
-1,440,000 +1,152,000 = 2,592,000
-
-+1,200,000 = 3,792,000
-
-+800,000 = 4,592,000
-
-+768,000 = 5,360,000
-
-+640,000 = 6,000,000.
-
-Oh! Wait
-
----------------
-
- a second. This adds up to 6,000,000. But (120, 100, 80) is not an arithmetic progression. Because
-
----------------
-
- 120, 100, 80 is an arithmetic progression with difference -20, but arranged
-
----------------
-
- in reverse. Wait, actually, 120, 100, 80 is an arithmetic progression with common difference -20, so it
+b²c = (
 
 ---------------
 
-'s the same as 80, 100, 120, which is an arithmetic progression with d=20. So
+60)^2 *60 = 3,600 *60 =216,000
 
----------------
-
- actually, this is part of the arithmetic progression solutions. So it's included in our previous count.
-
-Therefore, my mistake earlier
-
----------------
-
- was not recognizing that (120,100,80) is part of the arithmetic progression with d=20,
-
----------------
-
- so it's counted in the 6 permutations for d=20.
-
-Therefore, all solutions are indeed captured by the arithmetic progression approach. Therefore
-
----------------
-
-, the total number of solutions is 1 (for d=0) + 6*100 (for d=1 to 100)
-
----------------
-
- = 601.
-
-Wait, but hold on, let me check d=25, which I had tried before (
-
----------------
-
-75,100,125). Which is included here.
-
-Wait, but let me check another example that
-
----------------
-
- is not an arithmetic progression. Suppose (110, 100, 90). Let's see:
-
-
-
----------------
-
-Sum is 300, and it's an arithmetic progression with d=10. So it's included in the count.
-
-Alternatively
-
----------------
-
-, let me think of a triplet that isn't in an arithmetic progression. Let's say (130, 100, 70). That
-
----------------
-
-'s an arithmetic progression with d=30, so yes, included.
-
-Alternatively, (140, 100, 60):
-
----------------
-
- arithmetic progression with d=40.
-
-Therefore, it seems that all solutions are indeed arithmetic progressions. Therefore, the total number of solutions is indeed 601.
-
-Wait, but let
-
----------------
-
-'s confirm with the earlier case of (200, 100, 0). That corresponds to d=100. So
-
----------------
-
- yes, included in the count.
-
-However, let me check if there are any solutions outside of arithmetic progressions. Suppose I
-
----------------
-
- take a triplet like (150, 150, 0). Let's see:
-
-Sum is 150+150+0=300.
-
-Compute the expression:
-
-a²b +a²c +b²a +b²c +c²a +c²b.
-
-a
-
----------------
-
-=150, b=150, c=0.
-
-Compute each term:
-
-150²*150 = 22500*150 = 3,375,000
-
-150²*0 =0
-
-150²*150 =3,375,000
-
-150²*0=0
+c²a = same as b²a:
 
-0²*150=0
-
-0²*150=0
-
-Total:
-
----------------
-
- 3,375,000 +3,375,000 =6,750,000 which
-
----------------
-
- is more than 6,000,000. So this is not a solution.
-
-Alternatively, take (18
-
----------------
-
-0, 90, 30). Which we had tried before, which didn't work. So not a solution.
-
-Therefore
-
----------------
-
-, it seems all solutions must be arithmetic progressions. Thus, the total number of solutions is 1 + 6*100 = 601.
-
-Wait, but hold
-
----------------
-
- on. Let me check the case where two variables are equal but not part of an arithmetic progression. For instance, (200, 2
-
----------------
-
-00, 0). Sum is 400, which is over 300, so invalid.
-
-Wait, (
-
----------------
-
-150, 150, 0) as above didn't work. So perhaps all solutions are indeed arithmetic
-
----------------
-
- progressions.
-
-Therefore, the total number of triples is 1 (symmetric) + 6*100 (other
-
 ---------------
 
- arithmetic progressions) = 601.
+648,000
 
-Wait, but hold on: when d ranges from 1 to 100, each gives 6 ordered
+c²b = same as b²c:216,000
 
----------------
-
- triples. But when d=100, the triplet includes a zero, but the count is still 6 permutations. So
-
----------------
-
- that's correct.
-
-However, let's verify with a smaller case. Suppose instead of 300, the sum was 
-
----------------
-
-6. Let's see if the logic holds.
-
-Suppose S = 6. Then the arithmetic progression would have a common
-
----------------
-
- difference d, such that the triplet is (3 -d, 3, 3 +d). The possible d's
-
----------------
-
- are 0 to 3.
+Total sum:
 
-For d=0: (3,3,3) – 1 solution.
+1,944,000 +1,944,000 =3,888,000
 
-For d=1: (2,3,4) –
++648,000 →
 
 ---------------
 
- 6 permutations.
+4,536,000
 
-d=2: (1,3,5) – 6 permutations.
++216,000 →4,752,000
 
-d=3: (0,3,6) – but 
++648,000 →5,400,000
 
----------------
-
-0+3+6=9 ≠6. Wait, that's a problem.
-
-Wait, in this smaller case, the
-
----------------
-
- sum is fixed at 6, so the arithmetic progression must add to 6. So the triplet must be (3 -d, 3, 3 +d). Their
-
----------------
++216,000 →5,616,000.
 
- sum is 3 -d +3 +3 +d =9, which is not 6. Therefore, this approach fails
-
 ---------------
 
- here. So my previous reasoning might have an error.
+ Which is less than 6,000,000. So not a solution.
 
-Wait, that's a problem. The arithmetic progression approach works for S=300 because the
+So that's not a solution. Another
 
 ---------------
 
- common difference cancels out in the sum. Let me see:
+ example: a= 160, b=100, c=40.
 
-Wait, in the original problem, the arithmetic progression is centered
+Check sum: 160+100+40=300.
 
----------------
+Compute expression:
 
- at 100, so (100 -d, 100, 100 +d) adds
+a²b =160²*100 =25,600*100=2,560,000
 
----------------
+a²c =160²*40=25,600*40=1,024,000
 
- to 300. But in the smaller case, if I want the triplet to add to S, then the middle term must
+b²a=100²*160=1,000,000*0.16=
 
 ---------------
-
- be S/3. So in the case of S=6, the middle term is 2, so triplet would be (2 -d, 2, 2 +d). Then
 
----------------
+160,000? Wait, no:
 
- sum is (2 -d) +2 + (2 +d)=6, which works. So in that case, d can be from 0 to 2 (
+Wait 100² is 10,000.
 
 ---------------
-
-since 2 -d ≥0 ⇒ d ≤2).
 
-Thus, for S=6:
-
-d=0: (2,2,2)
-
----------------
+ 10,000*160 =1,600,000
 
- – 1 solution.
+b²c=100²*40=10,000*40=400,000
 
-d=1: (1,2,3) – 6 permutations.
+c²a=40²*160=1,600*160=256,000
 
-d=2: (0,2,4) – 6 permutations.
+c²b=40²*100=1,600*100=160,000
 
 Total
 
 ---------------
 
- solutions: 1 + 6+6 =13.
-
-Let me verify with the equation.
-
-Suppose triplet (1,2,3):
-
-Compute a²b +a²c +b²a +b²c +c²a +c²b.
-
-1
-
----------------
-
-²*2 +1²*3 +2²*1 +2²*3 +3²*1 +3²*2
-
-= 2 +3 +4 + 12 +9 +18 = 48.
-
-Meanwhile
-
----------------
-
-, the equation would be:
-
-We need to see what the required value is. Let me compute the expression for S=6:
-
-
-
----------------
-
-The required value would be?
-
-Wait, in the original problem, the expression equals 6,000,000 when S=300. For
-
----------------
-
- S=6, the equivalent value would depend on the specific equation.
-
-Alternatively, perhaps in the small case, the expression for
-
----------------
-
- (1,2,3):
-
-The value is 48, and let's see if that corresponds to the arithmetic progression approach
-
----------------
-
-.
-
-Alternatively, maybe my arithmetic progression approach is correct when the sum is 3 times the middle term, but in that case, the
-
----------------
-
- required equation must hold. Since in the original problem it does, but in this small case, perhaps the equation would have different
-
----------------
-
- constraints.
-
-Wait, perhaps the key point is that in the original problem, the equation was specifically set so that any arithmetic progression would
-
----------------
-
- satisfy it. Let me see.
-
-In the original problem, we had the equation:
-
-a²b + a²c + b²a + b²c + c²a + c²b = 6,000,000.
-
-And
-
----------------
-
- through the arithmetic progression, we found that this equation is satisfied for any arithmetic progression. However, in the smaller case with S=6, it
-
----------------
-
-'s not necessarily true that every arithmetic progression would satisfy the equation unless the equation is set accordingly.
-
-Therefore, in the original problem, the specific
-
----------------
-
- value 6,000,000 is chosen such that all arithmetic progressions satisfy the equation. Therefore, in
-
----------------
-
- our problem, all arithmetic progression triplets are solutions, and there are no other solutions. Thus, the total number is 1 + 6*100 = 601.
-
-Wait
-
----------------
-
-, but hold on. Let me confirm with another non-arithmetic progression triplet. Suppose (100, 100, 100) is the
-
----------------
-
- symmetric case. What about (150, 100, 50) which is arithmetic progression. But
-
----------------
-
- what if I take (120, 100, 80) which is also arithmetic progression. So
-
----------------
-
- all the valid triplets I can think of are arithmetic progressions.
-
-Therefore, likely the only solutions are the arithmetic progressions, giving
-
----------------
-
- 601 solutions.
-
-But wait, in the problem statement, it says "nonnegative integers". So when d=100, we
-
----------------
-
- get (0,100,200), which is allowed. When d=100, the term
-
----------------
-
- 100 - d is 0, which is okay. Similarly, d=0 gives all 100s.
-
-Therefore
-
----------------
-
-, the total number of triples is 1 (for d=0) plus 6*100 (for d=1 to 100)
-
----------------
-
- = 601. But let's check if d can be from 0 to 100 inclusive, that
-
----------------
-
-'s 101 values, but d=0 gives 1 solution, and d=1 to 100 gives 6 each, so total is 1 + 6*100 = 601.
-
-However, the
-
----------------
-
- problem is asking for the number of triples of nonnegative integers (a,b,c). Each arithmetic progression with difference d from 0 to 100 gives rise
-
----------------
-
- to a unique multiset of numbers, and each multiset (except the symmetric one) has 6 permutations. So the
-
----------------
-
- total number is indeed 1 + 6*100 = 601.
-
-Wait, but let me check
-
----------------
-
- for d=50. The triplet (50,100,150) has permutations like (50,100,150), (50,150,100), etc. So
-
----------------
-
- 6 permutations. Similarly for d=1 to 99, and d=100 gives 6 permutations.
-
----------------
-
- So yes, 601.
-
-But wait, the problem says "triples of nonnegative integers". So order matters.
-
----------------
-
- So each permutation is a distinct triple.
-
-Therefore, the answer is 601?
-
-Wait, but in the problem statement's
-
----------------
-
- example with (200,100,0), those are included in the count for d=100,
-
----------------
-
- which contributes 6 triples, so that's correct.
-
-Wait, but let me confirm with another angle. Let me compute the total number using
-
----------------
-
- arithmetic progression.
-
-The number of arithmetic progressions with sum 300 is the number of possible differences d from 0 to 100,
-
----------------
-
- each giving a unique triplet (up to permutation). Since each non-symmetric triplet has 6 permutations, and the symmetric one has 1, the
-
----------------
-
- total is indeed 1 + 6*100 = 601.
-
-However, let me think if there is
-
----------------
-
- any possibility of overcounting or undercounting.
-
-Wait, when d=50, the triplet is (50,100,150). The
-
----------------
-
- difference here is 50, but the common difference in the progression is 50 (from 50 to 100 is +50, 
-
----------------
-
-100 to 150 is +50). So that's correct.
-
-Wait, but in terms of the
-
----------------
-
- difference between the first and second term, it's +50. So that's an increasing arithmetic progression. The same as
-
----------------
-
- d=50.
-
-Alternatively, if you have a decreasing progression like (150,100,50), that's just
-
----------------
-
- a permutation and is counted in the same d=50 case.
-
-Therefore, no overcounting.
-
-Therefore, I think the answer
-
----------------
-
- is 601. But I want to be sure.
-
-Wait, but let me check the case when d=10
-
----------------
-
-0. The triplet is (0,100,200). The permutations of this include all orderings, so
-
----------------
-
- 6 triples. Similarly, when d=99, triplet is (1,100,199), which can
-
----------------
-
- be arranged in 6 ways, etc.
-
-Therefore, each d from 1 to 100 contributes exactly 6 triples
-
----------------
-
-, and d=0 contributes 1. So total is 601.
-
-However, the problem says "nonnegative integers", so 
-
----------------
-
-0 is allowed. Therefore, this should be correct.
-
-Wait, but let me check with the original equation.
-
-Wait, when
-
----------------
-
- d=100, the triplet is (0,100,200). Let me confirm the equation:
-
-
-
----------------
-
-a²b +a²c +b²a +b²c +c²a +c²b.
-
-Let
-
----------------
-
- a=0, b=100, c=200.
-
-0²*100 +0²*200 +100²*0 +100²*200 +200²*0 +200²*100.
-
-Which
-
----------------
-
- is 0 +0 +0 +100²*200 +0 +200²*100.
-
-Compute
-
----------------
-
 :
 
-100²*200 = 10,000*200 = 2,000,000
+2,560,000 +1,024,000 =3,584,000
 
-200²*100 =40,000*100 =4,000,000
++1,600,000 →5,184,000
 
-Total is 6,000,000. Correct.
++400,000 →5,584,000
 
-Similarly for d=50,
++256,000 →5,840,000
 
----------------
-
- (50,100,150):
-
-As computed earlier, it gives exactly 6,000,000.
-
-Therefore
++160,000 →6,000,000. Oh
 
 ---------------
 
-, all arithmetic progressions work.
+! That works. So (160,100,40) is another solution. But is this part of the arithmetic progression?
 
-Therefore, the total number of triples is 601. But wait, the problem says
-
----------------
-
- "triples of nonnegative integers (a,b,c)", so ordered triples. So yes, 601.
-
-But hold
+Yes
 
 ---------------
 
- on, in the problem statement's examples, when we had (200,100,0) and permutations, that
+. The numbers 40,100,160 form an arithmetic progression with common difference 60. So e=60,
 
 ---------------
 
-'s 6 triples for d=100, and similarly for each d.
-
-Therefore, the answer is 601.
+ so (100 -60,100,100+60) = (40,100,160). So yes
 
 ---------------
 
- But let me think again.
+, that is part of the arithmetic progression case.
 
-Wait, but when d=0, it's only one triple (100,100,100). So
-
----------------
-
- total triples:
-
-For d=0: 1
-
-For d=1 to 100: each d contributes 6 triples ⇒
+Therefore, it seems that all solutions are indeed captured by the arithmetic progression approach
 
 ---------------
 
- 100×6 = 600
-
-Total: 1 + 600 = 601.
-
-Therefore
+. So the only triples (a, b, c) that satisfy the conditions are those where the numbers form an arithmetic progression centered at 100,
 
 ---------------
 
-, the answer should be 601.
+ with common difference 2e, for e from 0 to 100, and all permutations thereof.
 
-However, I need to make sure that all arithmetic progressions are distinct and
-
----------------
-
- that there are no overlapping triplets counted multiple times.
-
-Suppose two different d's give the same triplet? For example, can
+Therefore, the total number of ordered triples is as
 
 ---------------
 
- d1 and d2 produce the same triplet?
+ calculated earlier: 1 (for e=0) + 99*6 (for e=1 to 99) +6 (for e=100) = 1 + 594 +6 = 601.
 
-Suppose d1 ≠ d2. Suppose (100 -d1, 100, 100 +d1) and
-
----------------
-
- (100 -d2, 100, 100 +d2) are the same triplet. Then d
+Wait, but let
 
 ---------------
 
-1 must equal d2. Therefore, each d gives a unique triplet (as a multiset). Therefore, the count is correct.
-
-Therefore, I think the correct answer is 601.
-
-Wait, but the
+ me confirm with e=50, which gives (50,100,150). The permutations of this are 6, which
 
 ---------------
 
- problem might have a different answer. Let me see.
-
-Wait, perhaps I made a mistake in the arithmetic progression approach. Let me check
+ are all valid. Similarly, e=1 gives (99,100,101), which has 6 permutations, etc. So this
 
 ---------------
 
- the equation again.
+ seems correct.
 
-We showed earlier that for any arithmetic progression (a, b, c) with a + b + c = 300, the expression equals 6,000,000. So
-
----------------
-
- all such triplets are solutions. And there are 601 ordered triples as per above.
-
-Therefore, the answer should be 601. But
+However, hold on a second. Let me think about e=100. When e=100, we get (0,100,200). The permutations of this are 6, which are
 
 ---------------
 
- let me see if there's a different way to compute it.
-
-Alternatively, since the variables are nonnegative integers, the number of ordered
+ all valid. But when e=100, the third term is 200, which is okay as long as the
 
 ---------------
 
- triples where a, b, c form an arithmetic progression is:
+ first term is 0, which is allowed.
 
-For each possible middle term m, and common difference d such
-
----------------
-
- that the three terms are non-negative.
-
-But in our case, the middle term must be 100, since the sum
+But wait, when e=100, the first term is 0, which
 
 ---------------
 
- is 300. Because in an arithmetic progression of three terms, the middle term is the average. Since 300/3 = 100. Therefore, all arithmetic progressions must have middle term 100, so
+ is acceptable because the problem allows nonnegative integers. So that's okay.
+
+Now, but earlier when I considered the case where
 
 ---------------
 
- the terms are 100 -d, 100, 100 +d.
-
-Therefore, the
+ one variable is zero, I thought of (200,100,0) and permutations, which is exactly this
 
 ---------------
 
- common difference can be from 0 to 100, as we had.
+ case. So that's included in the arithmetic progression count.
 
-Therefore, the number of such ordered triples is indeed
-
----------------
-
- 1 + 6×100 = 601.
-
-Thus, I think the answer is 601. However
+Therefore, all solutions are accounted for in this arithmetic progression approach.
 
 ---------------
 
-, let me check again with another example.
+ Therefore, the total number of ordered triples is 601.
 
-Take d=1: triplet (99,100,101). The
-
----------------
-
- permutations of this are 6 different ordered triples, each valid. All of these satisfy the equation.
-
-Similarly, for d=2,
+Wait, but let me think again: for e from 0 to 100,
 
 ---------------
 
- etc., all the way up to d=100.
-
-Therefore, the total is 601. But let
+ inclusive. That's 101 values of e. For each e except e=0 and e=100, the
 
 ---------------
 
- me check if the problem counts different orderings as different triples. Since the problem says "triples of nonnegative integers (a,b,c)", and
+ triple has three distinct numbers, so 6 permutations. For e=0, all numbers are same, so only 1 permutation. For e=100, the numbers are 0,100,200, which are distinct, so 6 permutations. Therefore
 
 ---------------
 
- unless specified otherwise, ordered triples are considered distinct even if they are permutations. So yes, the answer is 601.
+, total number is:
 
-Wait, but in
+Number of triples when e=0: 1
 
----------------
+Number when e=100: 6
 
- the problem statement's example of (200,100,0) and permutations, those are all considered different,
-
----------------
-
- so that's 6 triples for d=100, which is included in the 600 from d=1 to 100,
+Number when e=1 to 99: 
 
 ---------------
 
- plus 1 for d=0.
+99 values, each with 6 permutations: 99×6=594
 
-Therefore, the final answer is 601. But let me see if that
+Total: 1+594+6= 601. So that
 
 ---------------
 
 's correct.
 
-Wait, but let me compute the number of ordered triples for each d:
-
-For d=0: only (100,100,100).
+However, let me check another example. Let me take e=25, which gives (75,100,125). The permutations of
 
 ---------------
 
- So 1.
+ this are 6 ordered triples, which are all distinct and valid. So that's correct.
 
-For d=1 to 100:
+Therefore, the total number of ordered triples is 601.
 
-Each d gives three distinct numbers, so each has 6 permutations. So
-
----------------
-
- 100×6 = 600.
-
-Total is 601.
-
-Hence, I believe the answer is 601. So
+Wait, but the
 
 ---------------
 
- I should put that in a box.
-
-But wait, just to ensure I didn't make any miscalculations. Let me think
+ problem says "nonnegative integers", so including zero. So I think this is correct. But let me confirm with the earlier
 
 ---------------
 
- of how many triplets there are when d=100:
+ examples:
 
-The triplet is (0,100,200). The permutations are:
+The all-100 triple is counted once.
 
-(0,100,200), (0,200,100), (100,0,200), (100,200,0), (200,0,100), (200,100,0). That
+The triples like (150,100,50) are
 
 ---------------
 
-'s 6, correct.
+ counted 6 times (all permutations).
 
-Similarly for d=50, (50,100,150) has 6 permutations.
+Similarly, the (0,100,200) case is counted 6 times.
+
+So
+
+---------------
+
+ total is 601.
+
+Wait, but hold on, 101 values of e (from 0 to 100),
+
+---------------
+
+ each giving some number of ordered triples:
+
+Wait, for e=0: 1 ordered triple.
+
+For e=1 to 99: each gives 6 ordered triples.
+
+
+
+---------------
+
+For e=100: 6 ordered triples.
+
+Thus total: 1 + (99×6) +6 = 1 + 594 +6 = 601. So
+
+---------------
+
+ that's the total.
+
+Therefore, the answer should be 601.
+
+Wait, but let me think again if there are any other solutions outside of the arithmetic progression case
+
+---------------
+
+.
+
+Suppose there is a triple (a, b, c) not in an arithmetic progression. Suppose a, b, c are all
+
+---------------
+
+ different, but not in AP. Let me try to see if such a triple can satisfy the equations.
+
+Let me take a
+
+---------------
+
+=140, b=100, c=60. Let's see:
+
+Sum is 140+100+60=300.
+
+Compute the expression:
+
+a²b =140²×100 =19,600×100=1,960,000
+
+a²c=140²×60=19,600×60=1,176,000
+
+b²a=100²×140=10,000×140=1,400,000
+
+b²c=100²×60=600,000
+
+c²a=60²×140=3,600×140=504,000
+
+c²b=60²×100=360,000
+
+Adding
+
+---------------
+
+ all together:
+
+1,960,000 +1,176,000 =3,136,000
+
++1,400,000 →4,536,000
+
++600,000 →5,136,000
+
++504,000 →5,640,000
+
++360,000 →6,000,000. Wait
+
+---------------
+
+! That works.
+
+Hmm, so (140,100,60) is a solution. But is
+
+---------------
+
+ this an arithmetic progression?
+
+The numbers 60,100,140 form an arithmetic progression with difference 40. So
+
+---------------
+
+ yes, e=40. Therefore, this is included in the arithmetic progression case.
+
+Therefore, my initial thought that all solutions are arithmetic
+
+---------------
+
+ progressions seems correct.
+
+Another test: Let me try a triple not in AP. Let me pick a=130, b=110, c=60. Sum
+
+---------------
+
+ is 130+110+60=300.
+
+Compute the expression:
+
+a²b =130²×110 =16,900×110=1,859,000
+
+a²c=130²×60=16,900×60=1,014,000
+
+b²a=110²×130=12,100×130=1,573,000
+
+b²c=110²×60=12,100×60=726,000
+
+c²a=60²×130=3,600×130=468,000
+
+c²b=60²×110=3,600×110=396,000
+
+Total
+
+---------------
+
+ sum:
+
+1,859,000 +1,014,000 =2,873,000
+
++1,573,000 →4,446,000
+
++726,000 →5,172,000
+
++468,000 →5,640,000
+
++396,000 →6,036,000. Which
+
+---------------
+
+ is more than 6,000,000. So not a solution. So that's not valid.
+
+Hmm
+
+---------------
+
+, so this is not a solution. Therefore, only triples in AP work.
+
+Another test: Let me try (10
+
+---------------
+
+0, 150, 50). Wait, that's the same as (50,100,150), which is an
+
+---------------
+
+ AP with e=50. So that's included.
+
+Therefore, I can't find any triples outside of the arithmetic progression case
+
+---------------
+
+ that satisfy the equation, so I think the arithmetic progression case covers all solutions.
+
+Therefore, the total number of triples is 601.
+
+Wait, but hold
+
+---------------
+
+ on, when e ranges from 0 to 100, that's 101 different e values. For
+
+---------------
+
+ each e, the number of ordered triples is as follows:
+
+- For e=0: 1 triple (all 100s)
+
+- For e=1 to 99: each gives
+
+---------------
+
+ 6 triples
+
+- For e=100: 6 triples
+
+Total: 1 + 99×6 +6 = 1 + 594 +6 = 601.
 
 Therefore
 
 ---------------
 
-, yes, the total is 601. So I think that's the answer.
+, the answer is 601.
+
+Wait, but let me check if e can go beyond 100? For
+
+---------------
+
+ example, e=101 would give (100-101,100,100+101)= (-1,100,201), which is invalid because of the negative number. So e can
+
+---------------
+
+'t exceed 100. So e from 0 to 100 inclusive is correct.
+
+Therefore, I think the
+
+---------------
+
+ correct answer is 601.
+
+But wait, the problem says "nonnegative integers", so zero is allowed, but negative
+
+---------------
+
+ numbers are not. So all triples considered are valid as long as each component is nonnegative, which they are for e from 0 to 100.
+
+Therefore
+
+---------------
+
+, the final answer should be 601. But let me check if there is an alternative way to see this.
+
+Alternatively, the
+
+---------------
+
+ number of triples is equal to the number of arithmetic progressions possible plus permutations.
+
+Alternatively, since the arithmetic progression is determined by e from 0 to 100, and
+
+---------------
+
+ each gives 6 permutations except e=0 and e=100:
+
+Wait, no, e=100 still
+
+---------------
+
+ gives 6 permutations, only e=0 gives 1.
+
+Therefore, the total is indeed 1 + 99×6 +6 = 601.
+
+Therefore
+
+---------------
+
+, I think the answer is 601.
 
 **Final Answer**
 \boxed{601}
 
 
-To solve the problem of finding the number of triples of nonnegative integers \((a, b, c)\) satisfying \(a + b + c = 300\) and \(a^2b + a^2c + b^2a + b^2c + c^2a + c^2b = 6,000,000\), we start by analyzing the given equations.
-
-First, we note that the second equation can be rewritten using the identity for symmetric sums. We use
+To solve the problem of finding the number of triples of nonnegative integers \((a, b, c)\) satisfying \(a + b + c = 300\) and \(a^2b + a^2c + b^2a + b^2c + c^2a + c^2b = 6,000,000\), we start by rewriting
 
 ---------------
 
- the identity:
+ the given expression using symmetric sums. 
+
+The expression can be rewritten as:
 \[
-(a + b + c)^3 = a^3 + b^3 + c^3 + 3(a^2b + a^2c + b^2a + b^2c + c^2a + c^2b) + 6abc
+a^2(b + c) + b^2(a + c) + c^2(a + b)
 \]
-Given \(a + b + c = 300\), substituting into the identity and simplifying, we find that the second equation is
+Substituting \(b + c = 300 - a\), \(a + c = 300 - b\), and \(a + b = 300 - c\), we get:
+\[
+a^2(300 - a) + b^2(300 - b) + c^2(300 - c) = 6,000,000
+\]
+
+We also use the identity:
+\[
+a^2b + a^2c + b^2a + b^2c + c^2a + c^2b = (a + b + c)(ab + bc + ca) - 3abc
+\]
+Given \(a + b + c = 300\), substituting this into the identity gives:
+\[
+300(ab + bc + ca) - 3abc = 6,000,000
+\]
+Dividing by 3:
+\[
+100(ab + bc + ca) - abc = 2,000,000
+\]
+
+We consider the case where \(a\), \(b\), and \(c\) form an arithmetic progression. Let \(a = 100 - e\), \(b = 100\), and \(c = 100 + e\) for some nonnegative integer \(e\). This setup
 
 ---------------
 
- satisfied if the variables form an arithmetic progression centered at 100. This is because the terms in the second equation simplify to \(
+ ensures \(a + b + c = 300\). Substituting these into the equation confirms that the expression equals
 
 ---------------
 
-6,000,000\) for any arithmetic progression \((100 - d, 100, 100 + d)\) where \(d\) is a nonnegative integer.
+ \(6,000,000\) for any \(e\).
 
-We consider the arithmetic progression triples
-
----------------
-
- \((100 - d, 100, 100 + d)\) for \(d\) ranging from 0 to 100. Each \(
+The valid values of \(e\) range from 0 to 100.
 
 ---------------
 
-d\) gives a unique set of values:
-- When \(d = 0\), the triple is \((100, 100, 100)\), which is 1 solution.
-- For each \(d\) from 1 to 100, the triple consists of three distinct numbers, which
+ Each value of \(e\) (except \(e = 0\) and \(e = 100\)) corresponds to a set
 
 ---------------
 
- can be permuted in 6 ways. Thus, each \(d\) contributes 6 solutions.
+ of three distinct numbers, which can be permuted in 6 ways. The cases \(e = 0\) (all numbers
+
+---------------
+
+ are 100) and \(e = 100\) (numbers are 0, 100, 200) contribute
+
+---------------
+
+ 1 and 6 permutations respectively.
+
+Calculating the total number of triples:
+- \(e = 0\) contributes 1 triple.
+- \(e = 1\) to \(e = 99\) each contribute 6 triples, totaling \(99 \times 6 = 594\).
+- \(e = 100\) contributes 6 triples.
 
 Summing these contributions:
-- For
-
----------------
-
- \(d = 0\), we have 1 solution.
-- For \(d\) from 1 to 100, each contributes 6 solutions, totaling \(100 \times 6 = 600\).
-
-Adding these together, the total number of solutions is:
 \[
-1 + 600 = 601
+1 + 594 + 6 = 601
 \]
 
 Thus, the number of triples \((a, b, c)\) is \(\boxed{601}\).<|im_end|>

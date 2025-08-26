@@ -1,0 +1,1173 @@
+Okay, so I need to find the largest integer n such that n is divisible by every integer less than the cube root of n. Hmm, let me try to parse this problem again. The question is asking for the maximum n where n is divisible by all numbers from 1 up to, but not including, the cube root of n. Wait, actually, it says "every integer less than the cube root of n". So the cube root of n might not be an integer, so maybe I have to consider all integers up to the floor of the cube root of n? Or
+
+---------------
+
+ maybe it's the floor, since integers can't be fractions. Let me think.
+
+First, let me rephrase the problem to make sure I understand it. We need an integer n such that for every integer k where 1 ≤ k < ∛n, k divides n. And we want the largest such n. Got
+
+---------------
+
+ it. So the key here is that n must be divisible by all numbers less than its cube root. Since the cube root of n increases as n increases, there's a balance here. If n is too large, then its cube root is larger, so there are more divisors required, which might make it harder to satisfy. But
+
+---------------
+
+ we need the largest possible n where this condition holds.
+
+Let me start by trying some examples. Maybe starting with small n and see how it works, but since we need the largest, maybe I
+
+---------------
+
+ can approach it more systematically.
+
+Let me denote m as the integer part of ∛n. Since the cube root of n is not
+
+---------------
+
+ necessarily an integer, m would be the floor of ∛n. So m ≤ ∛n < m+1. Therefore, n ≥ m³ and n < (m+1)³. So for each m, n must be at least m³ and less than (m+1)^3. Also
+
+---------------
+
+, n must be divisible by all integers from 1 up to m (since m is the floor of ∛n, so all
+
+---------------
+
+ integers less than ∛n would be up to m). Therefore, the problem reduces to, for each m, find the maximum n less
+
+---------------
+
+ than (m+1)^3 that is divisible by all numbers from 1 to m. Then, among all such n for different m, pick the largest one.
+
+Wait
+
+---------------
+
+, that seems like a good approach. Let me formalize this.
+
+Suppose m is a positive integer, then for n to satisfy the condition, n
+
+---------------
+
+ must be divisible by all integers from 1 to m, and also n must be less than (m+1)^3. The maximum possible n for a given m is the least common multiple (LCM) of 1 through m, multiplied by some integer, but not exceeding (m+1)^3. However
+
+---------------
+
+, since LCM(1..m) might already be less than (m+1)^3, then the maximum n for that m would be the LCM(1..m) multiplied by the largest integer k such that k * LCM(1..m) < (m+1)^3. Wait, actually, perhaps
+
+---------------
+
+ the maximum n would just be the LCM(1..m) multiplied by the largest integer k where that product is still less than (m+1)^3. Alternatively, maybe the
+
+---------------
+
+ LCM(1..m) itself might already be too big? Let's see.
+
+Alternatively, perhaps the LCM(1..m) is the minimal number divisible by all numbers up to m, so if LCM(1..m) is less than (m+1)^3, then n could be LCM(1..m) multiplied by some factor, but still
+
+---------------
+
+ less than (m+1)^3. However, to get the largest possible n for each m, we can set n as the largest multiple of LCM(1..m) that is less than (m+1)^3. But
+
+---------------
+
+ actually, the largest n for each m is the maximum multiple of LCM(1..m) less than (m+1)^3. Therefore
+
+---------------
+
+, for each m, compute LCM(1..m), then compute the maximum multiple of LCM(1..m) less than (m+1)^3, then among all those n's for different m's, pick the largest one.
+
+Therefore
+
+---------------
+
+, the strategy is to iterate m starting from 1 upwards, compute for each m the maximum n as described, and keep
+
+---------------
+
+ track of the maximum n found so far. But since we want the largest possible n overall, we can try to find the maximum m where LCM(1..m) is still less than (m+1)^3, then
+
+---------------
+
+ proceed accordingly.
+
+Alternatively, perhaps there's a point where m increases but LCM(1..m) becomes too large so
+
+---------------
+
+ that even the minimal LCM(1..m) is already larger than (m+1)^3, meaning that there is no such n for that m. So the
+
+---------------
+
+ maximum possible m is such that LCM(1..m) < (m+1)^3. Then, the largest n would be for that m.
+
+Therefore
+
+---------------
+
+, perhaps first find the maximal m where LCM(1..m) < (m+1)^3. Then compute the maximum n as the LCM(1..m) multiplied by floor[( (m+1)^3 -1 ) / LCM(1..m) )],
+
+---------------
+
+ but actually, the maximum multiple would be LCM(1..m) multiplied by k, where k is the largest integer such that k * LCM(1..m) < (m+1)^3. Therefore
+
+---------------
+
+, k = floor( ( (m+1)^3 -1 ) / LCM(1..m) )
+
+Alternatively
+
+---------------
+
+, if LCM(1..m) is already greater than (m+1)^3, then there is no n corresponding to that m, so we need to go
+
+---------------
+
+ back to lower m.
+
+Therefore, perhaps I can start by trying m from 1 upwards and compute LCM(1..m), check if LCM(1..m) is less than (m+1)^3, then compute the maximum n for that m, and then proceed
+
+---------------
+
+ until LCM(1..m) exceeds (m+1)^3, then stop.
+
+Let me start with small m values:
+
+m
+
+---------------
+
+=1:
+
+LCM(1) = 1.
+
+(m+1)^3 = 8.
+
+So maximum n is
+
+---------------
+
+ the largest multiple of 1 less than 8, which is 7. But since 1 divides all numbers, so n can be up to 7. But since
+
+---------------
+
+ m=1, the cube root of n must be greater than 1, so n must be greater than 1^3=1. Wait, but m
+
+---------------
+
+ is floor of cube root of n. Wait, perhaps I need to be precise here.
+
+Wait, let me think again. For m=1, the
+
+---------------
+
+ cube root of n must be greater than m=1? Wait, m is the floor of cube root of n, so if
+
+---------------
+
+ m=1, then cube root of n is between 1 and 2, so n is between 1^3=1 and 2^3=8. So n must be in [1,8). But since n must be divisible by all integers less than cube root(n). Since cube root(n) is between 1 and 2, the integers less than that are just 1. So n must be divisible by 1, which is always true. So n
+
+---------------
+
+ can be any integer from 1 up to 7. The maximum n here is 7. However, since we are looking for the largest possible n overall, but
+
+---------------
+
+ maybe higher m's can give higher n's.
+
+Moving on to m=2:
+
+m=2:
+
+We need to have
+
+---------------
+
+ n in [8, 27) since (m+1)^3 is 27. Wait, actually, m
+
+---------------
+
+ is floor(∛n). So if m=2, then ∛n is between 2 and 3, so n is between 8 (inclusive?) Wait, floor
+
+---------------
+
+(∛n) = 2 means that 2 ≤ ∛n <3, so n ∈ [8, 27). So n must be divisible
+
+---------------
+
+ by all integers less than ∛n. Since ∛n is between 2 and 3, the integers less than that are 1 and 2. Therefore, n must be divisible by 1 and 2. Since 1 divides everything, so
+
+---------------
+
+ n must be even. The maximum n here is 26, which is even. So maximum n for m=2 is 26.
+
+Wait, but actually
+
+---------------
+
+, LCM(1,2)=2. So the maximum multiple of 2 less than 27 is 26. So that's correct.
+
+m
+
+---------------
+
+=3:
+
+Now, m=3. Then n must be in [27, 64) because (m+1)^3 is 4^3=64. The cube root of n is between 3 and 4, so integers less than that are 1,2,3. Therefore, n must be divisible by 1,2,3. LCM(1,2,3)=6. The maximum multiple of 6 less than 64 is 60 (since 6*10=60, 6*11=66 which is over 64). Wait 6*10 is 60, 6*10.666 is 64, so 60 is the largest multiple below 64. So n=60 here
+
+---------------
+
+.
+
+Wait, but 60 is less than 64. So maximum n for m=3 is 60.
+
+m
+
+---------------
+
+=4:
+
+Now m=4. So n must be in [64, 125). The cube root of n is between 4 and 5, so integers less than that are 1,2,3,4. LCM(1,2,3,4)=12. The maximum multiple of 12 less than 125 is 124 divided by 12? Let's see 12*10=120, 12*10=120, 12*10.416...
+
+---------------
+
+ So 120 is the maximum multiple less than 125. 120 < 125, so n=120 here. Wait
+
+---------------
+
+, but 12*10=120, which is less than 125. So that's okay. So maximum n for m=4 is 120.
+
+Wait, but hold
+
+---------------
+
+ on, LCM(1-4)=12. So 12*10=120, 12*11=132 which is over 125. So yes, 120.
+
+m=5:
+
+Now m=5. So n must be in [125, 216). The integers less than ∛n (which is between 5 and 6) are 1-5. LCM(1-5)=60. The maximum multiple of 60 less than 216. Let's see: 60*3=180, 60*4=240 which is over 216. So 180. Wait, but 60*3.6=216, so 60*3=180 is the maximum multiple below 216. Wait
+
+---------------
+
+, but 60*3.6 is exactly 216? Wait, no, 60*3.6 is 216? Let me check 60*3.6=60*(3 + 0.6)=180 + 36=216. Yes
+
+---------------
+
+, so 216 is exactly 6*36, but since n must be less than 216, then the maximum multiple is 60*3=180. Wait, but 
+
+---------------
+
+60*3.5=210, which is still less than 216. Wait, 60*3.5=210? Wait, 60*3.5 is 60*(7/2)=210. Yes. So actually, 210 is also
+
+---------------
+
+ a multiple of 60? Wait, no. 210 divided by 60 is 3.5, which is not an integer. So 
+
+---------------
+
+210 is not a multiple of 60. Wait, my mistake. The multiples of 60 are 60, 120, 180, 240, etc. So yes
+
+---------------
+
+, the next after 180 is 240 which is over 216. So maximum is 180. So for m=5, the maximum n is 180.
+
+Wait, but hold
+
+---------------
+
+ on, LCM(1-5)=60. So the maximum n is 180? Hmm. Let
+
+---------------
+
+ me check if 180 is less than 216, which it is. So that's okay. So n
+
+---------------
+
+=180 here.
+
+m=6:
+
+Moving on to m=6. Now n must be in [216, 343) since 7^3=343. The integers less than ∛n (which is between 6 and 7) are 1-6. LCM(1-6)=60? Wait no. LCM(1,2,3,4,5,6). Let me compute that again.
+
+Factors:
+
+1: 1
+
+2: 2
+
+3: 3
+
+4: 2²
+
+5:5
+
+6: 2×3
+
+So LCM is the max exponents: 2², 3, 5. So LCM=4×3×5=60. Wait, but
+
+---------------
+
+ 6 is already included in 2×3. Wait, so yes, LCM(1-6)=60. Wait, but 
+
+---------------
+
+60 is divisible by all numbers up to 6? Let me check: 60 divided by 6 is 10, which is okay. So yes, LCM(1-6)=60. So then
+
+---------------
+
+, for m=6, the LCM is still 60. Then the maximum multiple of 60 less than 343. 60*5=300, 60*6=360 which is over 343. So the maximum is 300. Wait, 60*5.716...
+
+---------------
+
+ So 300 is less than 343. So n=300 here. Wait, but 
+
+---------------
+
+60*5=300, so that's the maximum. So 300 is less than 343, so yes. So n=300.
+
+Wait, but hold
+
+---------------
+
+ on. Let me confirm the LCM(1-6)=60. Hmm, but 1-6's LCM is actually 60? Let me check
+
+---------------
+
+ again. Let me see:
+
+Prime factors:
+
+1: 1
+
+2: 2
+
+3: 3
+
+4: 2²
+
+5:5
+
+6:2×3
+
+So the LCM is
+
+---------------
+
+ the product of the highest powers: 2², 3, 5. So 4×3×5=60. Yes, that's correct. So LCM(1-6)=60. So yes
+
+---------------
+
+, so the maximum multiple is 300. So for m=6, n=300.
+
+m=7:
+
+Next, m=7. Then n must be in [343, 512) since 8^3=512. The integers less than ∛n (between 7 and 8) are 1-7. LCM(1-7). Let's compute that.
+
+Prime
+
+---------------
+
+ factors:
+
+1:1
+
+2:2
+
+3:3
+
+4:2²
+
+5:5
+
+6:2×3
+
+7:7
+
+Thus, LCM is 2²×3×5×7=4×3×5×7=420. So LCM(1-7)=420.
+
+Now, the maximum multiple of 420 less than 512. 420×1=420, 420×2=840 which is over 512. So the maximum is 420. Since
+
+---------------
+
+ 420 <512, so n=420 here.
+
+Wait, so for m=7, the maximum n is 420.
+
+m=8:
+
+Now m=8. So n is in [512, 729) (since 9^3=729). The integers less than ∛n (between 8 and 9) are 1-8. LCM(1-8).
+
+Compute LCM(1-8). Let's see:
+
+Prime factors:
+
+1:1
+
+2:2
+
+3:3
+
+4:2²
+
+5:5
+
+6:2×3
+
+7:7
+
+8:2³
+
+Thus LCM is 2³×3×5×7=8×3×5×7=840. Wait, let me verify:
+
+Highest
+
+---------------
+
+ power of 2 is 8 (2^3), 3 is 3, 5 is 5, 7 is 7. So yes, LCM(1-8)=840.
+
+Then the maximum multiple of 840 less than 729. 
+
+---------------
+
+840×1=840, which is over 729. Therefore, there is no multiple of 840 less than 729 except 0, which is not positive. Therefore, for m=8, there is no n satisfying
+
+---------------
+
+ the condition. Wait, that's a problem. So m=8 can't have any n because LCM(1-8)=840 is already greater than (m+1)^3 -1,
+
+---------------
+
+ which is 728? Since 840>729? Wait, actually, (m+1)^3 is 9^3=729, so n must be less than 729. But
+
+---------------
+
+ LCM(1-8)=840, which is already bigger than 729, so there is no multiple of 840 less than 729 except 0. Therefore, for m=8, there is no valid n. Therefore, m=8 is invalid.
+
+Therefore, the maximum m for
+
+---------------
+
+ which there exists such an n is m=7, giving n=420. Wait, but before concluding, let me check m=7 again. For
+
+---------------
+
+ m=7, the LCM is 420, and (m+1)^3 is 8^3=512, so 420 is less than 512. Therefore, the maximum multiple is 420 itself, since 420×1=420 <512. So n=420 is valid here.
+
+But let
+
+---------------
+
+'s check m=6 again. For m=6, the maximum n was 300, which is less than 343. But
+
+---------------
+
+ 420 (for m=7) is larger than 300, so 420 is a better candidate.
+
+Proceed
+
+---------------
+
+ing to m=7, which gives n=420. But let's check m=9? Wait, but m=8 already
+
+---------------
+
+ didn't work. Let me check m=7.
+
+Wait, but let's check m=7 again. The LCM(1-7)=420. So
+
+---------------
+
+ n must be divisible by 1-7, and less than 512. The maximum such n is 420, but
+
+---------------
+
+ is there a higher multiple? 420×2=840, which is over 512, so no. So 420 is the maximum. So m
+
+---------------
+
+=7 gives n=420. Now, let's check m=7 and see if 420 is indeed divisible by all numbers less than ∛420.
+
+Wait, actually
+
+---------------
+
+, we need to confirm that n=420 satisfies that every integer less than ∛n divides it. Let me compute ∛420. The cube root of 420 is approximately 7.5 (since 7^3=343, 8^3=512). So ∛420 ≈7.5. Therefore, all integers less than 7.5, so 1 through 7 must divide 420. Since LCM(1-7)=420, yes
+
+---------------
+
+, 420 is divisible by all numbers up to 7. So that works.
+
+Now, proceeding to m=7, we
+
+---------------
+
+ get 420. Let's check m=6 again. For m=6, n=300. Since
+
+---------------
+
+ 300 is less than 343 (the upper bound for m=6). The cube root of 300 is about 6.69, so integers
+
+---------------
+
+ less than that are 1-6, which LCM(1-6)=60 divides 300. So
+
+---------------
+
+ that works too, but 420 is larger. So moving on.
+
+Wait, let's check m=5.
+
+---------------
+
+ The maximum n was 180. That's less than 420, so not the maximum. Similarly for lower m's. So perhaps
+
+---------------
+
+ m=7 gives 420. But let's check m=7 is indeed the maximum m where LCM(1..m) < (m+1)^3.
+
+Wait, L
+
+---------------
+
+CM(1..7)=420. (m+1)^3=8^3=512. 420 < 512, so that works. For m=8, LCM(1..8)=840 vs
+
+---------------
+
+ 9^3=729. 840>729, so that's why m=8 is invalid. So the maximum m is 7. Therefore, the maximum n is 420.
+
+But wait, hold
+
+---------------
+
+ on. Let me check m=4. For m=4, n=120. But 120 is less than 60's
+
+---------------
+
+ n=180, etc. So 420 is the highest so far. Wait, but perhaps m=7 is the last valid m. But
+
+---------------
+
+ let me check m=7 and see if there's a higher n possible.
+
+Wait, the problem is asking for the largest n such that n is divisible by every integer less than ∛n. So even
+
+---------------
+
+ if m is 7, but if there exists an n larger than 420 that still meets the condition, then
+
+---------------
+
+ that would be better. Wait, but according to our earlier logic, for m=7, n must be less than 512. So
+
+---------------
+
+ 420 is the maximum n for m=7. But maybe there is an n between 420 and 512 that is divisible by all numbers less than its cube root?
+
+Wait, let
+
+---------------
+
+'s suppose n is 420 < n <512. Let me pick n=420 +k
+
+---------------
+
+, where k is between 1 and 91. Let's see if such an n could have ∛n less
+
+---------------
+
+ than 8 (so m=7 still applies), but also that all numbers less than ∛n divide it. Wait
+
+---------------
+
+, but if n is between 420 and 512, then ∛n is between ~7.5 and 8. So the integers less than ∛n would still be 1 through 7 or up to 7. So
+
+---------------
+
+ to be divisible by all up to 7, it still has to be divisible by LCM(1-7)=420. Therefore, any n in that range divisible by all numbers less than ∛n must be a multiple of 420. Since 420×2=840 is
+
+---------------
+
+ over 512, the only multiple is 420 itself. So indeed, 420 is the maximum for m=7.
+
+Alternatively
+
+---------------
+
+, could there be an n between 420 and 512 that is divisible by all numbers less than its cube root, which would be less
+
+---------------
+
+ than 8, but perhaps not all the way up to 7?
+
+Wait, for example, suppose n is 432. Then ∛432 is approximately 7.55, so integers less than that are 1-7. So 
+
+---------------
+
+432 must be divisible by all 1-7. Let's check if 7 divides 432. 432 divided by 7 is approximately 61.71, which is not an integer. So 432 isn't divisible by 7. So that won't work.
+
+How about 420?
+
+---------------
+
+ That works. What about 504? ∛504 is about 7.96, so integers less than that are still up to 7. 504 divided by 7 is 72, so yes, divisible by 7. Also
+
+---------------
+
+, LCM(1-7)=420 divides into 504? Wait, 504 divided by 420 is 1.2, so no. So
+
+---------------
+
+ LCM(1-7)=420 doesn't divide 504, but maybe 504 is divisible by all numbers up to 7?
+
+Check divisibility by 1-7:
+
+1: yes.
+
+2: 504 even, yes.
+
+3: 5+0+4=9, divisible by 3.
+
+4: last two digits 04, 04 divisible by 4? 04 is 4, yes.
+
+5: last digit 4, no. Wait 504 ends with 4, so not divisible by 5. So
+
+---------------
+
+ 5 doesn't divide 504, so that's a problem.
+
+Ah right, so 504 is not divisible by 5, so that fails. So 504 can
+
+---------------
+
+'t be considered.
+
+Hmm, so maybe 420 is indeed the maximum. Let me check another number. Let's see 480. ∛480 is about 7.8. So again
+
+---------------
+
+, need to check 1-7.
+
+480 divisible by 1: yes.
+
+2: yes.
+
+3: 4+8+0=12, yes.
+
+4: last two digits 80, which is divisible by 4.
+
+5: last digit 0, yes.
+
+6: yes, since divisible by 2 and 3.
+
+7: 480 divided by 7 is about 68.57. Not integer. So no. So 480 not divisible by 7.
+
+Hmm
+
+---------------
+
+, so 420 is the only one in that range divisible by all up to 7. So 420 is the maximum for m=7.
+
+Wait, but let me check 
+
+---------------
+
+210. Wait, 210 is less than 420, so not helpful. Alternatively, let
+
+---------------
+
+ me check if m=7 gives 420, but maybe there's a higher m where even though LCM(1..m) is larger
+
+---------------
+
+ than (m+1)^3, but perhaps for a higher m, there's a way?
+
+Wait, m=7 gives n
+
+---------------
+
+=420. Let me check m=10 just to see, but probably not. Let's see, m=10 would require LCM(1-10)=2520, which is way larger than 11^3=1331, so no.
+
+Alternatively, maybe
+
+---------------
+
+ m=7 is indeed the maximum. So the answer is 420? Wait, but wait, let me check m=7's
+
+---------------
+
+ n=420 and see if there's a higher n for lower m?
+
+Wait, for example, m=6 gives
+
+---------------
+
+ n=300. m=5 gives 180, etc. So 420 is the largest so far. But wait, let
+
+---------------
+
+ me check m=4 gives n=120, m=3 gives 60, etc. So 420 is the largest so far. But let
+
+---------------
+
+ me check m=7 again.
+
+Wait, another thought: perhaps if m is 7, n can be up to 511 (since less than 512). But
+
+---------------
+
+ maybe there's a number between 420 and 512 that is divisible by all numbers less than its cube root, but the
+
+---------------
+
+ cube root might be higher? For example, suppose n=504. Its cube root is about 7.96, so less
+
+---------------
+
+ than 8, so m=7 still applies. But 504 is not divisible by 5 or 7? Wait 504 is divisible by 7? Let me recalculate:
+
+---------------
+
+ 7×72=504. Yes, 7 divides 504. Wait, but 5 divides 504? 504 divided by 5 is 100.8, so no. So 5 doesn't divide 504, so it's invalid. So
+
+---------------
+
+ even though it is divisible by 7, it's not divisible by 5, which is required. So that's not
+
+---------------
+
+ valid.
+
+What about 420? 420 is divisible by 5, yes. 420/5=84. So that's okay. 420 is divisible by all up to 7. So that's the maximum
+
+---------------
+
+. 
+
+Wait, let me check n=840. But n=840 would be in m=9,
+
+---------------
+
+ since cube root of 840 is about 9.4, so m=9, but LCM(1-9) is 2520, which is way larger
+
+---------------
+
+ than 10^3=1000? Wait, 2520>1000? Yes
+
+---------------
+
+, so LCM(1-9)=2520, which is more than 10^3=1000. Therefore, no
+
+---------------
+
+ n exists for m=9. So 420 is the maximum.
+
+But wait, hold on. Let me check m=7 and
+
+---------------
+
+ see if n=420 is indeed the maximum. But let me think if there's a case where m is less than 7, but the n can
+
+---------------
+
+ be higher than 420. For example, m=6 gives n=300, which is less than 420. So no.
+
+Wait another thought: maybe
+
+---------------
+
+ there is a number larger than 420 but still less than 512 that is divisible by all numbers up to some
+
+---------------
+
+ m where m is higher than 7? Wait, but m can't be higher than 7 because if n is between 343 and 512, the cube root is between 7 and 8, so m=7. So m
+
+---------------
+
+ can't be higher. So any n in that interval must have m=7, so must be divisible by all up to 7. So
+
+---------------
+
+ 420 is the only one in that interval divisible by all up to 7. So that's the maximum.
+
+Wait, but let me check n
+
+---------------
+
+=840. Wait, n=840 is beyond the cube of 9, which is 729. But cube
+
+---------------
+
+ root of 840 is about 9.4, so m would be 9. But LCM(1-9)=2520, which is way bigger than 10^3=1000, so 
+
+---------------
+
+840 isn't divisible by all numbers up to 9. For example, 8 divides 840 (yes), 9 divides 840? 8+4+0=12, which isn't divisible by 9, so 840/9=93.333, not integer. So 840 isn't divisible by 9, so that
+
+---------------
+
+'s invalid.
+
+Hmm. So I think 420 is the answer. Wait, but I recall that in some similar
+
+---------------
+
+ problems, the answer is 420, but let me check my calculations again.
+
+Wait, let me check for m=7 again:
+
+LC
+
+---------------
+
+M(1-7)=420. The upper limit is 8^3=512. So maximum multiple of 420 below 512 is 420×1=420, since
+
+---------------
+
+ 420×2=840>512. So that's correct. So n=420.
+
+Is there a higher n with
+
+---------------
+
+ a lower m? For example, if m=6, the upper limit is 343. The maximum n there was 300. 300 <420, so no. For
+
+---------------
+
+ m=5, 180. So no.
+
+Wait, but let me check m=4 gives n=120, which is lower
+
+---------------
+
+. So yes, 420 is the largest so far.
+
+Wait a second, but what about n=840? Wait, that
+
+---------------
+
+'s not in the m=9 case, which is invalid. Alternatively, is there a number between 512 and 729 (for m=8) but since
+
+---------------
+
+ m=8 is invalid, there's no n there. So 420 is indeed the maximum.
+
+Wait, but I
+
+---------------
+
+ just thought of another angle. Suppose n is 840, but m would be 9 (since cube root of 840 is ~9.4), so m=9. But LCM(1-9)=2520, which is way bigger than 10^3=1000, so there
+
+---------------
+
+'s no n for m=9. So no.
+
+Alternatively, maybe there's a number between 216 and 343 (m=6) that is higher than 300 but still divisible by all numbers up to 6? Let's see. For example, 300 is the maximum multiple of LCM(1-6)=60 below 343. 60×5=300, 60×6=360 which is over 343. So 300 is the maximum. So yes
+
+---------------
+
+, that's correct.
+
+Alternatively, maybe there's another number between 300 and 343 that is divisible by all numbers up to 6 but not necessarily a multiple of 60? Wait, but LCM(1-6)=60, so any number divisible by all numbers up to 6 must be a multiple of 60. So no
+
+---------------
+
+, that can't happen. So 300 is the max.
+
+Therefore, my conclusion is that 420 is the largest such n.
+
+Wait, but hold
+
+---------------
+
+ on. Wait, let me check n=840 again. Wait, cube root of 840 is about 9.4, so m=9. The
+
+---------------
+
+ LCM(1-9)=2520. Since 2520 is bigger than 10^3=1000, so no
+
+---------------
+
+ n exists for m=9. So that's invalid.
+
+Another check: let me think if there is a number between 420 and 512 that is divisible by all numbers up to 7 but not necessarily a multiple of 420. Since
+
+---------------
+
+ LCM(1-7)=420, any number divisible by all numbers up to 7 must be a multiple of 420. Therefore, the next multiple would be 840, which is too big. Therefore, 420 is indeed the maximum.
+
+Wait
+
+---------------
+
+, but let me check n=420's cube root. Cube root of 420 is approximately 7.5, so less
+
+---------------
+
+ than 8, so m=7, so that's okay. All numbers less than 7.5 (i.e., up to 7) divide 420. So
+
+---------------
+
+ yes, that works.
+
+Wait, but wait, let me check n=840 again. Suppose someone says 840 is divisible by all numbers up to cube root of 840 which
+
+---------------
+
+ is ~9.4, so up to 9. But 840 is not divisible by 9, so it fails. So that
+
+---------------
+
+'s not valid.
+
+Therefore, I think 420 is correct. However, I have a doubt because I remember a
+
+---------------
+
+ similar problem where the answer was 420, but let me see.
+
+Alternatively, perhaps m=7 gives n=420, but maybe
+
+---------------
+
+ there is another m where n can be higher? Wait, let me check m=7 again. The maximum n for m=7 is 420. The
+
+---------------
+
+ next possible n would be in m=8, but there's no n there. So yes, 420 is the maximum. Therefore
+
+---------------
+
+, the answer should be 420.
+
+Wait, but let me check another example. Let's think of n=840. Wait
+
+---------------
+
+, no, as above, it's invalid. Alternatively, n=2520? The cube root of 2520 is about 13.6, so m=13. LCM(1-13) is a huge number, way
+
+---------------
+
+ larger than 14^3=2744, so no.
+
+Alternatively, n= LCM(1-7)=420, which is the maximum
+
+---------------
+
+ possible. So I think that is correct.
+
+Wait, but let me check the problem again to ensure I didn't misinterpret it.
+
+The problem says: "the largest integer n such that n is divisible by every integer less than the cube root of n".
+
+So for each n, compute the
+
+---------------
+
+ cube root, take all integers less than that, and n must be divisible by each of them. So for n=420, the cube root is ~7.5, so integers 1-7 must divide 420, which they do. For
+
+---------------
+
+ n=420, that's okay. If there's a larger n, say 420 < n <512, then its
+
+---------------
+
+ cube root is still less than 8, so the divisors required are still 1-7, but n must be divisible by all of them. Since LCM(1-7)=420, the
+
+---------------
+
+ next multiple would be 840, which is beyond 512. Therefore, no such n exists between 420 and 512. So 420 is indeed the maximum.
+
+Therefore, I think the answer is 420. Wait, but hold
+
+---------------
+
+ on, I just found a contradiction in my previous thought. Let me check m=7 again.
+
+Wait, LCM(1-7)=420. So any
+
+---------------
+
+ number divisible by 1-7 must be a multiple of 420. So the next multiple after 420 is 840, which is over
+
+---------------
+
+ 512, so indeed 420 is the maximum for m=7. So yes.
+
+Therefore, I think the correct answer is 420.
+
+Wait, but wait
+
+---------------
+
+ a second. Let me check an example of n=840. Let me see if it satisfies the condition. The cube root of 840 is approximately 9.43. Therefore, integers less than that are 1 through 9. Therefore
+
+---------------
+
+, n must be divisible by all numbers from 1 to 9. But LCM(1-9)=2520. Since 840 is less than 2520, it cannot be divisible by all numbers up to 9. For example, 8 divides 840 (840/8=105), yes. 9 divides 840? 840 divided by 9 is 93.333..., which is not an integer. So no. Therefore, 840 is invalid.
+
+So
+
+---------------
+
+ yeah, my conclusion is that 420 is the answer.
+
+Wait, but I just thought of another thing. Let me check n=840 again but in a
+
+---------------
+
+ different way. If someone claims that n=840 is divisible by all numbers less than its cube root. The cube root is ~9.43, so numbers less than that are up to 9. Since 840 isn't divisible by 9, it's invalid. So that
+
+---------------
+
+'s not.
+
+Alternatively, what about n= 2520? Its cube root is about 13.6, so needs
+
+---------------
+
+ to be divisible by 1-13. But LCM(1-13) is 360360, which is way bigger than 14^3=2744, so n=2520 is not divisible by all numbers up to 13. For example, 11 divides 2520? 2520/11≈229.09, so no. So that's invalid.
+
+Therefore
+
+---------------
+
+, I think 420 is correct.
+
+Wait, but let me check m=7 again. Let me confirm L
+
+---------------
+
+CM(1-7)=420. Let me compute LCM step by step:
+
+LCM(1,2)=2
+
+LCM(2,3)=6
+
+LCM(6,4)=12 (since 6 and 4 have LCM 12)
+
+LCM(12,5)=60
+
+LCM(60,6)=60 (since 60 is already divisible by 6)
+
+LCM(60,7)=420. Yes, that's correct.
+
+So LCM(1-7)=420. So that's right.
+
+Therefore
+
+---------------
+
+, the maximum n is 420. So I think the answer is 420. Wait, but I
+
+---------------
+
+ have a doubt because I recall another problem where the answer was 840. Maybe different conditions? Let me see.
+
+Alternatively, perhaps I made a mistake in considering
+
+---------------
+
+ m=7. Let me check n=840 again. The cube root of 840 is about 9.43, so the numbers less than that are up to 9. So
+
+---------------
+
+ n must be divisible by 1-9. But LCM(1-9)=2520, which is larger
+
+---------------
+
+ than 840, so 840 can't be divisible by all numbers up to 9. Therefore, 
+
+---------------
+
+840 is invalid. Therefore, 420 is correct.
+
+Alternatively, perhaps m=7 gives 420, but m
+
+---------------
+
+=6 gives 300, so 420 is the largest. So I think that is correct. Therefore, the answer should be 420.
+
+Wait, but let
+
+---------------
+
+ me check for m=7, the cube root of n is less than 8, so n can be up to 511. So
+
+---------------
+
+ if I can find a number between 420 and 511 that is divisible by all numbers up to 7, then that would be better. Let's try 420+420=840, which is too big. So
+
+---------------
+
+ no. The next multiple would be 840, which is too big. So there is no other multiple of 420 in that interval. Therefore
+
+---------------
+
+, 420 is indeed the maximum.
+
+Therefore, I think the correct answer is 420. So I should write that as the final answer.
+
+**Final Answer**
+Answer: 420
+
+
+To find the largest integer \( n \) such that \( n \) is divisible by every integer less than \( \sqrt[3]{n} \), we need to consider the following steps:
+
+1. **Define \( m \) as the integer part of \( \sqrt[3]{n} \)**:
+   - For each \( m \), \( n \) must be in the interval \( [m^3, (m+1)^3) \).
+   - \( n \) must be divisible by all integers from 1 to \( m \).
+
+2. **Calculate the Least Common Multiple (LCM)**:
+   - For each \( m \), compute the LCM of all integers from 1 to \( m \).
+   - The maximum \( n \) for each \( m \) is the largest multiple of this LCM that is less than \( (m+1)^3 \).
+
+3. **Check for
+
+---------------
+
+ valid \( m \)**:
+   - Continue this process for increasing values of \( m \) until the LCM of 1 to \( m \) exceeds \( (m+1)^3 \).
+
+**Detailed Calculations**:
+
+- **For \( m = 1 \)**:
+  - LCM(1) = 1
+  - Maximum \( n \) is 7 (since \( n < 8 \))
+
+- **For \( m = 2 \)**:
+  - LCM(1, 2) = 2
+  - Maximum \( n \) is 26 (since \( n < 27 \))
+
+- **For \( m = 3 \)**:
+  - LCM(1, 2, 3) = 6
+  - Maximum \( n \) is 60 (since \( n < 64 \))
+
+- **For \( m = 4 \)**:
+  - LCM(1, 2, 3, 4) = 12
+  - Maximum \( n \) is 120 (since \( n < 125 \))
+
+- **For \( m = 5 \)**:
+  - LCM(1, 2, 3, 4, 5) = 60
+  - Maximum \( n \) is 180 (since \( n < 216 \))
+
+- **For \( m = 6 \)**:
+  - LCM(1, 2, 3, 4, 5, 6) = 60
+  - Maximum \( n \) is 300 (since \( n < 343 \))
+
+- **For \( m = 7 \)**:
+  - LCM(1, 2, 3, 4, 5, 6, 7) = 420
+  - Maximum \( n \) is 420 (since \( n < 512 \))
+
+- **For \( m = 8 \)**:
+  - LCM(1, 2, ..., 8) = 840, which exceeds \( (8+1)^3 = 729 \), so no valid \( n \).
+
+The highest valid \( n \) found is 420 for \( m = 7 \). Checking higher \( m \) values (
+
+---------------
+
+e.g., \( m = 8 \)) shows no valid \( n \).
+
+Thus, the largest integer \( n \) divisible by every integer less than \( \sqrt[3]{n} \) is:
+
+\[
+\boxed{420}
+\]<|im_end|>

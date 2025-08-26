@@ -1,0 +1,1324 @@
+Okay, let's tackle this problem step by step. We have 36 objects arranged in a circle, each equally spaced. We need to find the number of ways to choose 3 objects such that no two chosen objects are adjacent or diametrically opposite. Hmm, okay
+
+---------------
+
+. Let me break this down.
+
+First, let's recall that when dealing with circular arrangements, sometimes it's helpful to fix one point and consider the rest
+
+---------------
+
+ relative to it, but I'm not sure yet. Let's start by calculating the total number of ways to choose any 3 objects out of 36 without any restrictions. That should be straightforward.
+
+---------------
+
+ The combination formula C(n, k) = n! / (k!(n - k)!), so here it would be C(36, 3). Let me compute that:
+
+
+
+---------------
+
+C(36, 3) = 36 * 35 * 34 / (3 * 2 * 1) = (36*35*34)/6. Let me compute that step
+
+---------------
+
+ by step. 36 divided by 6 is 6, so 6 * 35 * 34. 35*34 is 1190, so 6*1190 = 7140. Wait, actually
+
+---------------
+
+, let me check that again. 36*35 is 1260, 1260*34.
+
+---------------
+
+ Hmm, maybe I should compute it properly:
+
+36 * 35 = 1260, 1260 * 34 = let's see, 1260*30 = 37,800 and 1260*4=5,040, so total is 37,800 +5,040 = 42,840. Then divide by 6: 42,840 /6 = 7,140. Yeah
+
+---------------
+
+, so total is 7,140. Got that.
+
+Now, the problem says we have to exclude the cases where any two of the chosen objects are adjacent or diametrically opposite. So we need to subtract all the triple
+
+---------------
+
+ts that have at least one pair adjacent or diametrically opposite. But we have to be careful with overlapping cases where a
+
+---------------
+
+ triplet might have both an adjacent pair and a diametrically opposite pair, so inclusion-exclusion principle might be needed here.
+
+Alternatively
+
+---------------
+
+, maybe it's better to compute the total number of valid triplets directly by considering the restrictions. Let me think. Hmm
+
+---------------
+
+, perhaps inclusion-exclusion is the way to go here. Let's see.
+
+First, let's define the forbidden conditions:
+
+1. Any two of the three chosen objects are adjacent.
+
+2. Any two of the three chosen objects are diametrically opposite.
+
+We need to count all triplets that don't have either of these. So,
+
+---------------
+
+ the total valid is total triplets minus those that have at least one forbidden pair.
+
+Alternatively, we can compute it as:
+
+Total = C(36,3) - [number of triplets with at least one adjacent pair + number of triplets with at least one diametrically opposite pair] + [number of triplets with both an adjacent pair and a diametrically opposite pair].
+
+---------------
+
+ 
+
+Wait, right, because when we subtract both the adjacent and the diametrically opposite cases, we might have subtracted too
+
+---------------
+
+ much where a triplet has both an adjacent pair and a diametrically opposite pair. So we need to add those back in. So
+
+---------------
+
+ inclusion-exclusion formula.
+
+So the formula is:
+
+Valid = Total - (A + D) + (A ∩ D),
+
+where A is the number of triplets with at least one adjacent pair, D is the number with at least one diametrically opposite pair, and A ∩ D is the number with both.
+
+Therefore
+
+---------------
+
+, I need to compute A, D, and A ∩ D.
+
+Let me compute each term step by step.
+
+First, compute A: the number of triplets with at least one adjacent pair.
+
+To compute A: How
+
+---------------
+
+ many triplets have at least one adjacent pair. Since the objects are arranged in a circle, each pair of adjacent objects can form part of such a triplet. Let's think of
+
+---------------
+
+ it this way: For each adjacent pair, how many triplets can be formed by adding a third object that is not part of the pair?
+
+---------------
+
+ But then, this might overcount because a triplet can have two adjacent pairs (like three consecutive objects). Hmm, so maybe
+
+---------------
+
+ we need to use inclusion-exclusion here too. Wait, perhaps another approach is better.
+
+Alternatively, the number of triplets with at least one adjacent pair can be calculated as follows:
+
+First, count the number of adjacent pairs. In a circle of 36 objects, each object has two neighbors, so there are 36 adjacent pairs. Each adjacent pair can be considered
+
+---------------
+
+ as a single unit. To form a triplet with this pair, we need to choose a third object not adjacent to either end of the pair?
+
+---------------
+
+ Wait no, actually, any third object not part of the pair. Wait, but if we just take any third object, then
+
+---------------
+
+ the triplet will include the adjacent pair plus another object. However, the problem is that if the third object is adjacent to one of the pair's endpoints, then the
+
+---------------
+
+ triplet could form another adjacent pair, but that's okay because we are counting all triplets with at least one adjacent pair.
+
+Wait, actually, maybe
+
+---------------
+
+ a better approach is:
+
+The number of triplets with at least one adjacent pair is equal to the number of adjacent pairs multiplied by (n
+
+---------------
+
+ - 4). Wait, why? Let me think again.
+
+Suppose we fix an adjacent pair, say between positions 1 and 2. Then the third object can be any of the remaining 34 objects (since total is 36, minus the two in the pair). However, but
+
+---------------
+
+ if the third object is adjacent to either 1 or 2, then we might be forming another adjacent pair. But in
+
+---------------
+
+ this approach, we are counting all triplets that include the original adjacent pair, regardless of the third element. However, this
+
+---------------
+
+ counts each triplet with two adjacent pairs multiple times. For example, a triplet with three consecutive objects (like 1,2,3) would be counted once for the pair (1,2) and once for the pair (2,3). So we
+
+---------------
+
+ need to adjust for overcounting.
+
+Alternatively, perhaps the formula is:
+
+Number of triplets with at least one adjacent pair = (number of adjacent pairs) * (n - 2) - (number of triplets with two adjacent pairs). Hmm
+
+---------------
+
+, but this seems recursive.
+
+Alternatively, let me recall that for a circle, the number of ways to choose 3 objects with at least one adjacent pair is equal
+
+---------------
+
+ to n*(n - 4). Wait, maybe not exactly. Let me see.
+
+Alternatively, here's a standard formula
+
+---------------
+
+ for circular arrangements:
+
+The number of ways to choose k objects with no two adjacent is C(n - k, k) + C(n - k -1, k -1). But that
+
+---------------
+
+'s for no two adjacent. But here we want at least one adjacent. Hmm, maybe better to compute total minus the number with no two adjacent.
+
+Wait, perhaps
+
+---------------
+
+ that's a better approach. Let me think again.
+
+Total triplets: C(36,3) = 7140.
+
+Number of triplets with no two adjacent: ?
+
+If I can compute that, then A = total - no
+
+---------------
+
+ two adjacent.
+
+Wait, actually, since we need the number of triplets with at least one adjacent pair, then A = Total - (
+
+---------------
+
+number of triplets with no two adjacent). So maybe that's easier.
+
+Similarly for diametrically opposite.
+
+Wait, perhaps
+
+---------------
+
+ this approach is better. Let me try that.
+
+First, compute the number of triplets with no two adjacent and no two diametrically opposite, but that
+
+---------------
+
+ might be complicated. Wait, no, actually, the problem requires that both conditions are satisfied: no two are adjacent AND no two are diametrically opposite. So perhaps
+
+---------------
+
+ the inclusion-exclusion approach is better.
+
+Alternatively, let me first compute A (number of triplets with at least one adjacent pair)
+
+---------------
+
+ using the total minus the non-adjacent triplets.
+
+So first, compute the number of triplets with no two adjacent. Let
+
+---------------
+
+ me recall that for circular arrangements, the formula for the number of ways to choose k non-consecutive objects is C(n - k, k) + C(n - k -1, k -1). Wait, but
+
+---------------
+
+ I might need to verify this.
+
+Alternatively, here's a method. Let's fix one object, say object 1. To avoid
+
+---------------
+
+ adjacency, the next object can't be 2 or 36. Hmm, this might get complicated.
+
+Alternatively, here
+
+---------------
+
+'s a standard approach for circular non-adjacent selections:
+
+The number of ways to choose k non-consecutive objects from n arranged in a circle is C(n - k, k) + C(n - k -1, k -1). Let
+
+---------------
+
+ me check for small n and k.
+
+Suppose n=5, k=2. Then the number of ways should be 5 (each pair is
+
+---------------
+
+ two apart, but in a circle of 5, choosing two non-adjacent would actually be 5, since each is
+
+---------------
+
+ opposite? Wait, no, in a pentagon, two vertices are adjacent or separated by one vertex. Wait, actually, in
+
+---------------
+
+ a 5-gon, two non-adjacent vertices are those with one vertex between them. So the number of such
+
+---------------
+
+ pairs is 5. Using the formula: C(5-2,2) + C(5-2-1, 2-1) = C(3,2) + C(2,1)=3 +2=5. That
+
+---------------
+
+ works. So formula is correct.
+
+So, for n=36, k=3, the number of triplets with no two adjacent is C(36 -3,3) + C(36 -3 -1,3-1) = C(33,3) + C(32,2).
+
+Wait let's compute that.
+
+C(33,3) = (33×32×31)/(3×2×1) = (33×32×31)/6. Let me compute 
+
+---------------
+
+33×32=1056, then 1056×31. 1056×30=31,680 and 1056×1=1,056, so total 32,736. Divided by 6: 32,736 /6 = 5,456.
+
+Then C(32,2) is (32×31)/2 = 496.
+
+Therefore total non-adjacent triplets: 5,456 + 496 = 5,952.
+
+Wait, so A
+
+---------------
+
+ = total triplets - non-adjacent triplets = 7,140 - 5,952 = 1,188. Hmm, so that's the number of triplets with at least one adjacent pair. Okay
+
+---------------
+
+, that's A.
+
+Now, moving on to D, which is the number of triplets with at least one diametrically opposite pair.
+
+Hmm, so
+
+---------------
+
+ first, how many diametrically opposite pairs are there in 36 objects?
+
+Since it's a circle with 36 objects, each object has exactly one diametrically opposite object. Since
+
+---------------
+
+ 36 is even, the number of diametrically opposite pairs is 36/2 = 18. So there are 18 such pairs.
+
+Each
+
+---------------
+
+ diametrically opposite pair can form a triplet by adding any third object not in the pair. Wait, but again, similar
+
+---------------
+
+ to the adjacent case, we have to be careful about overcounting.
+
+Wait, the number of triplets with at least one diametrically opposite pair can be calculated as:
+
+
+
+---------------
+
+Number of diametrically opposite pairs × (number of remaining objects) - but subtract overlaps where a triplet has two diametrically opposite pairs?
+
+---------------
+
+ Hmm, but in a triplet, can there be two diametrically opposite pairs?
+
+Suppose we have three objects, A
+
+---------------
+
+, B, C. If A and B are diametrically opposite, and also B and C are diametrically opposite, then A and C would have to be the same as each other, which is impossible unless
+
+---------------
+
+ the circle has only two points. Since 36 is even but not 2, so each object has only one diametrically opposite. Therefore, a triplet cannot have two diametrically opposite pairs,
+
+---------------
+
+ because that would require three objects where two are opposite each of the other two, which would force all three to be in a
+
+---------------
+
+ line? Wait, maybe not. Let me think.
+
+Suppose you have three objects: A, B, and C. Suppose A is opposite B, and B is opposite C. Then A must be the same as C, which can't happen. Similarly
+
+---------------
+
+, if A is opposite B and A is opposite C, then B and C would have to be the same. So,
+
+---------------
+
+ in a triplet, there can be at most one diametrically opposite pair. Therefore, there is no overlap where a triplet has two such pairs. Therefore, the count is straightforward.
+
+Therefore, the number of triplets with at least one diametrically opposite pair is simply
+
+---------------
+
+ the number of diametrically opposite pairs multiplied by (36 - 2), since for each such pair, we can choose any third object (
+
+---------------
+
+excluding the two in the pair). However, wait, but in this case, if the third object is adjacent to either of the pair? Wait
+
+---------------
+
+, no, the problem only restricts that in the final count, but here we are just counting all triplets that include a diametrically opposite pair, regardless of other adj
+
+---------------
+
+acencies. So the count is indeed 18 * 34. Wait, because for each of the 18 diametrically opposite pairs, we can choose any of the remaining 34 objects.
+
+---------------
+
+ So 18*34 = 612. But hold on, but wait, is this overcounting?
+
+
+
+---------------
+
+Wait, suppose a triplet has two diametrically opposite pairs. But as we saw, that's impossible, so each triplet is counted at most once. Hence
+
+---------------
+
+, yes, it's 18 * 34 = 612. Therefore D=612.
+
+Wait, but wait
+
+---------------
+
+, let me think again. Suppose a triplet has a diametrically opposite pair and another pair that is also diametrically opposite? But
+
+---------------
+
+ that would require three objects where two are opposite each other, and another two are opposite each other, but as I thought before, that's impossible unless
+
+---------------
+
+ they are the same, so no such triplets. So D is indeed 18*34 = 612.
+
+Hmm
+
+---------------
+
+, but let me verify with an example. Suppose we have objects 1 and 19 (since 1+18=19, so
+
+---------------
+
+ diametrically opposite). Then if we pick another object, say 2, then the triplet (1,19,2) has
+
+---------------
+
+ the diametrically opposite pair (1,19). If another triplet (1,19,38) but
+
+---------------
+
+ 38 mod 36 is 2, so same as above. Wait, but in any case, each triplet with a diametrically opposite pair is counted exactly once.
+
+---------------
+
+ So D is 18*34 = 612. Okay.
+
+Now, moving on to A ∩ D, the number of triplets that have at least one adjacent pair AND at least one diametrically opposite pair.
+
+This is the overlap between
+
+---------------
+
+ A and D. So these are triplets where one pair is adjacent and another pair (or the same pair?) is diametrically opposite. Wait, but a
+
+---------------
+
+ pair can't be both adjacent and diametrically opposite unless the circle has only 4 objects, right? Since in 36 objects, the
+
+---------------
+
+ distance between adjacent is 1, and diametrically opposite is 18 apart. So adjacent pairs are distance 1, diametrically opposite are distance 18. So they
+
+---------------
+
+ can't overlap. So in a triplet, an adjacent pair and a diametrically opposite pair must be two different pairs. So,
+
+---------------
+
+ the triplet must have both an adjacent pair and a diametrically opposite pair. Let me think of how this can happen.
+
+Suppose we have three objects: A, B, and C. Let’s say A and B are adjacent, and A and C are diametrically opposite. Then,
+
+---------------
+
+ B and C would be separated by (distance from A to C is 18, so B is next to A, so the distance from B to C would be 17 or 19, depending on direction. Not
+
+---------------
+
+ diametrically opposite. So in this case, the triplet has one adjacent pair (A,B) and one diametrically opposite pair (A,C). Similarly
+
+---------------
+
+, the triplet could have another configuration where B and C are adjacent and A and C are opposite, etc.
+
+Alternatively, the
+
+---------------
+
+ triplet could have two different pairs: one adjacent and one diametrically opposite. Let me think of how to count these.
+
+First
+
+---------------
+
+, let's consider that in such a triplet, there must be an adjacent pair and a diametrically opposite pair. Since
+
+---------------
+
+ the adjacent pair and the diametrically opposite pair must share a common element or not? Let's see.
+
+Case 1: The adjacent pair and the diametrically opposite pair share a common element. For example, A
+
+---------------
+
+-B adjacent and A-C opposite. So the triplet is A,B,C where A-B are adjacent, and A-C are opposite.
+
+Case 2: The adjacent pair and diametrically opposite pair are disjoint. So
+
+---------------
+
+ the triplet has three elements where two are adjacent (say A-B) and two others (A-C) are opposite, but that
+
+---------------
+
+ would require a fourth element, which isn't possible here. Wait, in a triplet, if the adjacent pair is A-B and the diametrically opposite pair is C-D, but since
+
+---------------
+
+ it's a triplet, there are only three elements. So the diametrically opposite pair must include one of the adjacent pair. Therefore
+
+---------------
+
+, the two pairs must share a common element.
+
+Therefore, all triplets in A ∩ D must have one adjacent pair and one diametrically opposite pair that
+
+---------------
+
+ share a common element. So the triplet is structured as A, B, C where A and B are adjacent, and A and C are diametrically opposite. Alternatively
+
+---------------
+
+, A and B adjacent, and B and C are diametrically opposite. So two possibilities for each such triplet.
+
+Therefore
+
+---------------
+
+, to count A ∩ D, we can consider all such triplets where there is an adjacent pair and a diametrically opposite pair sharing one element.
+
+Let me formal
+
+---------------
+
+ize this:
+
+Let’s consider each adjacent pair. For each adjacent pair (A, B), we can look for a third point C such that either A and C are diametrically opposite, or B and C are diametrically opposite.
+
+So
+
+---------------
+
+ for each adjacent pair (A,B):
+
+- The diametrically opposite point of A is A_opposite, and the diametrically opposite of B is B_opposite.
+
+Therefore, the third point C can be either A_opposite or B_opposite.
+
+However
+
+---------------
+
+, we have to ensure that C is not already in the pair (A,B). Since A_opposite is different from A and B (since the
+
+---------------
+
+ distance between A and A_opposite is 18, while adjacent is 1). Similarly, B_opposite is not adjacent
+
+---------------
+
+ to B except in a circle of 4, which isn't our case. Therefore, for each adjacent pair (A,B), there are two possible C
+
+---------------
+
+'s: A_opposite and B_opposite. Thus, each adjacent pair contributes two triplets to A ∩ D.
+
+However, we must be
+
+---------------
+
+ careful not to double count. Let me see.
+
+Each triplet in A ∩ D is counted once for each adjacent pair that
+
+---------------
+
+ it contains. Wait, but if a triplet has two adjacent pairs, which is possible (like three consecutive objects), then it
+
+---------------
+
+ would be counted for each adjacent pair. However, in our current approach, for each adjacent pair (A,B), we add
+
+---------------
+
+ two triplets (with C as A_opposite or B_opposite). So if a triplet has two adjacent pairs, say
+
+---------------
+
+ (A,B) and (B,C), then when considering the pair (A,B), we might have added C as A_opposite or B_opposite, but if
+
+---------------
+
+ the triplet is (A,B,C) where, say, A and C are opposite, then it's counted once here. However
+
+---------------
+
+, the pair (B,C) would also be considered, and if, say, B and some other point is opposite, but unless
+
+---------------
+
+ C is B's opposite, which would require that. Hmm, perhaps it's manageable.
+
+Wait, let me think again. Let me first
+
+---------------
+
+ compute the total number contributed by each adjacent pair.
+
+There are 36 adjacent pairs. Each contributes 2 triplets (adding
+
+---------------
+
+ A_opposite or B_opposite). So total would be 36 * 2 = 72. But this
+
+---------------
+
+ counts each triplet in A ∩ D exactly how many times?
+
+Suppose a triplet has an adjacent pair and a diametrically opposite pair. Let's see
+
+---------------
+
+: The triplet has an adjacent pair, say (A,B), and a diametrically opposite pair (A,C). Then this triplet is counted when considering the adjacent pair (A,B), with
+
+---------------
+
+ C=A_opposite. Similarly, it could also be counted if there's another adjacent pair in the triplet. For example, if the triplet is (A,B,C), where A and B are adjacent, and B and C are adjacent (so three in a row), and also,
+
+---------------
+
+ say, A and D are opposite, but that might not be part of the triplet. Wait, no, in this case, the
+
+---------------
+
+ triplet (A,B,C) would only have the diametrically opposite pair if, say, A and C are opposite? Let
+
+---------------
+
+ me think.
+
+Wait, let's take a concrete example. Suppose the triplet is (A, B, A_opposite). Here, A and B are adjacent, and A and A_opposite are diametrically opposite. So
+
+---------------
+
+ this triplet is counted once when we look at the adjacent pair (A,B) and add A_opposite. It is also counted when considering the adjacent pair (B, A_opposite)? Wait, but
+
+---------------
+
+ B and A_opposite are not adjacent. The distance between B and A_opposite would be (distance from A to A_opposite is 18, so from
+
+---------------
+
+ B to A_opposite is 17 or 19, depending on direction). Since the circle has 36 objects
+
+---------------
+
+, moving from B in one direction, the distance to A_opposite is 18 -1 =17. So
+
+---------------
+
+ not adjacent. Therefore, the triplet is only counted once, via the adjacent pair (A,B).
+
+Another example: suppose the triplet is (A, B, B_opposite). Here, the adjacent pair is (A,B), and the diametrically opposite pair is (B, B_opposite). So this triplet is counted when considering the adjacent pair (A,B) and adding B_opposite. Also
+
+---------------
+
+, if there is another adjacent pair in the triplet, but in this case, only (A,B) is adjacent, so only
+
+---------------
+
+ counted once.
+
+Therefore, each triplet in A ∩ D is counted exactly once for each adjacent pair that it contains. However
+
+---------------
+
+, a triplet can have more than one adjacent pair. For instance, if the triplet has three consecutive objects, like (A, B, C) where A-B and B-C are adjacent. Then
+
+---------------
+
+, such a triplet would have two adjacent pairs. However, unless one of those pairs also forms a diametrically opposite pair with the third object, which
+
+---------------
+
+ would require that either A and C are diametrically opposite (distance 18 apart). Since they are two apart, that
+
+---------------
+
+ would only happen if 2 ≡ 18 mod 36, which is not true. So in such a triplet of
+
+---------------
+
+ three consecutive objects, there is no diametrically opposite pair, so they are not part of A ∩ D.
+
+Wait
+
+---------------
+
+, but if three consecutive objects have one of them being diametrically opposite to another? Let's see. Let me think
+
+---------------
+
+ of a specific example. Let's say object 1 is adjacent to 2 and 36. The diametrically opposite of 1 is 19. So if
+
+---------------
+
+ we have triplet (1,2,19), then 1 and 19 are opposite, and 1 and 2 are adjacent. So that's a
+
+---------------
+
+ valid triplet in A ∩ D. Similarly, triplet (2,3,20), etc. So in this case, each
+
+---------------
+
+ such triplet is only counted once when considering the adjacent pair (1,2) and adding 19. So even if the
+
+---------------
+
+ triplet has another adjacent pair (like (2,3)), but in this case, the triplet (1,2,19) only has one adjacent pair (1,2). The
+
+---------------
+
+ other pair (2,19) is not adjacent. So such a triplet is only counted once.
+
+Therefore, the total count via
+
+---------------
+
+ 36 adjacent pairs * 2 is 72, but we need to check if there are any overlaps where a triplet is counted more than once. But
+
+---------------
+
+ as per above, it seems each triplet is counted exactly once. Because for a triplet in A ∩ D, there is exactly one adjacent pair in it (since otherwise
+
+---------------
+
+, if there were two adjacent pairs, the third element would be two away from the first, so not opposite). Therefore, each triplet in A ∩ D is counted exactly once in this method
+
+---------------
+
+. Hence, the total A ∩ D is 72. Wait, but hold on, let me think again.
+
+Wait, in
+
+---------------
+
+ the example I had, (A, B, A_opposite): this triplet has the adjacent pair (A,B) and the diametrically opposite pair (A, A_opposite). So
+
+---------------
+
+ counted once when considering the adjacent pair (A,B). Similarly, (A,B,B_opposite) is counted once when considering (A,B). So
+
+---------------
+
+ each triplet is indeed counted once. Thus, the total is 36*2=72. But let me check
+
+---------------
+
+ another way.
+
+Alternatively, think of how many such triplets exist. For each object A, the adjacent pairs are (A, A+1) and (A-1, A). For
+
+---------------
+
+ each A, the diametrically opposite of A is A+18 (mod 36). So for each adjacent pair (A, A+1), the third
+
+---------------
+
+ object can be A-18 or (A+1)-18 = A-17 (mod 36). Wait, but
+
+---------------
+
+ maybe better to think in terms of each A.
+
+Alternatively, for each object A, there is an adjacent pair (A, A+1). The diametrically opposite of A is A+18. So the
+
+---------------
+
+ triplet (A, A+1, A+18) would be one such triplet. Similarly, the diametrically opposite of A+1 is (A+1)+18 = A+19. So the triplet (A, A+1, A+19) is another. Therefore
+
+---------------
+
+, for each A, there are two triplets. Since there are 36 objects, each contributing two triplets, but each triplet is being counted once per its adjacent pair. Since
+
+---------------
+
+ each triplet has exactly one adjacent pair, this counts each exactly once. So total is 36*2=72. So
+
+---------------
+
+ that seems correct. Therefore, A ∩ D is 72.
+
+Therefore, going back to inclusion-exclusion, the number of triplets with at least one forbidden pair (either adjacent or diametrically opposite) is A + D - (A ∩ D) = 1,188 + 612 - 72 = 1,188 + 612 is 1,800; minus 72 is 1,728.
+
+Therefore, the number of valid triplets is Total - (A + D - A ∩ D) = 7,140 - 1,728 = 5,412.
+
+
+
+---------------
+
+Wait, hold on a second. Wait, no. Wait, the inclusion-exclusion formula for the count of triplets that have at least one forbidden pair is A + D - (A ∩ D). Therefore, the valid triplets are Total - (A + D - A ∩ D) = 7140 - (1188 + 612 - 72) = 7140 - 1728 = 5412. Hmm, but let
+
+---------------
+
+ me verify this.
+
+Alternatively, let me check my calculations again step by step.
+
+First, Total triplets: 36C3 = 7140.
+
+A (triplets with at least one adjacent pair): 7140 - (non-adjacent triplets). The
+
+---------------
+
+ non-adjacent triplets were calculated as 5952. So 7140 - 5952 = 1188. That's correct.
+
+D (triplets with at least one diametrically opposite pair): 18 diametrically opposite pairs, each can pair
+
+---------------
+
+ with 34 other objects, so 18*34=612. Correct.
+
+A ∩ D: 72.
+
+---------------
+
+ So inclusion-exclusion gives A + D - A∩D = 1188 +612 -72 = 1728.
+
+Total
+
+---------------
+
+ - forbidden = 7140 -1728 = 5412.
+
+Hmm, but wait a second, the
+
+---------------
+
+ problem says "no two chosen objects are adjacent OR diametrically opposite". Wait, actually, the wording is "no two chosen objects are adjacent or diametrically opposite". So that
+
+---------------
+
+ means that in the triplet, none of the three pairs can be adjacent or diametrically opposite. So each pair must be
+
+---------------
+
+ neither adjacent nor diametrically opposite.
+
+Therefore, my calculation above may have an error. Wait, let me check.
+
+Wait, in
+
+---------------
+
+ inclusion-exclusion, when we subtract A and D, we subtract all triplets with at least one adjacent pair or at least one diametrically opposite pair. So
+
+---------------
+
+ the remaining should be triplets with no adjacent pairs and no diametrically opposite pairs. So that's exactly what we need. So the
+
+---------------
+
+ calculation seems correct.
+
+But let me see if 5412 is the correct answer, but maybe I made a mistake in computing
+
+---------------
+
+ non-adjacent triplets?
+
+Wait, let me recompute the non-adjacent triplets again. The formula was
+
+---------------
+
+ C(n -k, k) + C(n -k -1, k -1). For n=36, k=3,
+
+---------------
+
+ so:
+
+C(33,3) + C(32,2).
+
+C(33,3) is (33×32×31)/6. Let me compute that
+
+---------------
+
+ again.
+
+33×32 = 1056. 1056×31 = let's see, 1000×31 = 31,000, 56×31=1,736, so total 31,000 +1,736 = 32,736. Divided by 6: 32,736 /6 = 5,456.
+
+C(32,2) is (32×31)/2 = 496. So total non-adjacent triplets: 5,456 + 496 = 5,952. So that's correct.
+
+So
+
+---------------
+
+ 7140 - 5952 = 1188. That's A. Okay.
+
+Then
+
+---------------
+
+ D is 18×34 = 612. Correct.
+
+A ∩ D is 72. So total
+
+---------------
+
+ forbidden triplets: 1188 +612 -72 = 1728. So total
+
+---------------
+
+ allowed is 7140 -1728 = 5412. Hmm, but let me think again.
+
+
+
+---------------
+
+Wait, but there is another way to compute the desired count directly, maybe?
+
+Alternatively, let me try computing the number of triplets with no two adjacent and no two diametrically opposite. That
+
+---------------
+
+ is exactly what we need. So that would be the total non-adjacent triplets (5952) minus those non-adjacent triplets which have at least one diametrically opposite pair.
+
+Wait, that
+
+---------------
+
+'s another approach. Let me see:
+
+The desired count = (number of triplets with no two adjacent) minus (number of triplets with no two adjacent but at least one diametrically opposite pair).
+
+Let
+
+---------------
+
+ me compute that way as a check.
+
+First, non-adjacent triplets: 5952.
+
+Now, from
+
+---------------
+
+ these, we need to subtract those triplets which have at least one diametrically opposite pair but no adjacent pairs.
+
+So
+
+---------------
+
+, how many triplets have no two adjacent but do have at least one diametrically opposite pair?
+
+Let me call this number
+
+---------------
+
+ X. Then desired count is 5952 - X.
+
+To compute X:
+
+These are triplets where one pair is diametrically opposite, and the third is neither adjacent to either of them nor forming another forbidden
+
+---------------
+
+ pair (but since they are non-adjacent, we just need to ensure that the third is not adjacent to either,
+
+---------------
+
+ but also not diametrically opposite to any? Wait, no. Wait, the triplet has one diametrically opposite pair and the third is not adjacent to either,
+
+---------------
+
+ but could be diametrically opposite to another?
+
+Wait, actually, in this case, since we are considering triplets with no two adjacent but with
+
+---------------
+
+ at least one diametrically opposite pair. So the triplet has exactly one diametrically opposite pair, and the third element is not adjacent to either of the pair,
+
+---------------
+
+ nor forming another diametrically opposite pair? Or is that allowed?
+
+Wait, the requirement is that in the desired count, there
+
+---------------
+
+ are no two adjacent and no two diametrically opposite. So in the forbidden X, we have triplets that have no
+
+---------------
+
+ two adjacent but do have a diametrically opposite pair. So they are invalid because of the diametrically opposite pair. So we
+
+---------------
+
+ need to subtract those.
+
+To compute X: the number of triplets with exactly one diametrically opposite pair and the third element not adjacent to either of
+
+---------------
+
+ the pair.
+
+Wait, but actually, even if the third element is adjacent to one of them, but since the triplet is supposed
+
+---------------
+
+ to have no two adjacent, then such a triplet would already be excluded from the non-adjacent triplets. Therefore, in the non-adjacent triplets, any triplet with a diametrically opposite pair must have the third element neither adjacent to the pair nor forming another diam
+
+---------------
+
+etrically opposite pair.
+
+Wait, actually, in the non-adjacent triplets, the third element can still be diametrically opposite to one of the pair
+
+---------------
+
+, but that would form another diametrically opposite pair.
+
+Wait, let me clarify. Let me think of a triplet (
+
+---------------
+
+A, B, C) where A and B are diametrically opposite, and C is not adjacent to A or B. But
+
+---------------
+
+ if C is diametrically opposite to A or B, then that would form another diametrically opposite pair. However, such
+
+---------------
+
+ a triplet would still be in the non-adjacent triplets (since no two adjacent), but we need to exclude those
+
+---------------
+
+ with any diametrically opposite pairs. So X is exactly the number of triplets in non-adjacent triplets that have at least one diametrically opposite pair.
+
+Therefore
+
+---------------
+
+, X is equal to the number of triplets with a diametrically opposite pair and the third element not adjacent to either member
+
+---------------
+
+ of the pair.
+
+So how do we compute X?
+
+First, the number of diametrically opposite pairs is 18. For each such pair (A, A_opposite), we need to choose a third element C such that C is not adjacent to A or A_opposite, and also, C
+
+---------------
+
+ is not forming another diametrically opposite pair with either A or A_opposite. Wait, but actually, since we are
+
+---------------
+
+ counting all triplets with at least one diametrically opposite pair, and the third element can be anything except adjacent to A or A_opposite (since the
+
+---------------
+
+ triplet must be non-adjacent). Wait, but actually, the non-adjacent triplets already exclude any adjacency. So for
+
+---------------
+
+ each diametrically opposite pair (A, A_opposite), the third element can be any of the remaining 34 objects except those adjacent to A or A_opposite. Each
+
+---------------
+
+ of A and A_opposite has two adjacent objects, so total forbidden for C are 2 + 2 =4 objects. But since
+
+---------------
+
+ A and A_opposite are 18 apart, their adjacent objects are distinct. So the forbidden are A-1, A+1, A_opposite-1, A_opposite+1. So
+
+---------------
+
+ 4 distinct objects. So the number of available C's is 36 - 2 (the pair) -4 (adjacent to pair) = 30.
+
+Wait, let
+
+---------------
+
+ me compute step by step:
+
+Total objects excluding A and A_opposite: 34.
+
+From these 34, we must exclude the two adjacent to A and the two adjacent to A_opposite. Since these
+
+---------------
+
+ are four distinct objects (because A and A_opposite are 18 apart, their neighbors are not overlapping). So 
+
+---------------
+
+34 -4 = 30.
+
+Therefore, for each diametrically opposite pair, there are 30 possible Cs.
+
+---------------
+
+ So total X = 18 * 30 = 540.
+
+But wait, but this counts each triplet exactly
+
+---------------
+
+ once, right? Because each triplet with a diametrically opposite pair is counted once for that pair. Since a triplet can't have two diametrically opposite pairs, so no overlaps. Therefore, X = 18 *30 = 540.
+
+Therefore, the desired count is 5952 - 540 = 5412. Which matches the previous result. So that's a good check.
+
+Therefore, the answer is 5412. Wait, but hold
+
+---------------
+
+ on, but let me think once more to be thorough.
+
+Wait, but in the first approach, we had 7140 - (1188 +612 -72)= 5412. In
+
+---------------
+
+ the second approach, we had 5952 -540=5412. So both agree. So
+
+---------------
+
+ that gives me more confidence.
+
+But let me check another way. Let's compute directly the number of triplets with no two adjacent and no two diametrically opposite.
+
+To
+
+---------------
+
+ do that, perhaps arrange the 36 objects in a circle, and choose three such that none are adjacent and none are opposite. Hmm
+
+---------------
+
+, maybe inclusion-exclusion again but more complicated.
+
+Alternatively, perhaps use the principle of inclusion-exclusion but considering both conditions from
+
+---------------
+
+ the start.
+
+Alternatively, let me try to compute it step by step.
+
+First, pick the first object, say object 1. Then the second object can't be adjacent to 1 (so not 2 or 36) and can't be diametrically opposite (19). Also, can't be 1 itself. So from 36, subtract 2 (adjacent) +1 (opposite) +1 (itself) = 34 available
+
+---------------
+
+. Wait, but actually, we have to choose three distinct objects, so first object is 1, second can be any except 1, 2, 36, 19. So 36 -4 =32.
+
+---------------
+
+ Wait, but this is getting into a counting method which might be more complex.
+
+Alternatively, perhaps using the multiplication principle but considering
+
+---------------
+
+ the restrictions.
+
+But perhaps it's better to stick with the previous results since they cross-validate.
+
+Wait, but let me check
+
+---------------
+
+ the value 5412 with another angle.
+
+Suppose the answer is 5412, but I want
+
+---------------
+
+ to see if that's reasonable. Let me see:
+
+Total triplets: ~7k, subtract ~1.7k forbidden, getting
+
+---------------
+
+ ~5.4k. Seems plausible.
+
+Alternatively, let me think about the diametrically opposite pairs again. Each diametrically opposite pair has
+
+---------------
+
+ 30 possible third elements in the non-adjacent case. So 18*30=540.
+
+---------------
+
+ So subtract that from non-adjacent gives 5412.
+
+Alternatively, if I made an error in calculating the
+
+---------------
+
+ adjacent pairs?
+
+Wait, let me think about the A ∩ D term again. I thought it was 72. Let me confirm
+
+---------------
+
+ again with another approach.
+
+Suppose we have an adjacent pair (A, A+1). The third element must be either A's opposite or (A+1)'s opposite. The
+
+---------------
+
+ opposite of A is A+18, and opposite of A+1 is (A+1)+18 = A+19. Now
+
+---------------
+
+, we need to ensure that these third elements are not adjacent to the pair.
+
+Wait, the third element being A+18: is A
+
+---------------
+
++18 adjacent to A or A+1? Since the distance between A and A+18 is 18, which is not
+
+---------------
+
+ adjacent (adjacent is 1). The distance between A+1 and A+18 is 17, which is also not adjacent. Similarly, the distance from A to A+19 is 19, which is not
+
+---------------
+
+ adjacent. So the third elements A+18 and A+19 are not adjacent to the pair (A, A+1). Therefore, the
+
+---------------
+
+ triplet (A, A+1, A+18) is valid for A ∩ D (has an adjacent pair and a diametrically opposite pair). Similarly for (A, A+1, A+19). Therefore
+
+---------------
+
+, each adjacent pair indeed contributes two triplets to A ∩ D. Since there are 36 adjacent pairs, 
+
+---------------
+
+36×2=72. So that is correct.
+
+Therefore, all steps seem consistent. Therefore, the final answer is 5412. Wait
+
+---------------
+
+, but the problem says "no two chosen objects are adjacent or diametrically opposite". So that's exactly the count we arrived
+
+---------------
+
+ at, 5412. Therefore, I think that is the correct answer.
+
+**Final Answer**
+Answer: 5412
+
+
+To determine the number of ways to choose 3 objects from 36 arranged in a circle such that no two chosen objects are adjacent or diametrically opposite, we use the inclusion-exclusion principle.
+
+1. **Total number of ways to choose 3 objects**:
+   \[
+   \binom{36}{3} = \frac{36 \times 35 \times 34}{3 \times 2 \times 1} = 7140
+   \]
+
+2. **Number of triplets with at least one adjacent pair (A)**:
+   - First
+
+---------------
+
+, calculate the number of non-adjacent triplets using the formula for circular arrangements:
+     \[
+     \binom{33}{3} + \binom{32}{2} = 5456 + 496 = 5952
+     \]
+   - Subtract from the total to get A
+
+---------------
+
+:
+     \[
+     A = 7140 - 5952 = 1188
+     \]
+
+3. **Number of triplets with at least one diametrically opposite pair (D)**:
+   - There are 18 diametrically opposite pairs. Each pair can be combined with any of the remaining 34 objects:
+     \[
+     D = 18 \times 34 = 612
+     \]
+
+4. **Number of triplets with both an adjacent pair and a diametrically opposite pair (A ∩ D)**:
+   - For each of the 36 adjacent pairs, there are 2 possible third objects (the opposites of each element in the pair):
+     \[
+     A \cap D = 36 \times 2 = 72
+     \]
+
+5. **Apply inclusion-exclusion principle**:
+   - Calculate the number of forbidden triplets:
+     \[
+     A + D - (A \cap D) = 1188 + 612 - 72 = 1728
+     \]
+   - Subtract from the total to get the valid triplets:
+     \[
+     7140 - 1728 = 5412
+     \]
+
+Thus, the number of ways to choose 3 objects such that no two are adjacent or diametrically opposite is \(\boxed{5412}\).
+
+Answer: 5412<|im_end|>
