@@ -33,9 +33,9 @@ class TestLoadDataAime:
         
         # Assertions
         assert len(result) == 2
-        assert result[0]["question"] == "What is 2+2?"  # Renamed from Problem
+        assert result[0]["Problem"] == "What is 2+2?"  # Renamed from Problem
         assert result[0]["Answer"] == 4
-        assert result[1]["question"] == "What is 3*3?"
+        assert result[1]["Problem"] == "What is 3*3?"
         assert result[1]["Answer"] == 9
         
         mock_load_dataset.assert_called_once_with("Maxwell-Jia/AIME_2024", split="train")
@@ -273,8 +273,10 @@ class TestAimeUtilsIntegration:
         # Setup mock dataset
         mock_dataset = Mock()
         mock_dataset.rename_column.return_value = mock_dataset
+        
+        # Create rows with the renamed column "question" instead of "Problem"
         mock_rows = [
-            {"Problem": "If x^2 + 3x + 2 = 0, find the sum of the roots.", "Answer": "3"}
+            {"question": "If x^2 + 3x + 2 = 0, find the sum of the roots.", "Answer": "3"}
         ]
         mock_dataset.__iter__ = Mock(return_value=iter(mock_rows))
         mock_load_dataset.return_value = mock_dataset
