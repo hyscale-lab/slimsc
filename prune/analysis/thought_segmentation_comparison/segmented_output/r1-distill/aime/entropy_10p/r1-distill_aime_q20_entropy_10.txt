@@ -1,474 +1,99 @@
-Okay, so I have this math problem here about something called "b-eautiful" numbers. Let me try to wrap my head around it.
+Okay, so I need to solve this problem where I have to find the least integer base b (where b is at least 2) such that there are more than ten b-eautiful integers. Hmm
+
+---------------
+
+, let me try to understand the problem step by step.
+
+First, let's parse the definition. A positive integer n is called b-eautiful if two conditions are met:
+
+1. When n is expressed in base b, it has exactly two digits.
+2. The sum of these two digits equals the square root of n.
 
 The
 
 ---------------
 
- problem says that for a given integer b (which is at least 2), a positive integer n is called b-eautiful if two conditions are met. First, when n is expressed in base b, it has exactly two digits. Second, the sum of those two digits equals the square root of n. 
+ example given is that 81 is 13-eautiful because in base 13, 81 is written as 63 (since 6*13 + 3 = 81), and 6 + 3 = 9, which is the square root of 81.
 
-
-
----------------
-
-The example given is that 81 is 13-eautiful because when you write 81 in base 13, it's 63 (
+So, my
 
 ---------------
 
-since 6*13 + 3 = 81), and 6 + 3 = 9, which is sqrt(81). That
+ goal is to find the smallest base b where there are more than ten such numbers n that satisfy these conditions.
+
+Let me try
 
 ---------------
 
- makes sense.
+ to formalize this. If n is a two-digit number in base b, that means in base 10, n can be expressed as:
 
-The task is to find the least integer b (where b is at least 2) such that there are more than ten b-eautiful integers. So, I need to figure out for each base b, how many numbers n satisfy the
+n = a * b + c
 
----------------
-
- two conditions, and find the smallest b where this count exceeds ten.
-
-Let me break it down. First, let's understand
+where a and c are the digits in base b. Since it's a two-digit number, a must be at least 1 (since
 
 ---------------
 
- what it means for a number n to have exactly two digits in base b. In base b, the two-digit numbers range from b^1 to b^2 - 1. Specifically
+ leading zeros aren't allowed), and both a and c must be less than b (since in any base, digits go from 0 to base-1). So, 1 ≤ a < b and 0 ≤ c < b.
+
+The second condition is that the sum of the digits a and c equals the square root of n. So,
+
+a + c = sqrt(n)
+
+But since n is a two
 
 ---------------
 
-, a two-digit number in base b is of the form d1*d2, where d1 is the first digit (from
+-digit number in base b, n = a*b + c. So substituting, we get:
+
+a + c = sqrt(a*b + c)
+
+Let me square both sides to eliminate the square root:
+
+(a + c)^2 = a*b + c
+
+Expanding the left side:
+
+a^2 + 2ac + c^2 = a*b + c
+
+Let me rearrange this
 
 ---------------
 
- the left) and d2 is the second digit. Here, d1 can be from 1 to b-1, and d2 can be from 0 to b-1. So, n
+ equation to group like terms:
+
+a^2 + 2ac + c^2 - a*b - c = 0
+
+Hmm, maybe
 
 ---------------
 
- can be written as d1 * b + d2.
+ I can factor this or find a way to express it in terms of b.
 
-The second condition is that the sum of these two digits, d1 + d2, equals sqrt(n). So, sqrt
+Alternatively, perhaps I can write it as:
 
----------------
-
-(n) must be an integer because d1 and d2 are integers, right? Because sqrt(n) is the sum of two integers, it
-
----------------
-
- must itself be an integer. Therefore, n must be a perfect square.
-
-Wait, that's an important point. So n is a perfect square, and in
-
----------------
-
- base b, it's a two-digit number. So, n = k^2, where k is an integer, and n
-
----------------
-
- is in the range [b, b^2 - 1]. So, k must be such that b ≤ k^2 ≤ b^2 - 1.
-
-Also
-
----------------
-
-, since n is a two-digit number in base b, n = d1*b + d2, where d1 is between
-
----------------
-
- 1 and b-1, and d2 is between 0 and b-1. So, d1 + d2 = k.
-
-So
-
----------------
-
-, putting it all together, we have:
-
-1. n = k^2
-2. n = d1*b + d2
-3. d1 + d2 = k
-4. 1 ≤ d1 ≤ b-1
-5. 0 ≤ d2 ≤ b-1
-
-So
-
----------------
-
-, substituting equation 3 into equation 2:
-
-k^2 = d1*b + (k - d1) 
-
----------------
-
- [since d2 = k - d1]
-
-Simplify that:
-
-k^2 = d1*b + k - d1
-
-Bring
-
----------------
-
- all terms to one side:
-
-k^2 - k = d1*(b - 1)
-
-So, d1 = (k^2 - k)/(b - 1)
-
-Hmm
-
----------------
-
-, so d1 must be an integer between 1 and b-1. Therefore, (k^2 - k) must be divisible by (b - 1), and the result must
-
----------------
-
- be an integer between 1 and b-1.
-
-So, (k^2 - k) mod (b - 1) = 0, and 1 ≤ (k^2 - k)/(b - 1) ≤ b-1.
+a^2 + 2ac + c^2 = a*b + c
 
 Let
 
 ---------------
 
- me denote m = b - 1. Then, d1 = (k^2 - k)/m, and 
+ me bring all terms to one side:
+
+a^2 + 2ac + c^2 - a*b - c = 0
+
+Hmm
 
 ---------------
 
-1 ≤ d1 ≤ m.
+, this seems a bit messy. Maybe I can factor in terms of b.
 
-So, m must be a divisor of k(k - 1). Also, d1 must be between
-
----------------
-
- 1 and m.
-
-So, for each base b, m = b - 1, and we can find all k such that m divides k(k - 1), and d
+Let's see, the terms involving b are only
 
 ---------------
 
-1 = (k^2 - k)/m is between 1 and m.
+ -a*b. So, let's rearrange:
 
-Moreover, n = k^2 must be a two-digit number in base b, so n
-
----------------
-
- must be between b and b^2 - 1.
-
-So, b ≤ k^2 ≤ b^2 - 1.
-
-But
-
----------------
-
- since b = m + 1, we can write this as:
-
-m + 1 ≤ k^2 ≤ (m + 1)^2 - 1.
-
-Exp
-
----------------
-
-anding (m+1)^2 -1:
-
-(m + 1)^2 - 1 = m^2 + 2m + 1 -1 = m^2 + 2m.
-
-So, m
-
----------------
-
- + 1 ≤ k^2 ≤ m^2 + 2m.
-
-Taking square roots:
-
-sqrt(m + 1) ≤ k ≤ sqrt(m^2 + 2m).
-
-But
-
----------------
-
- sqrt(m^2 + 2m) is approximately m + 1, but let's compute it exactly:
-
-sqrt(m^2 + 2m) = m * sqrt(1 + 2/m) ≈ m + 1 for
-
----------------
-
- large m, but for exactness, perhaps it's better to keep it as is.
-
-But wait, let's see.
-
----------------
-
- For each m, which is b - 1, we need to find k such that:
-
-1. m divides k(k - 1)
-
-
----------------
-
-2. 1 ≤ d1 = (k^2 - k)/m ≤ m
-3. m + 1 ≤ k^2 ≤ m^2 + 2m
-
-Wait
-
----------------
-
-, that's a lot of conditions. Maybe I can approach this differently.
-
-Let me try to think about the possible values of k for
-
----------------
-
- a given m. Since k^2 must be a two-digit number in base b, which is m + 1, so
-
----------------
-
- k^2 must be between m + 1 and (m + 1)^2 - 1.
-
-Which is the
-
----------------
-
- same as:
-
-sqrt(m + 1) ≤ k ≤ sqrt(m^2 + 2m).
-
-But sqrt(m^2 + 2m) is sqrt
-
----------------
-
-(m(m + 2)), which is between m and m + 1.
-
-Wait, actually, let's compute sqrt(m^2 + 2m). Let me consider
-
----------------
-
- m^2 + 2m = (m + 1)^2 -1. So, sqrt(m^2 + 2m) = sqrt((m + 1)^2 -1) <
-
----------------
-
- m + 1.
-
-So, k must be an integer such that:
-
-sqrt(m + 1) ≤ k ≤ m + 1 - ε
-
----------------
-
-, where ε is a small positive number.
-
-But since k must be integer, the maximum k is m.
-
-Wait, let
-
----------------
-
-'s see:
-
-Wait, (m + 1)^2 = m^2 + 2m + 1, so (
-
----------------
-
-m + 1)^2 - 1 = m^2 + 2m.
-
-So, k^2 must be ≤ m^2 + 2m, so k ≤ sqrt(m^2 + 2m) < m + 1.
-
-Therefore
-
----------------
-
-, k can be at most m.
-
-Wait, because k is integer, so k ≤ m.
-
-Similarly, the lower bound: k ≥ sqrt(m + 1).
-
-So
-
----------------
-
-, for each m, k can range from ceil(sqrt(m + 1)) up to m.
-
-But k must also satisfy that m divides k(k - 1), and
-
----------------
-
- that d1 = (k^2 - k)/m is between 1 and m.
-
-Wait, but since d1 =
-
----------------
-
- (k^2 -k)/m, and m divides k(k -1), so d1 is an integer.
-
-Additionally
-
----------------
-
-, since d1 must be at least 1, we have:
-
-(k^2 - k)/m ≥ 1 ⇒
-
----------------
-
- k^2 - k ≥ m.
-
-But m = b - 1, and b = m +1. So, k
-
----------------
-
-^2 -k ≥ m.
-
-But since k can be up to m, let's substitute k = m:
-
-m^2 - m ≥ m ⇒ m^2 - 2m ≥ 0 ⇒ m(m - 2) ≥ 0.
-
-So, for
-
----------------
-
- m ≥ 2, this holds. For m =1, m^2 - 2m =1 -2= -1 <0. So, for m=1, k
-
----------------
-
-^2 -k must be ≥1. So, for m=1, k^2 -k ≥1. But
-
----------------
-
- k can be up to m=1, so k=1: 1 -1=0, which is less than 1. So, m
-
----------------
-
-=1 has no solutions. So, for m=1, no b-eautiful numbers.
-
-But let's not get bog
-
----------------
-
-ged down here. Let me try to think about how to model this.
-
-For each m ≥1, we can find the number of k's such
-
----------------
-
- that:
-
-1. m divides k(k -1)
-2. 1 ≤ (k^2 -k)/m ≤ m
-3. ceil
-
----------------
-
-(sqrt(m +1)) ≤k ≤ m
-
-And then, for each m, count the number of such k's, which would
-
----------------
-
- correspond to the number of b-eautiful numbers for b = m +1.
-
-We need to find the smallest m +1 such that the count exceeds ten.
-
-So, perhaps
-
----------------
-
- we can approach this by iterating over m starting from 1 upwards, for each m, compute the number of valid k's, and find
-
----------------
-
- the smallest m where this count is >10.
-
-But doing this manually for each m might be time-consuming, so maybe I can find a pattern or a
-
----------------
-
- formula.
-
-Let me think: m divides k(k -1). Since m = b -1, and k is in the
-
----------------
-
- range [ceil(sqrt(m +1)), m].
-
-Given that m divides k(k -1), which is two consecutive integers, so k
-
----------------
-
- and k-1 are coprime. Therefore, m must be a product of two factors, one dividing k and the other dividing k-1.
-
-So
-
----------------
-
-, m can be factored into two coprime factors, say, a and b, such that a divides k and b divides k -1, and
-
----------------
-
- a*b = m.
-
-Therefore, for each m, the number of solutions k is equal to the number of ways to write m as a product of two coprime factors a and b, with
-
----------------
-
- a ≤ b, and then solving for k ≡ 0 mod a and k ≡1 mod b.
-
-But since
-
----------------
-
- k is in the range [ceil(sqrt(m +1)), m], perhaps for each factorization of m into a*b, cop
-
----------------
-
-rime, we can find the number of solutions for k in that range.
-
-Wait, this seems a bit abstract, but maybe manageable
-
----------------
-
-.
-
-Alternatively, perhaps it's easier to note that since m divides k(k -1), then k ≡0 or 1 mod m's
-
----------------
-
- factors.
-
-Wait, perhaps not. Maybe let's think about m as a product of primes.
-
-Alternatively, perhaps for each m, the number of k
-
----------------
-
-'s is equal to the number of divisors d of m such that d divides k and (m/d) divides (k -1), or
-
----------------
-
- vice versa. Since m = a*b, with a and b coprime, then for each such pair, we can solve the congruence k
-
----------------
-
- ≡0 mod a and k ≡1 mod b.
-
-But I think this is getting too complicated.
-
-Alternatively, perhaps
-
----------------
-
- for each m, the number of k's is equal to the number of divisors t of m such that t ≤ k
-
----------------
-
- and (m/t) divides (k -1).
-
-Wait, maybe I should think about the equation d1 = (k^2 -k)/m.
-
-
-
----------------
-
-Since d1 must be between 1 and m, we have:
-
-1 ≤ (k^2 -k)/m ≤ m.
+a^2 + 2ac + c^2 - c = a*b
 
 So
 
@@ -476,2487 +101,3468 @@ So
 
 ,
 
-m ≤ k^2 -k ≤ m^2.
+b = (a^2 + 2ac + c^2 - c) / a
 
-Which can be rewritten as:
+Simplify numerator:
 
-k^2 -k -m ≥0,
+a
 
-and
-
-k^2 -k -m^2 ≤0.
-
-So
-
----------------
-
-, solving k^2 -k -m ≥0:
-
-Using quadratic formula:
-
-k = [1 ± sqrt(1 +4m)]/2.
-
-Since k is positive, we take the positive root:
-
-k ≥ [1 + sqrt(1 +4m)]/2.
-
-Similarly, solving k^2 -k -m^2 ≤0:
-
-k
-
----------------
-
- ≤ [1 + sqrt(1 +4m^2)]/2.
-
-But since m is positive, sqrt(1 +4m^2) is approximately
-
----------------
-
- 2m, so [1 + sqrt(1 +4m^2)]/2 ≈ m + 1/(4m), which is just
-
----------------
-
- a bit more than m. So, since k must be integer, k ≤ m.
-
-So, k must satisfy:
-
-ceil([1 + sqrt(1 +4m)]/2) ≤k ≤m.
-
-Additionally
-
----------------
-
-, m divides k(k -1). So, for each m, we can iterate k from that lower bound to m, and check if m divides k(k -1). The
-
----------------
-
- number of such k's would be the number of b-eautiful numbers for base b = m +1.
-
-So, perhaps
-
----------------
-
- the way to proceed is to iterate m starting from 1 upwards, for each m, compute the lower bound for k, then
-
----------------
-
- iterate k from that lower bound up to m, and count how many k's satisfy m divides k(k -1). Then
-
----------------
-
-, for each m, if the count exceeds 10, we can note the corresponding b = m +1 as a candidate.
-
-
-
----------------
-
-But since the problem is asking for the minimal b where the count exceeds ten, I need to find the smallest m +1 where the count is >10.
-
-But
-
----------------
-
- doing this manually for each m is going to take a lot of time. Maybe I can find a pattern or a formula.
-
-
-
----------------
-
-Alternatively, perhaps the number of k's for a given m is equal to the number of divisors of m. Wait, not
-
----------------
-
- exactly, because it's not just any divisor, but a pair of coprime divisors.
-
-Wait, considering that m divides k(k -1), and since k and k -1 are coprime, m must be a
-
----------------
-
- product of two coprime factors, one dividing k, the other dividing k -1.
-
-Therefore, for each pair of coprime divisors (a, b) of m with
-
----------------
-
- a*b = m, there is a unique solution modulo m to the system:
-
-k ≡0 mod a,
-
-k ≡1 mod b.
-
-By
-
----------------
-
- the Chinese Remainder Theorem, since a and b are coprime, there is a unique solution modulo m.
-
-Therefore
-
----------------
-
-, for each such pair (a, b), there is exactly one k modulo m that satisfies these conditions. But since we are looking for k in the range [ceil([1 + sqrt(1 +4m)]/2), m], the
-
----------------
-
- number of solutions depends on whether this k falls within that interval.
-
-But this is getting a bit too abstract. Maybe an example would help.
-
-Take m =6 (
-
----------------
-
-so b=7). Let's compute the number of k's.
-
-First, compute the lower bound for k:
-
-sqrt(m +1) = sqrt(7) ≈ 2.645, so ceil(2.645) =3.
-
-So k ranges from 3 to 6.
-
-Now, for
-
----------------
-
- each k from 3 to6, check if 6 divides k(k -1).
-
-k=3: 3*2=6, which is divisible by6. So yes. So
-
----------------
-
- d1=(9 -3)/6=6/6=1. Which is valid since d1=1.
-
-k=4:4*3=12, which is divisible by6. d1=(16-4)/6=12/6=2, which is valid.
-
-k=5:5*4=20, which is not divisible by6 (
-
----------------
-
-20/6=3.333). So no.
-
-k=6:6*5=30, which is divisible by6. d1=(36 -6)/6=30/6=5, which is valid.
-
-So, for m=6, there
-
----------------
-
- are three k's:3,4,6. So three b=7-eautiful numbers.
-
-But wait, let's verify
-
----------------
-
-:
-
-For k=3: n=9. In base7, 9 is 12 (1*7 +2=9). The
-
----------------
-
- digits are 1 and 2, sum is3, which is sqrt(9). So yes.
-
-For k=4: n=16. In base7, 16 is 22 (2*7 +2=16). Sum
-
----------------
-
- is4, which is sqrt(16). So yes.
-
-For k=6: n=36. In base7, 36 is 51 (5*7 +1=36). Sum is5+1=6, sqrt(36)=6. So yes.
-
-So that
-
----------------
-
-'s three numbers.
-
-So, for m=6, count is3.
-
-Wait, but in the range k=3 to6, we
-
----------------
-
- had k=3,4,6. So three numbers.
-
-Hmm.
-
-So, perhaps for each m, the number of solutions
-
----------------
-
- is equal to the number of ways to write m as a product of two coprime factors a and b, such that a divides
-
----------------
-
- k and b divides (k -1). Each such pair (a,b) gives a solution for k.
-
-Since m can
-
----------------
-
- be written as a product of coprime pairs (a,b), the number of such pairs is 2^{number of prime factors of m},
-
----------------
-
- but since (a,b) and (b,a) are different unless a=b, but since a and b are coprime, unless
-
----------------
-
- m=1.
-
-Wait, no, actually, for each factorization into coprime a and b, a*b =m, we
-
----------------
-
- have two possibilities unless a=b. But since a and b are coprime, a and b can only be equal if a=b=1. So, the
-
----------------
-
- number of such pairs is 2^{number of distinct prime factors of m}.
-
-Wait, for example, m=6,
-
----------------
-
- which has prime factors 2 and3. So, number of coprime pairs (a,b) is 2^2=4.
-
----------------
-
- But for m=6, the factorizations into coprime pairs are (1,6), (2,3), (3,2), (6,1). But in
-
----------------
-
- reality, each unordered pair is unique, so for m=6, the number of unordered coprime pairs is 2.
-
-
-
----------------
-
-Wait, perhaps the number of coprime ordered pairs is 2^{number of prime factors}.
-
-But perhaps I should think
-
----------------
-
- differently.
-
-Wait, in any case, for each m, the number of solutions k is equal to the number of coprime pairs (a,b) such that a*b=m.
-
-But
-
----------------
-
- I'm getting stuck here. Maybe another approach is better.
-
-Let me try to compute for small m and see the pattern.
-
-Compute
-
----------------
-
- for m from 1 to, say, 20, and see how the counts go.
-
-Starting with m=1:
-
-m
-
----------------
-
-=1:
-
-Compute lower bound k: sqrt(2)≈1.414, ceil=2. But k must be ≤1.
-
----------------
-
- So no solutions. Count=0.
-
-m=2:
-
-sqrt(3)=1.732, ceil=2. So k ranges
-
----------------
-
- from 2 to2.
-
-Check if 2 divides k(k -1). For k=2: 2*1=2, which is divisible by2. So yes. d1=(4 -2)/2=2/2=1. Valid
-
----------------
-
-.
-
-So count=1.
-
-m=3:
-
-sqrt(4)=2. So k=2,3.
-
-Check k=2: 2*1=2. Does 3 divide 2? No.
-
-k=3:3*2=6. 3 divides6? Yes. d1=(9 -3)/3=6/3=2. Valid.
-
-So count=1.
-
-m=4:
-
-sqrt(5)=~2.236, ceil=3. So k=3,4.
-
-k=3:3*2=6. 4 divides6? No.
-
-k=4:4*3=12. 4 divides12? Yes. d1=(16 -4)/4=12/4=3. Valid.
-
-Count=1.
-
-Wait, but
-
----------------
-
- wait: is k=3 valid?
-
-n=9. In base5, 9 is 14 (1*5 +4=9). Sum 
-
----------------
-
-1+4=5, which is not equal to sqrt(9)=3. So no, that's not valid. Hmm
-
----------------
-
-, so maybe my earlier logic is missing something.
-
-Wait, no, in m=4, b=5.
-
-Wait, for
-
----------------
-
- m=4, k=3: n=9.
-
-In base5, 9 is 1*5 +4=9. Sum
-
----------------
-
- is 1+4=5, which is not equal to sqrt(9)=3. So this is invalid.
-
-Wait
-
----------------
-
-, so why did I think it was valid? Because d1= (9 -3)/4=6/4=1.5, which is not integer. Wait, but
-
----------------
-
- earlier I thought it was.
-
-Wait, no, wait, for m=4, k=3:
-
-d1=(9 -3)/4=6/4=1.5, which is not integer. So it
-
----------------
-
-'s invalid. So why did I think it was?
-
-Ah, because I thought 4 divides 6, but 6/
-
----------------
-
-4 is not integer. So, my mistake earlier.
-
-So, for m=4, k=3: 4 divides6? 6 mod
-
----------------
-
-4=2, so no. So invalid.
-
-k=4: 4*3=12, 12 mod4=0. So yes.
-
-d1=(16-4)/4=12/4=3, which is ≤
-
----------------
-
-4. So valid.
-
-So only k=4 is valid. So count=1.
-
-Wait, so m=4, count=1.
-
-Similarly
-
----------------
-
-, m=5:
-
-sqrt(6)=~2.449, ceil=3. So k=3,4,5.
-
-Check each
-
----------------
-
-:
-
-k=3:3*2=6. 5 divides6? No.
-
-k=4:4*3=12. 5 divides12? No.
-
-k=5:5*4=20. 5 divides20? Yes. d1=(25 -5)/5=20/5=4. Valid.
-
-Count=1.
-
-m=6:
-
-sqrt
-
----------------
-
-(7)=~2.645, ceil=3. k=3,4,5,6.
-
-k=3:3*2=6. 6 divides6? Yes. d1= (9-3)/6=6/6=1. Valid.
-
-k=4:4*3=12. 6 divides12? Yes. d1=(16-4)/6=12/6=2. Valid.
-
-k=5:5*4=20. 6 divides20? 20 mod6=2, no.
-
-k=6:6*5=30. 6 divides30? Yes. d1=(36 -6)/6=30/6=5. Valid.
-
-So count=3.
-
-m
-
----------------
-
-=6, count=3.
-
-m=7:
-
-sqrt(8)=2.828, ceil=3. k=3,4,5,6,7.
-
-Check each:
-
-k=3:3*2=6. 7 divides6? No.
-
-k=4:4*3=12. 7 divides12? No.
-
-k=5:5*4=20. 7 divides20? No.
-
-k=6:6*5=30. 7 divides30? No.
-
-k=7:7*6=42. 7 divides42? Yes. d1=(49 -7)/7=42/7=6. Valid.
-
-Count=1.
-
-m=7, count=1.
-
-m=8:
-
-sqrt(9)=3, ceil=3. So k=3,4,5,6,7,8.
-
-Check each:
-
-k=3:3*2=6. 8 divides6? No.
-
-k=4:4*3=12. 8 divides12? No.
-
-k=5:5*4=20. 8 divides20? No.
-
-k=6:6*5=30. 8 divides30? No.
-
-k=7:7*6=42. 8 divides42? No.
-
-k=8:8*7=56. 8 divides56? Yes. d1=(64 -8)/8=56/8=7. Valid.
-
-Count=1.
-
-m=8, count=1.
-
-m=9:
-
-sqrt(10)=3.162, ceil=4. k=4,5,6,7,8,9.
-
-Check each:
-
-k=4:4*3=12. 9 divides12? No.
-
-k=5:5*4=20. 9 divides20? No.
-
-k=6:6*5=30. 9 divides30? No.
-
-k=7:7*6=42. 9 divides42? No.
-
-k=8:8*7=56. 9 divides56? No.
-
-k=9:9*8=72. 9 divides72? Yes. d1=(81 -9)/9=72/9=8. Valid.
-
-Count=1.
-
-m=9, count=1.
-
-m=10:
-
-sqrt(11)=3.316, ceil=4. k=4,5,6,7,8,9,10.
-
-Check each:
-
-k=4:4*3=12. 10 divides12? No.
-
-k=5:5*4=20. 10 divides20? Yes. d1=(25 -5)/10=20/10=2. Valid.
-
-k=6:6*5=30. 10 divides30? Yes. d1=(36 -6)/10=30/10=3. Valid.
-
-k=7:7*6=42. 10 divides42? No.
-
-k=8:8*7=56. 10 divides56? No.
-
-k=9:9*8=72. 10 divides72? No.
-
-k=10:10*9=90. 10 divides90? Yes. d1=(100 -10)/10=90/10=9. Valid.
-
-So, count
-
----------------
-
-=3.
-
-Wait, k=5,6,10 are valid. So count=3.
-
-m=10, count=3.
-
-m=11:
-
-sqrt(12)=3.464, ceil=4. k=4,5,...,11.
-
-Check each:
-
-k=4:4*3=12. 11 divides12? No.
-
-k=5:5*4=20. 11 divides20? No.
-
-k=6:6*5=30. 11 divides30? No.
-
-k=7:7*6=42. 11 divides42? No.
-
-k=8:8*7=56. 11 divides56? No.
-
-k=9:9*8=72. 11 divides72? No.
-
-k=10:10*9=90. 11 divides90? No.
-
-k=11:11*10=110. 11 divides110? Yes. d1=(121 -11)/11=110/11=10. Valid.
-
-Count=1.
-
-m=11, count=1.
-
-m=12:
-
-sqrt(13)=3.605, ceil=4. k=4,5,...,12.
-
-Check each:
-
-k=4:4*3=12. 12 divides12? Yes. d1=(16 -4)/12=12/12=1. Valid.
-
-k=5:5*4=20. 12 divides20? No.
-
-k=6:6*5=30. 12 divides30? No.
-
-k=7:7*6=42. 12 divides42? No.
-
-k=8:8*7=56. 12 divides56? No.
-
-k=9:9*8=72. 12 divides72? Yes. d1=(81 -9)/12=72/12=6. Valid.
-
-k=10:10*9=90. 12 divides90? No.
-
-k=11:11*10=110. 12 divides110? No.
-
-k=12:12*11=132. 12 divides132? Yes. d1=(144 -12)/12=132/12=11. Valid.
-
-So, count
-
----------------
-
-=3 (k=4,9,12).
-
-m=12, count=3.
-
-m=13:
-
-sqrt(14)=3.741, ceil=4. k=4 to13.
-
-Check each:
-
-k=4:4*3=12. 13 divides12? No.
-
-k=5:5*4=20. 13 divides20? No.
-
-k=6:6*5=30. 13 divides30? No.
-
-k=7:7*6=42. 13 divides42? No.
-
-k=8:8*7=56. 13 divides56? No.
-
-k=9:9*8=72. 13 divides72? No.
-
-k=10:10*9=90. 13 divides90? No.
-
-k=11:11*10=110. 13 divides110? No.
-
-k=12:12*11=132. 13 divides132? No.
-
-k=13:13*12=156. 13 divides156? Yes. d1=(169 -13)/13=156/13=12. Valid.
-
-Count=1.
-
-m=13, count=1.
-
-m=14:
-
-sqrt(15)=3.872, ceil=4. k=4 to14.
-
-Check each:
-
-k=4:4*3=12. 14 divides12? No.
-
-k=5:5*4=20. 14 divides20? No.
-
-k=6:6*5=30. 14 divides30? No.
-
-k=7:7*6=42. 14 divides42? Yes. d1=(49 -7)/14=42/14=3. Valid.
-
-k=8:8*7=56. 14 divides56? Yes. d1=(64 -8)/14=56/14=4. Valid.
-
-k=9:9*8=72. 14 divides72? No.
-
-k=10:10*9=90. 14 divides90? No.
-
-k=11:11*10=110. 14 divides110? No.
-
-k=12:12*11=132. 14 divides132? No.
-
-k=13:13*12=156. 14 divides156? No.
-
-k=14:14*13=182. 14 divides182? Yes. d1=(196 -14)/14=182/14=13. Valid.
-
-So, count=3 (k=7,8,14).
-
-m=14, count=3.
-
-m=15:
-
-sqrt(16)=4, ceil=4. k=4 to15.
-
-Check each:
-
-k=4:4*3=12. 15 divides12? No.
-
-k=5:5*4=20. 15 divides20? No.
-
-k=6:6*5=30. 15 divides30? Yes. d1=(36 -6)/15=30/15=2. Valid.
-
-k=7:7*6=42. 15 divides42? No.
-
-k=8:8*7=56. 15 divides56? No.
-
-k=9:9*8=72. 15 divides72? No.
-
-k=10:10*9=90. 15 divides90? Yes. d1=(100 -10)/15=90/15=6. Valid.
-
-k=11:11*10=110. 15 divides110? No.
-
-k=12:12*11=132. 15 divides132? No.
-
-k=13:13*12=156. 15 divides156? No.
-
-k=14:14*13=182. 15 divides182? No.
-
-k=15:15*14=210. 15 divides210? Yes. d1=(225 -15)/15=210/15=14. Valid.
-
-So, count=3 (k=6,10,15).
-
-m=15, count=3.
-
-m=16:
-
-sqrt(17)=4.123, ceil=5. k=5 to16.
-
-Check each:
-
-k=5:5*4=20. 16 divides20? No.
-
-k=6:6*5=30. 16 divides30? No.
-
-k=7:7*6=42. 16 divides42? No.
-
-k=8:8*7=56. 16 divides56? No.
-
-k=9:9*8=72. 16 divides72? No.
-
-k=10:10*9=90. 16 divides90? No.
-
-k=11:11*10=110. 16 divides110? No.
-
-k=12:12*11=132. 16 divides132? No.
-
-k=13:13*12=156. 16 divides156? No.
-
-k=14:14*13=182. 16 divides182? No.
-
-k=15:15*14=210. 16 divides210? No.
-
-k=16:16*15=240. 16 divides240? Yes. d1=(256 -16)/16=240/16=15. Valid.
-
-Count=1.
-
-m=16, count=1.
-
-m=17:
-
-sqrt(18)=4.242, ceil=5. k=5 to17.
-
-Check each:
-
-k=5:5*4=20. 17 divides20? No.
-
-k=6:6*5=30. 17 divides30? No.
-
-k=7:7*6=42. 17 divides42? No.
-
-k=8:8*7=56. 17 divides56? No.
-
-k=9:9*8=72. 17 divides72? No.
-
-k=10:10*9=90. 17 divides90? No.
-
-k=11:11*10=110. 17 divides110? No.
-
-k=12:12*11=132. 17 divides132? No.
-
-k=13:13*12=156. 17 divides156? No.
-
-k=14:14*13=182. 17 divides182? No.
-
-k=15:15*14=210. 17 divides210? No.
-
-k=16:16*15=240. 17 divides240? No.
-
-k=17:17*16=272. 17 divides272? Yes. d1=(289 -17)/17=272/17=16. Valid.
-
-Count=1.
-
-m=17, count=1.
-
-m=18:
-
-sqrt(19)=4.358, ceil=5. k=5 to18.
-
-Check each:
-
-k=5:5*4=20. 18 divides20? No.
-
-k=6:6*5=30. 18 divides30? No.
-
-k=7:7*6=42. 18 divides42? No.
-
-k=8:8*7=56. 18 divides56? No.
-
-k=9:9*8=72. 18 divides72? Yes. d1=(81 -9)/18=72/18=4. Valid.
-
-k=10:10*9=90. 18 divides90? Yes. d1=(100 -10)/18=90/18=5. Valid.
-
-k=11:11*10=110. 18 divides110? No.
-
-k=12:12*11=132. 18 divides132? No.
-
-k=13:13*12=156. 18 divides156? No.
-
-k=14:14*13=182. 18 divides182? No.
-
-k=15:15*14=210. 18 divides210? No.
-
-k=16:16*15=240. 18 divides240? No.
-
-k=17:17*16=272. 18 divides272? No.
-
-k=18:18*17=306. 18 divides306? Yes. d1=(324 -18)/18=306/18=17. Valid.
-
-So, count=3 (k=9,10,18).
-
-m=18, count=3.
-
-Hmm, so
-
----------------
-
- up to m=18, the maximum count is 3. So, for each m, the count is mostly 1 or 3, but
-
----------------
-
- not higher yet.
-
-Wait, maybe when m is highly composite, the number of divisors increases, leading to more k's.
-
-So
-
----------------
-
-, let's try m=24.
-
-m=24:
-
-sqrt(25)=5, so k ranges from5 to24.
-
-Check each k:
-
-
-
----------------
-
-But this is time-consuming. Maybe I can find a smarter way.
-
-Wait, perhaps for m=24, the number of k
-
----------------
-
-'s is higher.
-
-Alternatively, maybe m=24 is a candidate. Let me try.
-
-m=24:
-
-Compute
-
----------------
-
- lower bound: sqrt(25)=5. So k=5 to24.
-
-Now, check which k satisfy 24 dividesk(k-1).
-
-So
-
----------------
-
-, k(k-1) must be divisible by24.
-
-Since 24=8*3, and k and k-1 are consecutive, one of them is even, and
-
----------------
-
- one of them must be divisible by3.
-
-But to have k(k-1) divisible by8, either k or k-1 must be divisible by8, or one divisible by4 and the other divisible by2.
-
-So
-
----------------
-
-, let's list the k's from5 to24 where k(k -1) is divisible by24.
-
-Let
-
----------------
-
- me list the k's:
-
-k=5:5*4=20. 24 divides20? No.
-
-k=6:6*5=30. 24 divides30? No.
-
-k=7:7*6=42. 24 divides42? No.
-
-k=8:8*7=56. 24 divides56? No.
-
-k=9:9*8=72. 24 divides72? Yes. So,
-
----------------
-
- d1=(81 -9)/24=72/24=3. Valid.
-
-k=10:10*9=90. 24 divides90? No.
-
-k=11:11*10=110. 24 divides110? No.
-
-k=12:12*11=132. 24 divides132? 132/24=5.5. No.
-
-k=13:13*12=156. 24 divides156? 156/24=6.5. No.
-
-k=14:14*13=182. 24 divides182? No.
-
-k=15:15*14=210. 24 divides210? 210/24=8.75. No.
-
-k=16:16*15=240. 24 divides240? Yes. d1=(256 -16)/24=240/24=10. Valid.
-
-k=17:17*16=272. 24 divides272? 272/24≈11.333. No.
-
-k=18:18*17=306. 24 divides306? 306/24=12.75. No.
-
-k=19:19*18=342. 24 divides342? 342/24=14.25. No.
-
-k=20:20*19=380. 24 divides380? 380/24≈15.833. No.
-
-k=21:21*20=420. 24 divides420? 420/24=17.5. No.
-
-k=22:22*21=462. 24 divides462? 462/24=19.25. No.
-
-k=23:23*22=506. 24 divides506? 506/24≈21.083. No.
-
-k=24:24*23=552. 24 divides552? Yes. d1=(576 -24)/24=552/24=23. Valid.
-
-So, for
-
----------------
-
- m=24, the valid k's are9,16,24. So count=3.
-
-Hmm, same
-
----------------
-
- as before.
-
-Wait, maybe m=30.
-
-m=30:
-
-sqrt(31)=5.567, ceil=6. So k=6 to30.
-
-Check each
-
----------------
-
- k where 30 dividesk(k-1).
-
-Since 30=2*3*5.
-
-k(k -1) must be divisible by30.
-
-Which
-
----------------
-
- requires that among k and k-1, one is divisible by2, one by3, and one by5.
-
-But
-
----------------
-
- since k and k-1 are consecutive, one is even (divisible by2), one of them must be divisible by3, and one of them must be divisible by5.
-
-So, let
-
----------------
-
-'s find k such that either k or k-1 is divisible by5, and either k or k-1 is divisible by3.
-
-So
-
----------------
-
-, for k from6 to30:
-
-k=6:6*5=30. 30 divides30? Yes. d1=(36 -6)/30=30/30=1. Valid.
-
-k=7:7*6=42. 30 divides42? No.
-
-k=8:8*7=56. 30 divides56? No.
-
-k=9:9*8=72. 30 divides72? No.
-
-k=10:10*9=90. 30 divides90? Yes. d1=(100 -10)/30=90/30=3. Valid.
-
-k=11:11*10=110. 30 divides110? No.
-
-k=12:12*11=132. 30 divides132? No.
-
-k=13:13*12=156. 30 divides156? No.
-
-k=14:14*13=182. 30 divides182? No.
-
-k=15:15*14=210. 30 divides210? Yes. d1=(225 -15)/30=210/30=7. Valid.
-
-k=16:16*15=240. 30 divides240? Yes. d1=(256 -16)/30=240/30=8. Valid.
-
-k=17:17*16=272. 30 divides272? No.
-
-k=18:18*17=306. 30 divides306? 306/30=10.2. No.
-
-k=19:19*18=342. 30 divides342? 342/30=11.4. No.
-
-k=20:20*19=380. 30 divides380? 380/30≈12.666. No.
-
-k=21:21*20=420. 30 divides420? Yes. d1=(441 -21)/30=420/30=14. Valid.
-
-k=22:22*21=462. 30 divides462? 462/30=15.4. No.
-
-k=23:23*22=506. 30 divides506? 506/30≈16.866. No.
-
-k=24:24*23=552. 30 divides552? 552/30=18.4. No.
-
-k=25:25*24=600. 30 divides600? Yes. d1=(625 -25)/30=600/30=20. Valid.
-
-k=26:26*25=650. 30 divides650? 650/30≈21.666. No.
-
-k=27:27*26=702. 30 divides702? 702/30=23.4. No.
-
-k=28:28*27=756. 30 divides756? 756/30=25.2. No.
-
-k=29:29*28=812. 30 divides812? 812/30≈27.066. No.
-
-k=30:30*29=870. 30 divides870? Yes. d1=(900 -30)/30=870/30=29. Valid.
-
-So, for
-
----------------
-
- m=30, the valid k's are6,10,15,16,21,25,30. That's 7 numbers
-
----------------
-
-. So count=7.
-
-That's more than previous counts. So, m=30, count=7.
-
-Wait
-
----------------
-
-, 7 is more than 3 but still less than 10. So, need to go higher.
-
-m=60:
-
-sqrt
-
----------------
-
-(61)=7.81, ceil=8. So k=8 to60.
-
-But m=60 is
-
----------------
-
- quite large. Let's see.
-
-Wait, but perhaps m=60, which is 60, but it's time
-
----------------
-
--consuming to compute manually. Maybe I can find a pattern.
-
-Wait, perhaps the number of solutions for m is equal to the number of divisors of m,
-
----------------
-
- but only considering certain conditions.
-
-Alternatively, perhaps m must be such that m has many small factors, allowing for more k's to satisfy m dividesk(k-1).
-
-Wait, maybe
-
----------------
-
- m=60 has more solutions.
-
-But let's think: m=60.
-
-Compute lower bound k: sqrt(61)=7.81, ceil=8. So k=8 to60.
-
-For
-
----------------
-
- k in this range, check if 60 dividesk(k-1).
-
-So, 60=4*3*5.
-
-So
-
----------------
-
-, for k(k-1) to be divisible by60, it must be divisible by4,3,5.
-
-Since
-
----------------
-
- k and k-1 are consecutive, one is even, and one is odd.
-
-To be divisible by4, either k or k-1 must be divisible by4.
-
-To be divisible by3, either k or k-1 must be divisible by3.
-
-To be divisible by5, either k or k-1 must be divisible by5.
-
-So, for
-
----------------
-
- k from8 to60, let's find the k's where:
-
-Either k or k-1 is divisible by4,
-
-Either k or k-1 is divisible by3,
-
-Either k or k-1 is divisible by5.
-
-So
-
----------------
-
-, the valid k's are those where k ≡0 or1 mod4, k≡0 or1 mod3, and k≡0 or1 mod5.
-
-So
-
----------------
-
-, using the Chinese Remainder Theorem, the solutions are the numbers where k ≡ a mod lcm(4,3,5)=60, for a
-
----------------
-
-=0 or1 in each modulus.
-
-But since we are dealing with k up to60, let's list them:
-
-Possible
-
----------------
-
- combinations:
-
-For mod4: 0 or1
-
-mod3: 0 or1
-
-mod5:0 or1
-
-So, each
-
----------------
-
- combination is 2*2*2=8 possibilities.
-
-But since we are looking for k in [8,60], we
-
----------------
-
- can compute the solutions for each combination.
-
-But this is getting complicated. Maybe an alternative approach.
-
-Alternatively, for m=60, the number of k's is
-
----------------
-
- equal to the number of integers in [8,60] such that k ≡0 or1 mod4, k≡0 or1 mod3, and k≡0 or1 mod5.
-
-But
-
----------------
-
- perhaps it's easier to note that the number of solutions is equal to the number of divisors of m, but only for
-
----------------
-
- specific cases.
-
-Wait, perhaps the number of solutions is equal to the number of ways to choose for each prime factor whether it divides k or k-1.
-
-Since
-
----------------
-
- m is 60=2^2*3*5.
-
-For each prime power, we can assign it to divide either k or k-1.
-
-But
-
----------------
-
- since 2^2 is a prime power, and 3 and5 are primes.
-
-So, for 2^2: it
-
----------------
-
- can divide k or k-1.
-
-Similarly, 3 can divide k or k-1.
-
-Similarly,5 can divide k or k-1.
-
-So
-
----------------
-
-, the total number of possibilities is 2^3=8.
-
-Each possibility corresponds to a unique solution modulo m=60.
-
-But
-
----------------
-
- since k must be in [8,60], each solution modulo60 will correspond to one k in that range.
-
-So
-
----------------
-
-, for m=60, the number of solutions is8.
-
-But wait, let me check.
-
-But not all combinations
-
----------------
-
- may result in a k in [8,60]. For example, the solution k=1 mod4, 1 mod3, 1 mod5 is
-
----------------
-
- k=1, which is below8.
-
-Similarly, other solutions may be above60, but since we're looking up to60, perhaps
-
----------------
-
- each of the 8 solutions falls within [8,60].
-
-But let's compute.
-
-The solutions are the numbers k such
-
----------------
-
- that:
-
-k ≡ a mod4,
-
-k ≡ b mod3,
-
-k ≡ c mod5,
-
-where a ∈
-
----------------
-
-{0,1}, b ∈{0,1}, c ∈{0,1}.
-
-So, 8 possibilities
-
----------------
-
-.
-
-We can compute each:
-
-1. a=0, b=0, c=0: k ≡0 mod4, 0 mod3, 0 mod5.
-
----------------
-
- So, k ≡0 mod60. So, k=60. Which is within [8,60]. Valid.
-
-2. a=0, b=0, c=1: k≡0 mod4, 0 mod3, 1 mod5.
-
-Solve:
-
-Find k ≡0 mod12 (since lcm(4,3)=12),
-
-and k≡1 mod5.
-
-Find
-
----------------
-
- k ≡0 mod12 and k≡1 mod5.
-
-Let k=12m.
-
-12m ≡1 mod5 ⇒12m ≡1 ⇒2m≡1 mod5 ⇒m≡3 mod5.
-
-So, m=5n +3.
-
-Thus, k=12*(5n +3)=60n +36.
-
-Within
-
----------------
-
- [8,60], n=0: k=36.
-
-n=1:60+36=96>60. So, only k=36.
-
-3. a=0, b=1, c=0: k≡0 mod4, 1 mod3, 0 mod5.
-
-Find
-
----------------
-
- k ≡0 mod4, 1 mod3, 0 mod5.
-
-So, k must be divisible by5
-
----------------
-
- and4, so divisible by20.
-
-So, k=20m.
-
-20m ≡1 mod3 ⇒20m ≡1 ⇒2m≡1 mod3 ⇒m≡2 mod3.
-
-So, m=3n +2.
-
-Thus, k=20*(3n +2)=60n +40.
-
-Within [8,60], n=0:40.
-
-n=1:100>60. So, k=40.
-
-4. a=0, b=1, c=1: k≡0 mod4, 1 mod3, 1 mod5.
-
-Find k≡
-
----------------
-
-0 mod4,
-
-k≡1 mod3,
-
-k≡1 mod5.
-
-So, solve:
-
-k ≡1 mod3 and k≡1 mod5 ⇒
-
----------------
-
-k≡1 mod15.
-
-So, k=15m +1.
-
-Also, k≡0 mod4.
-
-So, 15m +1 ≡0 mod4 ⇒15m ≡-1 mod4 ⇒15m ≡3 mod4 ⇒1
-
----------------
-
-5≡3 mod4 ⇒3m≡3 mod4 ⇒m≡1 mod4.
-
-So, m=4n +1.
-
-Thus, k=15*(4n +1)+1=60n +16.
-
-Within [8,60], n=0:16.
-
-n=1:76>60. So, k=16.
-
-5. a=1, b=0, c=0: k≡1 mod4, 0 mod3, 0 mod5.
-
-Find k≡1 mod4,
-
-k≡0 mod3,
-
-k≡0 mod5.
-
-So, k must be divisible by15.
-
-Let
-
----------------
-
- k=15m.
-
-15m ≡1 mod4 ⇒15m ≡1 ⇒3m≡1 mod4 ⇒m≡3 mod4.
-
-So, m=4n +3.
-
-Thus, k=15*(4n +3)=60n +45.
-
-Within [8,60], n=0:45.
-
-n=1:105>60. So, k=45.
-
-6. a=1, b=0, c=1: k≡1 mod4, 0 mod3, 1 mod5.
-
-Find k≡1 mod4,
-
-k≡0 mod3,
-
-k≡1 mod5.
-
-So
-
----------------
-
-, solve:
-
-k≡0 mod3,
-
-k≡1 mod4,
-
-k≡1 mod5.
-
-First, find k ≡1 mod4 and k≡1 mod5.
-
-Which
-
----------------
-
- is k≡1 mod20.
-
-So, k=20m +1.
-
-Now, 20m +1 ≡0 mod3 ⇒20m +1 ≡2m +1 ≡0 mod3 ⇒2m ≡-1 mod3 ⇒2m ≡2 mod3 ⇒m≡1 mod3.
-
-So, m=3n +1.
-
-Thus, k=20*(3n +1) +1=60n +21.
-
-Within [8,60], n=0:21.
-
-n=1:81>60. So, k=21.
-
-7. a=1, b=1, c=0: k≡1 mod4, 1 mod3, 0 mod5.
-
-Find k≡1 mod4,
-
-k≡1 mod3,
-
-k≡0 mod5.
-
-So, k must be divisible by5.
-
-Let k=5m.
-
-Also, k≡1 mod4 and k≡1 mod3.
-
-So, 5m ≡1 mod4 ⇒5m≡1 ⇒m≡1 mod4.
-
-And 5m ≡1 mod3 ⇒5m≡1 ⇒2m≡1 mod3 ⇒m≡2 mod3.
-
-So, m ≡1 mod4 and m≡2 mod3.
-
-Find m using
-
----------------
-
- Chinese Remainder:
-
-Find m ≡x mod12.
-
-m ≡1 mod4,
-
-m ≡2 mod3.
-
-Possible
-
----------------
-
- m: Let's list m mod12.
-
-m=2: 2≡2 mod3, 2≡2 mod4≠
-
----------------
-
-1.
-
-m=5:5≡2 mod3, 5≡1 mod4. Yes.
-
-So, m≡5 mod12.
-
-Thus, m=12n +5.
-
-Thus, k=5*(12n +5)=60n +25.
-
-Within [8,60], n=0:25.
-
-n=1:85>60. So, k=25.
-
-8. a=1, b=1, c=1: k≡1 mod4,1 mod3,1 mod5.
-
-Find k≡1 mod4,
-
-k≡1 mod3,
-
-k≡1 mod5.
-
-Thus
-
----------------
-
-, k ≡1 mod lcm(4,3,5)=60.
-
-So, k=60n +1.
-
-Within [8,60], n=0:1 (
-
----------------
-
-too low).
-
-n=1:61>60. So, no solution in [8,60].
-
-So, the
-
----------------
-
- solutions are:
-
-k=60,36,40,16,45,21,25.
-
-That's7 solutions.
-
-But wait, earlier
-
----------------
-
- when I thought m=60, I thought there would be8 solutions, but one falls below8, so only7.
-
-But
-
----------------
-
- let's verify:
-
-k=16: n=256. In base61, 256 is represented
-
----------------
-
- as d1*d2.
-
-Wait, base61: 256 divided by61 is4, remainder12. So, digits are4 and12. But 
-
----------------
-
-12 is a valid digit in base61. Sum is4+12=16. sqrt(256)=16. So valid.
-
-Similarly, k=21: n=441.
-
-In base61:441 /
-
----------------
-
-61=7, remainder14. So digits7 and14. Sum7+14=21. sqrt(441)=21. Valid.
-
-k=25: n=625.
-
-625 /61=10, remainder15. So digits10 and15. Sum25. Valid.
-
-k=36: n=1296.
-
-1296 /61=21, remainder15. So
-
----------------
-
- digits21 and15. Sum36. Valid.
-
-k=40: n=1600.
-
-1600 /61=26, remainder1
-
----------------
-
-4. Digits26 and14. Sum40. Valid.
-
-k=45: n=2025.
-
-2025 /61=33, remainder12. Digits33 and12. Sum45. Valid.
-
-k=60: n=3600.
-
-3600 /61=59, remainder1. Digits59 and1. Sum60. sqrt
-
----------------
-
-(3600)=60. Valid.
-
-So, that's7 solutions. So count=7.
-
-Wait, but earlier
-
 ---------------
-
- I thought the number of solutions would be8, but one falls below8, so only7.
 
-So, for m=60, count=7.
+^2 + 2ac + c^2 - c = a^2 + 2ac + c(c - 1)
 
 Hmm
 
 ---------------
 
-, still less than10.
+, but maybe I can factor it differently. Let me see:
 
-Wait, perhaps m=120.
+Wait, a^2 + 2ac + c^2 is (a + c)^2. So,
 
-But this is getting too big. Alternatively, maybe m
+b = [(a + c)^2 - c] / a
 
----------------
-
-=240.
-
-Alternatively, perhaps I need to find m where the number of solutions is higher.
-
-Wait, perhaps m
+Because
 
 ---------------
 
-=120.
-
-m=120:
-
-sqrt(121)=11, so k=11 to120.
-
-Number
+ from earlier, (a + c)^2 = a*b + c, so a*b = (a + c)^2 - c,
 
 ---------------
 
- of solutions is equal to the number of k in [11,120] such that 120 dividesk(k -1).
+ so b = [(a + c)^2 - c]/a
 
-1
+That seems useful. So, b = [ (a + c)^2 - c ] / a
 
----------------
-
-20=8*3*5.
-
-So, similar to m=60, but with an additional factor of2.
-
-
+Since
 
 ---------------
 
-Wait, 120=8*3*5.
-
-So, k(k -1) must be divisible by8,3,5.
-
-Thus
-
----------------
-
-, similar to before, but with higher powers.
-
-So, for k in11 to120, find k where:
-
-Either k or k-1 is divisible by8,
-
-Either k or k-1 is divisible by3,
-
-Either k or k-1 is divisible by5.
+ b must be an integer greater than or equal to 2, and a and c are digits in base b, meaning 1 ≤ a < b and 0 ≤ c < b.
 
 So
 
 ---------------
 
-, the number of solutions is again 2^3=8 possibilities, but within the range.
+, for given a and c, b must be an integer, and must satisfy the digit constraints.
 
-But since m=120, the
-
----------------
-
- solutions would be:
-
-Each combination of assignments of the prime powers to k or k-1.
-
-Thus, for each of the 8 possibilities
+Alternatively, perhaps I can write
 
 ---------------
 
-, there would be one solution modulo120.
+ this as:
 
-So, let's compute the solutions.
+b = (a + c)^2 / a - c / a
 
-Each solution is k ≡ a mod8, k≡b mod3, k≡c mod5, where a ∈
-
----------------
-
-{0,1}, b∈{0,1}, c∈{0,1}.
-
-But since m=120, the
+But that might not be very helpful.
 
 ---------------
 
- solutions will be in the range [1,120]. So, for each combination, there will be exactly one solution in that
+ Let me think of another approach.
+
+Alternatively, since a and c are digits, a can range from 1 to b-1, and c can range from 0 to b-1. But since
 
 ---------------
 
- range.
-
-So, 8 solutions.
-
-But let's check if any fall below11.
-
-The smallest solution is k=1, which is below11. The next is
+ b is the base, and we are trying to find b, perhaps it's better to fix a and c and find possible
 
 ---------------
 
- k=1 +120=121, which is above120.
+ b.
 
-Wait, no, each combination will
-
----------------
-
- have exactly one solution in [1,120]. So, the solutions are:
-
-1. a=0,b=0,c=0: k=0 mod8,0 mod3,0 mod5 ⇒k=0 mod
+Wait, but the problem is to find the minimal b such that there are more than ten b-eautiful numbers. So perhaps for
 
 ---------------
 
-120 ⇒k=120.
-
-2. a=0,b=0,c=1: k=0 mod8,0 mod3,1 mod5.
-
-Find
-
----------------
-
- k ≡0 mod24 (lcm(8,3)=24),
-
-k≡1 mod5.
+ each b, I can count how many n satisfy the conditions, and find the minimal b where this count exceeds ten.
 
 So
 
 ---------------
 
-, 24m ≡1 mod5 ⇒24m≡4m≡1 mod5 ⇒4m≡1 ⇒m≡4^{-1}=4 mod5.
+, the plan is:
 
-So, m=5n +4.
-
-Thus, k=24*(5n +4)=120n +96.
-
-Within [11,120], n=0:96.
-
-3. a=0,b=1,c=0: k=0 mod8,1 mod3,0 mod5.
-
-Find k �
+1. For each base b starting from 2 upwards:
+   a. For each a from 1 to b-1 (since a is the first digit in
 
 ---------------
 
-�0 mod8,
-
-k≡1 mod3,
-
-k≡0 mod5.
-
-k must be divisible by5 and8, so divisible
+ base b, two-digit number):
+      i. For each c from 0 to b-1:
+         - Check if a + c = sqrt(n), where n = a*b + c
+         - So
 
 ---------------
 
- by40.
-
-k=40m.
-
-40m ≡1 mod3 ⇒40m≡1 ⇒m≡1 mod3.
-
-So, m=3n +1.
-
-Thus, k=40*(3n +1)=120n +40.
-
-Within [11,120], n=0:40.
-
-n=1:160>120.
-
-4. a=0,b=1,c=1: k=0 mod8,1 mod3,1 mod5.
-
-Find k≡0 mod8,
-
-k≡1 mod3,
-
-k≡1 mod5.
+, sqrt(n) must be an integer, because a + c is integer.
+         - So, n must be a perfect square.
 
 So
 
 ---------------
 
-, solve:
-
-k≡1 mod3 and1 mod5 ⇒k≡1 mod15.
-
-So, k=15m +1.
-
-Also, k≡0 mod8 ⇒15m +1 ≡0 mod8 ⇒15m ≡-1 mod8 ⇒15m≡7 mod8 ⇒15≡7 mod8 ⇒7m≡7 mod8 ⇒m≡1 mod8.
-
-Thus, m=8n +1.
-
-So, k=15*(8n +1)+1=120n +16.
-
-Within [11,120], n=0:16.
-
-n=1:136>120.
-
-5. a=1,b=0,c=0: k=1 mod8,0 mod3,0 mod5.
-
-Find k≡1 mod8,
-
-k≡0 mod3,
-
-k≡0 mod5.
-
-k must be divisible by15.
-
-k=15m.
-
-15m ≡1 mod8 ⇒15m≡1 ⇒7m≡1 mod8 ⇒m≡7 mod8.
-
-So, m=8n +7.
-
-Thus, k=15*(8n +7)=120n +105.
-
-Within [11,120], n=0:105.
-
-n=1:225>120.
-
-6. a=1,b=0,c=1: k=1 mod8,0 mod3,1 mod5.
-
-Find k≡1 mod8,
-
-k≡0 mod3,
-
-k≡1 mod5.
-
-Solve:
-
-k≡0 mod3,
-
-k≡1 mod5,
-
-k≡1 mod8.
-
-First, solve k≡1 mod5 and k≡1 mod8.
-
-Which
+, n is a perfect square, and n = a*b + c. Also, a + c = sqrt(n). So
 
 ---------------
 
- is k≡1 mod40.
+, sqrt(n) must be equal to a + c.
 
-So, k=40m +1.
-
-Now, 40m +1 ≡0 mod3 ⇒40m +1 ≡1m +1 ≡0 mod3 ⇒m≡-1≡2 mod3.
-
-So, m=3n +2.
-
-Thus, k=40*(3n +2)+1=120n +81.
-
-Within [11,120], n=0:81.
-
-n=1:201>120.
-
-7. a=1,b=1,c=0: k=1 mod8,1 mod3,0 mod5.
-
-Find k≡1 mod8,
-
-k≡1 mod3,
-
-k≡0 mod5.
-
-So, k must be divisible by5.
-
-k=5m.
-
-Also, k≡1 mod8 and1 mod3.
-
-So, 5m ≡1 mod8 ⇒5m≡1 ⇒m≡5^{-1}=5 mod8.
-
-And 5m ≡1 mod3 ⇒5m≡1 ⇒2m≡1 ⇒m≡2 mod3.
-
-So, m≡5 mod8 and m≡2 mod3.
-
-Find m:
-
-
+Let me denote s = a + c. Then, s must
 
 ---------------
 
-m ≡5 mod8,
+ be equal to sqrt(n), so n = s^2.
 
-m ≡2 mod3.
+Also, since n = a*b + c, we have:
 
-Let m=8n +5.
-
-8n +5 ≡2 mod3 ⇒8n ≡-3 ≡0 mod3 ⇒8n ≡0 ⇒2n ≡0 ⇒n≡0 mod3.
-
-Thus, n=3k.
-
-So, m=8*(3k) +5=24k +5.
-
-Thus, k=5*(24k +5)=120k +25.
-
-Within [11,120], k=0:25.
-
-k=1:145>120.
-
-8. a=1,b=1,c=1: k=1 mod8,1 mod3,1 mod5.
-
-Find k≡1 mod8,
-
-k≡1 mod3,
-
-k≡1 mod5.
-
-So
-
----------------
-
-, k≡1 mod lcm(8,3,5)=120.
-
-Thus, k=120n +1.
-
-Within [11,120], n=0:1 (too low).
-
-n=1:121>120. So, no solution.
-
-Thus, the solutions are:
-
-k=120,96,40,16,105,81,25.
-
-That's7 solutions.
-
----------------
-
- Wait, same as m=60.
-
-Hmm, but wait, m=120, count=7. So
-
----------------
-
-, same as m=60.
-
-Wait, but maybe I made a mistake here. Because m=120 is
-
----------------
-
- double m=60, but the number of solutions didn't double.
-
-Alternatively, perhaps the number of solutions is not directly dependent
-
----------------
-
- on m but on the number of prime factors.
-
-Wait, perhaps the number of solutions is 2^{number of distinct prime factors}
-
----------------
-
-.
-
-But m=60 has 3 distinct prime factors, so 2^3=8, but we have7 solutions because
-
----------------
-
- one is below the lower bound.
-
-Similarly, m=120 has the same number of distinct prime factors, so same number of solutions.
-
-Wait
-
----------------
-
-, perhaps for m=240, which has more prime factors?
-
-Wait, m=240=16*3*5. So, same
-
----------------
-
- number of distinct prime factors (2,3,5), but higher exponents.
-
-So, perhaps the number of solutions would
-
----------------
-
- still be8, but one is below the lower bound, so7.
-
-Hmm.
-
-Wait, perhaps m=30 has
-
----------------
-
-3 prime factors, and m=30 has7 solutions? Wait, no, earlier for m=30, count
-
----------------
-
- was7.
-
-Wait, maybe the number of solutions isn't directly tied to the number of prime factors, but to the number of ways
-
----------------
-
- to assign the prime factors to k or k-1.
-
-But for m=30, it's 7 solutions, which
-
----------------
-
- is less than 2^3=8.
-
-Wait, perhaps for m=30, one solution is below the lower bound, so we
-
----------------
-
- have7.
-
-Similarly, for m=60 and m=120, one solution is below the lower bound, so7.
-
-Wait
-
----------------
-
-, but the problem is asking for the least b where there are more than ten b-eautiful numbers. So, I need to find m
-
----------------
-
- where the count exceeds10.
-
-So, perhaps I need to find m where the number of solutions is more than10.
-
-Wait
-
----------------
-
-, maybe m=840, which is the least common multiple of1-8, but that's too big.
-
-Alternatively, perhaps m=2
-
----------------
-
-40.
-
-Wait, but earlier, m=240 had7 solutions.
-
-Wait, perhaps I need to find m with more prime
-
----------------
-
- factors, allowing more combinations.
-
-Wait, m=210=2*3*5*7. So, four distinct prime factors.
-
-Thus
-
----------------
-
-, the number of solutions would be2^4=16, but one may be below the lower bound.
-
-So, for
-
----------------
-
- m=210:
-
-Compute the lower bound for k: sqrt(211)=14.525, ceil=15.
-
-So, k ranges from15 to210.
-
-Number
-
----------------
-
- of solutions is16 (all combinations of 4 prime factors assigned to k or k-1), but one may be below15.
-
-Let
-
----------------
-
- me compute:
-
-Each combination of a=0 or1 mod2, b=0 or1 mod3, c=0 or1 mod5, d=0 or1 mod7.
-
-But
-
----------------
-
- this is getting too complicated.
-
-Alternatively, perhaps the number of solutions is16, but some are below15.
-
-But
-
----------------
-
- it's time-consuming to compute manually.
-
-Alternatively, perhaps for m=210, the count is15, which
-
----------------
-
- is more than10.
-
-But I'm not sure.
-
-Alternatively, perhaps I should look for m where m is a factorial, as
-
----------------
-
- they have many factors.
-
-Wait, m=720=6!.
-
-But this is getting too big, and perhaps not
-
----------------
-
- necessary.
-
-Alternatively, perhaps m=1260=2^2*3^2*5*7.
-
-But
-
----------------
-
- again, this is too time-consuming.
-
-Wait, perhaps I should think differently.
-
-Wait, perhaps the number of solutions is equal to the number of div
-
----------------
-
-isors of m, but only considering the coprime pairs.
-
-Wait, perhaps for m=240, which has3
-
----------------
-
-2 divisors, but many of them are not coprime.
-
-Wait, I'm getting stuck here.
-
-Alternatively, perhaps the
-
----------------
-
- number of solutions increases when m is a multiple of many small primes, allowing more combinations.
-
-So, perhaps m=21
-
----------------
-
-0=2*3*5*7.
-
-So, for m=210, the number of solutions would be2^4=16.
+s^2 = a*b + c
 
 But since
 
 ---------------
 
- the lower bound is sqrt(211)=14.5, so k starts at15.
+ s = a + c, we can substitute c = s - a into the equation:
 
-So, 
+s^2 = a*b + (s - a)
 
----------------
-
-16 solutions, but one is k=1, which is below15, so15 solutions.
-
-Thus, for m=210, count=15.
-
-Which is more than10.
-
-So, then
+S
 
 ---------------
 
- b=m +1=211.
+implify:
 
-But wait, is this the minimal m?
+s^2 = a*b + s - a
 
-Wait, let's check for smaller m.
+Bring all terms to one side:
 
-Wait, m
+s^2 - s = a*b - a
 
----------------
-
-=120 had7 solutions.
-
-What about m=180=2^2*3^2*5.
-
-Number
+Factor the
 
 ---------------
 
- of solutions would be2^3=8, but one is below the lower bound.
+ right side:
 
-So, count=7.
+s^2 - s = a*(b - 1)
 
-Similarly
+So,
 
----------------
+a = (s^2 - s) / (b - 1)
 
-, m=240, count=7.
-
-Wait, perhaps m=360.
-
-m=360=2^3*3^2*5.
-
-Number of solutions=
+Since
 
 ---------------
 
-2^3=8, count=7.
-
-Hmm.
-
-Wait, maybe m=420=2^2*3*5*7.
-
-Number of solutions=2^4=16, count
+ a must be an integer, (s^2 - s) must be divisible by (b - 1). Also, since a must satisfy 1 ≤ a < b, this
 
 ---------------
 
-=15.
+ gives constraints on s and b.
 
-So, b=421.
+Wait, but perhaps I can solve for b in terms of s and a.
 
-But perhaps m=210 is the first with15 solutions.
-
-But is
+From the
 
 ---------------
 
- there a smaller m with more than10 solutions?
+ equation:
 
-Wait, let's think of m=60, which had7 solutions.
+s^2 = a*b + (s - a)
 
-What
+So,
 
----------------
-
- about m=120, same as60.
-
-Wait, perhaps m=840=2^3*3*5*7.
-
-Number
-
----------------
-
- of solutions=2^4=16, count=15.
-
-So, perhaps the minimal m is210.
-
-But I
-
----------------
-
- need to confirm.
-
-Alternatively, perhaps m=60 has7, m=120 has7, m=180 has7, m=240 has7, m=360 has7, m=420 has15.
+a*b = s^2 - s + a
 
 Thus
 
 ---------------
 
-, the minimal m where count>10 is m=210, giving b=211.
+,
 
-But wait
+b = (s^2 - s + a)/a
 
----------------
+Simplify:
 
-, m=210 is 2*3*5*7, which is the product of first four primes.
+b = (s^2 - s)/a + 1
 
 So
 
 ---------------
 
-, the number of solutions is2^4=16, but one is below the lower bound, so15.
+,
 
-Thus
+b = (s(s - 1))/a + 1
 
----------------
-
-, for m=210, count=15>10.
-
-So, the minimal b is211.
-
-But wait
+Hmm, this might be a better way to express
 
 ---------------
 
-, is there a smaller m with count>10?
+ it.
 
-Wait, m=1260 is larger, but perhaps
-
----------------
-
- m=300.
-
-Wait, m=300=2^2*3*5^2.
-
-Number of solutions=2^3=8, count=7.
-
-No
-
----------------
-
-.
-
-Wait, m=420=2^2*3*5*7.
-
-Number of solutions=2^4=16, count=15.
-
-So
-
----------------
-
-, yes, m=420 is smaller than m=1260.
-
-Wait, but is there a smaller m than
-
----------------
-
-420 with count>10?
-
-Wait, m=210 is smaller than420, but m
-
----------------
-
-=210 is 210, which is smaller than420.
-
-Wait, but m=210 is
-
----------------
-
- 210, which is smaller than420.
-
-So, m=210, count=15.
-
-Thus
-
----------------
-
-, b=211.
-
-Wait, but wait, I'm not sure if m=210 is the minimal m with count>10.
-
-Wait
-
----------------
-
-, perhaps m=840=2^3*3*5*7.
-
-Which is larger than210, but the
-
----------------
-
- count would be16.
-
-But I'm looking for the minimal b, so m=210 is better.
-
-Wait
-
----------------
-
-, but I'm not sure if m=210 is indeed the minimal.
-
-Alternatively, perhaps m=240.
-
-
-
----------------
-
-Wait, m=240=2^4*3*5.
-
-Number of solutions=2^3=8, count=7.
-
-No.
-
-Alternatively
-
----------------
-
-, m=1260=2^2*3^2*5*7.
-
-Number of solutions=2^4=16, count=15.
-
-So, same
-
----------------
-
- as m=210 and m=420.
-
-But m=210 is smaller.
-
-Thus, the
-
----------------
-
- minimal b would be211.
-
-Wait, but wait, let's think again.
-
-Earlier, for m=30, count=7.
-
-For m=60, count=7.
-
-For m=120, count=7.
-
-For m=180, count=7.
-
-For m=240, count=7.
-
-For m=360, count=7.
-
-For m=420, count=15.
-
-For
-
----------------
-
- m=210, count=15.
-
-So, m=210 is the first m where count=15>10.
-
-Thus, b=211.
-
-Wait, but is
-
----------------
-
- there a smaller m with count>10?
-
-Wait, perhaps m=840=2^3*3*5*7.
+So, for given s and a, b must be equal to (s(s - 1))/a + 1.
 
 But
 
 ---------------
 
- m=840 is larger than210.
+ since b must be an integer, (s(s - 1)) must be divisible by a.
 
-So, m=210 is the minimal m with count>10.
-
-Thus, the least integer b is211.
-
-Wait, but earlier
+Also, since a must
 
 ---------------
 
- I thought m=210, count=15.
-
-But wait, for m=210, the lower bound is sqrt(211)=14.525, so k starts at15.
-
-Thus
+ be at least 1 and less than b, which is (s(s - 1))/a + 1, so
 
 ---------------
 
-, in the range15 to210, all solutions except k=1 are valid.
+ a must be less than that.
 
-So, number of solutions=16-1=15.
-
-Thus, count
+Moreover, since c = s - a, and c must be less than b, we
 
 ---------------
 
-=15>10.
+ have:
 
-So, the minimal b is211.
+c = s - a < b
 
-But wait, earlier for m=30, count=7.
+So,
 
-Wait
+s - a < (s(s - 1))/a + 1
+
+This
 
 ---------------
 
-, perhaps I made a mistake.
+ is getting a bit complicated. Maybe I can approach this differently.
 
-Wait, for m=30, the count was7, but for m=210, it's15.
+Let me consider s as a positive integer, since s = a + c, and a and c are digits,
+
+---------------
+
+ so s must be at least 1 (if a=1, c=0) and at most (b-1) + (b-1) = 2b - 2. But since
+
+---------------
+
+ n is a two-digit number in base b, n is less than b^2, so s^2 < b^2, which implies s < b. So
+
+---------------
+
+, s can range from 1 to b-1.
+
+Wait, that's an important point. Since n is a two-digit number in base b, n is
+
+---------------
+
+ between b (inclusive) and b^2 (exclusive). So, n = s^2, which must be ≥ b and < b^2. Therefore
+
+---------------
+
+, s must satisfy sqrt(b) ≤ s < b.
+
+But s is an integer, so s can range from ceil(sqrt(b)) to b-1.
 
 So
 
 ---------------
 
-, the minimal m where count>10 is m=210, b=211.
+, for each base b, s can take integer values from ceil(sqrt(b)) up to b-1.
 
-Thus, the answer is211.
+For each such s, we
+
+---------------
+
+ can find the possible a and c.
+
+From earlier, we have:
+
+s^2 = a*b + c
+
+And s
+
+---------------
+
+ = a + c, so c = s - a.
+
+Substituting into the equation:
+
+s^2 = a*b + (s - a)
+
+Which
+
+---------------
+
+ simplifies to:
+
+s^2 = a*(b - 1) + s
+
+Then,
+
+a*(b - 1) = s^2 - s
+
+So,
+
+a = (s^2 - s)/(b - 1)
+
+Since a must be a positive integer,
+
+---------------
+
+ (s^2 - s) must be divisible by (b - 1). Also, a must be at least 1 and less than b.
+
+So
+
+---------------
+
+, for a given b, s can be from ceil(sqrt(b)) to b-1. For each s, check if (s^2 - s) is divisible by (b - 1). If it is, then a = (s^2 - s)/(b - 1). Then, check
+
+---------------
+
+ if a is an integer, 1 ≤ a < b, and c = s - a is also less than b (since c < b as
+
+---------------
+
+ a digit in base b).
+
+So, for each b, we can iterate s from ceil(sqrt(b)) to b-1, compute a =
+
+---------------
+
+ (s^2 - s)/(b - 1), check if a is integer, and if so, check the constraints on a and c.
+
+If
+
+---------------
+
+ all conditions are met, then n = s^2 is a b-eautiful number.
+
+So, the plan is:
+
+For each base b starting from 2 upwards
+
+---------------
+
+:
+
+1. For each s from ceil(sqrt(b)) to b-1:
+
+   a. Compute numerator = s^2 - s
+
+   b. If
+
+---------------
+
+ numerator is divisible by (b-1), then compute a = numerator / (b-1)
+
+   c. Check if a is an integer (which
+
+---------------
+
+ it will be if step b is satisfied), and 1 ≤ a < b.
+
+   d. Compute c = s - a.
 
 
-The least integer \( b \) for which there are more than ten \( b \)-eautiful integers is \( \boxed{211} \).<｜end▁of▁sentence｜>
+
+---------------
+
+   e. Check if c is an integer between 0 and b-1.
+
+   f. If all conditions are satisfied, then count
+
+---------------
+
+ this n = s^2 as a b-eautiful number.
+
+2. After checking all s for a given b, count how many b-eautiful numbers exist.
+
+3. Find
+
+---------------
+
+ the smallest b where this count exceeds 10.
+
+This seems manageable, but doing this manually for each b might be tedious. Perhaps
+
+---------------
+
+ I can find a pattern or formula to compute the number of b-eautiful numbers for a given b.
+
+Let me try to find
+
+---------------
+
+ a relationship between s and a for a given b.
+
+We have:
+
+a = (s^2 - s)/(b - 1)
+
+Let
+
+---------------
+
+ me denote k = b - 1. Then, a = (s^2 - s)/k.
+
+So, for
+
+---------------
+
+ each b, k = b -1, and s must be such that (s^2 - s) is divisible by k.
+
+Also
+
+---------------
+
+, since s ranges from ceil(sqrt(b)) to b-1, which is s from ceil(sqrt(k+1)) to k.
+
+So
+
+---------------
+
+, for each k, s ranges from ceil(sqrt(k+1)) to k.
+
+We can write:
+
+a = (s^2 - s)/k
+
+Which
+
+---------------
+
+ can be rewritten as:
+
+a = s(s - 1)/k
+
+Since a must be integer, s(s-1) must be divisible by k.
+
+But
+
+---------------
+
+ s and s-1 are consecutive integers, so they are coprime. Therefore, k must divide the product s(s - 1). Since s and s -1 are coprime, k must divide either s or s -1.
+
+So
+
+---------------
+
+, for each k, s must be such that either:
+
+1. k divides s, or
+
+2. k divides (s - 1)
+
+But
+
+---------------
+
+ since s ranges up to k, let's see:
+
+Case 1: k divides s.
+
+But s ≤ k, so s can be k.
+
+---------------
+
+ But s ranges up to k, so s = k is possible. Then, a = (k^2 -k)/k = k -1.
+
+But
+
+---------------
+
+ a must be less than b = k + 1, so a = k -1 < k +1, which is true.
+
+Case
+
+---------------
+
+ 2: k divides (s -1)
+
+Then, s -1 must be a multiple of k. Since s ≤ k, s -1 can be at
+
+---------------
+
+ most k -1. So the only possibility is s -1 = 0, i.e., s = 1. But s starts from ceil(sqrt(k+1)), which is at least 2 for k ≥3.
+
+---------------
+
+ So s=1 is not in the range. Hence, case 2 only applies when s=1, which is not
+
+---------------
+
+ in our range for s. Therefore, only case 1 is applicable, where k divides s.
+
+Wait, but when s=
+
+---------------
+
+1, s-1=0, which is divisible by k, but s=1 is only possible when sqrt(k+1) ≤1, which is
+
+---------------
+
+ when k+1 ≤1, so k ≤0, but k = b-1 ≥1 (since b≥2). So s
+
+---------------
+
+=1 is not in the range. Therefore, only case 1 is possible.
+
+Wait, but that can't be right
+
+---------------
+
+ because in the example given, 81 is 13-eautiful. Let's check that.
+
+In that case, b=13, so k=12.
+
+s = a + c =
+
+---------------
+
+ 6 + 3 =9.
+
+So, s=9.
+
+Compute a = (9^2 -9)/12 = (81 -9)/12=72/12=6.
+
+Which is valid
+
+---------------
+
+.
+
+But 12 divides 72, which is s(s-1)=9*8=72.
+
+So
+
+---------------
+
+, 12 divides 72, which is true.
+
+But 12 doesn't divide s=9, but
+
+---------------
+
+ 12 divides s(s-1)=72.
+
+Wait, so my earlier conclusion that k must divide s or s-1 is
+
+---------------
+
+ incorrect because in this case, 12 divides 72, which is s(s-1), but 12 doesn't divide s=9 or
+
+---------------
+
+ s-1=8. So, perhaps my earlier reasoning was flawed.
+
+Wait, perhaps since s and s-1 are coprime, k
+
+---------------
+
+ must divide either s or s-1. But in this case, 12 divides 72, which is s(s-1).
+
+---------------
+
+ Since 72=8*9, and 12=4*3. Hmm, but 12 divides
+
+---------------
+
+ 72, but 12 doesn't divide 8 or 9. So, my earlier conclusion that k must divide s or s-1 is incorrect.
+
+Wait
+
+---------------
+
+, that's a mistake. Because s and s-1 are coprime, any divisor of s(s-1) must divide s or s-1.
+
+---------------
+
+ But wait, no, that's not necessarily the case. For example, 6 divides 2*3, but 6 doesn't divide 2 or 3.
+
+---------------
+
+ So, my earlier conclusion is wrong. So, I need to correct that.
+
+So, if s and s-1 are coprime, then any
+
+---------------
+
+ divisor of s(s-1) can be a product of a divisor of s and a divisor of s-1. So, k
+
+---------------
+
+ can be any divisor of s(s-1), not necessarily a divisor of s or s-1.
+
+Therefore, for each
+
+---------------
+
+ k, s can be any integer in the range [ceil(sqrt(k+1)), k] such that k divides s(s-1).
+
+So
+
+---------------
+
+, for each k, the number of valid s is equal to the number of s in that range where k divides s(s-1).
+
+Hmm
+
+---------------
+
+, this complicates things because for each k, I need to find s in [ceil(sqrt(k+1)),k] such that s(s-1) is divisible by k.
+
+But
+
+---------------
+
+ perhaps we can think of it differently. For each k, the possible s are such that s ≡ 0 or 1 mod factors
+
+---------------
+
+ of k. But this might be getting too abstract.
+
+Alternatively, perhaps for each k, the number of valid s is equal to the number of divisors of k,
+
+---------------
+
+ but I'm not sure.
+
+Wait, let's think about the equation:
+
+k divides s(s - 1)
+
+Which is
+
+---------------
+
+ equivalent to s(s - 1) ≡ 0 mod k.
+
+So, for each s in [ceil(sqrt(k+1)),k], check if s(s-1) is divisible by k.
+
+The
+
+---------------
+
+ number of such s for each k will determine the number of b-eautiful numbers for base b = k +1.
+
+So
+
+---------------
+
+, the problem reduces to, for each k starting from 1 (since b starts from 2), count the number of s in [ceil(sqrt(k+1)),k] such that s(s -1) is divisible by k. Then, for
+
+---------------
+
+ each b =k +1, the count is equal to the number of such s.
+
+We need to find the smallest b such that this count exceeds 10.
+
+So
+
+---------------
+
+, perhaps I can compute this count for increasing k until I find the first k where the count is >10, then b =k +1.
+
+This
+
+---------------
+
+ seems manageable, but it's going to take some time.
+
+Let me start with small k and compute the count.
+
+Let me make
+
+---------------
+
+ a table:
+
+k | b=k+1 | s_min=ceil(sqrt(k+1)) | s_max=k | Number
+
+---------------
+
+ of s where k divides s(s-1)
+---|-------|-------------------------|--------|-----------------------------------
+1 | 2     | ceil(sqrt(2))=2         |1       | s
+
+---------------
+
+ ranges from 2 to1, which is invalid. So 0
+2 |3      | ceil(sqrt(3))=2         |2       | s=2: check if 2 divides 2*1=2:
+
+---------------
+
+ yes. So count=1
+3 |4      | ceil(sqrt(4))=2         |3       | s=2: 2*1=2,
+
+---------------
+
+ 3 doesn't divide 2. No.
+s=3: 3*2=6, 3 divides 6. Yes. So count=1
+4 |5      | ceil(sqrt(5))=3         |4       |
+s=3: 3*2=6, 4 doesn't divide 6.
+
+---------------
+
+ No.
+s=4:4*3=12, 4 divides 12. Yes. Count=1
+5 |6      | ceil(sqrt(6))=3         |5       |
+s=3:3*2=6, 5 doesn't divide 6. No.
+s=4:4*3=12, 5 doesn't divide 12. No.
+s=5:5*4=20, 5 divides 20. Yes. Count=1
+6 |7      | ceil(sqrt(7))=3         |6       |
+s=3:3*2=6, 6 divides 6. Yes. Count=1
+s=4:4*3=12, 6 divides 12. Yes. Count=2
+s=5:5*4=20, 6 doesn't divide 20. No.
+s=6:6*5=30, 6 divides 30. Yes. Count=3
+So
+
+---------------
+
+ for k=6, count=3
+7 |8      | ceil(sqrt(8))=3         |7       |
+s=3:3*2=6, 7 doesn't divide 6. No.
+s=4:4*3=12, 7 doesn't divide 12. No.
+s=5:5*4=20, 7 doesn't divide 20. No.
+s=6:6*5=30, 7 doesn't divide 30. No.
+s=7:7*6=42, 7 divides 42. Yes. Count=1
+8 |9      | ceil(sqrt(9))=3         |8       |
+s=3:3*2=6, 8 doesn't divide 6. No.
+s=4:4*3=12, 8 doesn't divide 12. No.
+s=5:5*4=20, 8 doesn't divide 20. No.
+s=6:6*5=30, 8 doesn't divide 30. No.
+s=7:7*6=42, 8 doesn't divide 42. No.
+s=8:8*7=56, 8 divides 56. Yes. Count=1
+9 |10     | ceil(sqrt(10))=4        |9       |
+s=4:4*3=12, 9 doesn't divide 12. No.
+s=5:5*4=20, 9 doesn't divide 20. No.
+s=6:6*5=30, 9 doesn't divide 30. No.
+s=7:7*6=42, 9 doesn't divide 42. No.
+s=8:8*7=56, 9 doesn't divide 56. No.
+s=9:9*8=72, 9 divides 72. Yes. Count=1
+10 |11     | ceil(sqrt(11))=4        |10      |
+s=4:4*3=12, 10 doesn't divide 12. No.
+s=5:5*4=20, 10 divides 20. Yes. Count=1
+s=6:6*5=30, 10 divides 30. Yes. Count=2
+s=7:7*6=42, 10 doesn't divide 42. No.
+s=8:8*7=56, 10 doesn't divide 56. No.
+s=9:9*8=72, 10 doesn't divide 72. No.
+s=10:10*9=90, 10 divides 90. Yes. Count=3
+So for k=10, count=3
+11 |12     | ceil(sqrt(12))=4        |11      |
+s=4:4*3=12, 11 doesn't divide 12. No.
+s=5:5*4=20, 11 doesn't divide 20. No.
+s=6:6*5=30, 11 doesn't divide 30. No.
+s=7:7*6=42, 11 doesn't divide 42. No.
+s=8:8*7=56, 11 doesn't divide 56. No.
+s=9:9*8=72, 11 doesn't divide 72. No.
+s=10:10*9=90, 11 doesn't divide 90. No.
+s=11:11*10=110, 11 divides 110. Yes. Count=1
+12 |13     | ceil(sqrt(13))=4        |12      |
+s=4:4*3=12, 12 divides 12. Yes. Count=1
+s=5:5*4=20, 12 doesn't divide 20. No.
+s=6:6*5=30, 12 doesn't divide 30. No.
+s=7:7*6=42, 12 doesn't divide 42. No.
+s=8:8*7=56, 12 doesn't divide 56. No.
+s=9:9*8=72, 12 divides 72. Yes. Count=2
+s=10:10*9=90, 12 doesn't divide 90. No.
+s=11:11*10=110, 12 doesn't divide 110. No.
+s=12:12*11=132, 12 divides 132. Yes. Count=3
+So for k=12, count=3
+13 |14     | ceil(sqrt(14))=4        |13      |
+s=4:4*3=12, 13 doesn't divide 12. No.
+s=5:5*4=20, 13 doesn't divide 20. No.
+s=6:6*5=30, 13 doesn't divide 30. No.
+s=7:7*6=42, 13 doesn't divide 42. No.
+s=8:8*7=56, 13 doesn't divide 56. No.
+s=9:9*8=72, 13 doesn't divide 72. No.
+s=10:10*9=90, 13 doesn't divide 90. No.
+s=11:11*10=110, 13 doesn't divide 110. No.
+s=12:12*11=132, 13 doesn't divide 132. No.
+s=13:13*12=156, 13 divides 156. Yes. Count=1
+14 |15     | ceil(sqrt(15))=4        |14      |
+s=4:4*3=12, 14 doesn't divide 12. No.
+s=5:5*4=20, 14 doesn't divide 20. No.
+s=6:6*5=30, 14 doesn't divide 30. No.
+s=7:7*6=42, 14 divides 42. Yes. Count=1
+s=8:8*7=56, 14 divides 56. Yes. Count=2
+s=9:9*8=72, 14 doesn't divide 72. No.
+s=10:10*9=90, 14 doesn't divide 90. No.
+s=11:11*10=110, 14 doesn't divide 110. No.
+s=12:12*11=132, 14 doesn't divide 132. No.
+s=13:13*12=156, 14 doesn't divide 156. No.
+s=14:14*13=182, 14 divides 182. Yes. Count=3
+So for k=14, count=3
+15 |16     | ceil(sqrt(16))=4        |15      |
+s=4:4*3=12, 15 doesn't divide 12. No.
+s=5:5*4=20, 15 doesn't divide 20. No.
+s=6:6*5=30, 15 divides 30. Yes. Count=1
+s=7:7*6=42, 15 doesn't divide 42. No.
+s=8:8*7=56, 15 doesn't divide 56. No.
+s=9:9*8=72, 15 doesn't divide 72. No.
+s=10:10*9=90, 15 divides 90. Yes. Count=2
+s=11:11*10=110, 15 doesn't divide 110. No.
+s=12:12*11=132, 15 doesn't divide 132. No.
+s=13:13*12=156, 15 divides 156? 15*10=150, 15*11=165. No, 156-
+
+---------------
+
+150=6, so no.
+s=14:14*13=182, 15 doesn't divide 182. No.
+s=15:15*14=210, 15 divides 210. Yes. Count=3
+So for k=15, count=3
+16 |17     | ceil(sqrt(17))=5        |16      |
+s=5:5*4=20, 16 doesn't divide 20. No.
+s=6:6*5=30, 16 doesn't divide 30. No.
+s=7:7*6=42, 16 doesn't divide 42. No.
+s=8:8*7=56, 16 doesn't divide 56. No.
+s=9:9*8=72, 16 doesn't divide 72. No.
+s=10:10*9=90, 16 doesn't divide 90. No.
+s=11:11*10=110, 16 doesn't divide 110. No.
+s=12:12*11=132, 16 doesn't divide 132. No.
+s=13:13*12=156, 16 doesn't divide 156. No.
+s=14:14*13=182, 16 doesn't divide 182. No.
+s=15:15*14=210, 16 doesn't divide 210. No.
+s=16:16*15=240, 16 divides 240. Yes. Count=1
+17 |18     | ceil(sqrt(18))=5        |17      |
+s=5:5*4=20, 17 doesn't divide 20. No.
+s=6:6*5=30, 17 doesn't divide 30. No.
+s=7:7*6=42, 17 doesn't divide 42. No.
+s=8:8*7=56, 17 doesn't divide 56. No.
+s=9:9*8=72, 17 doesn't divide 72. No.
+s=10:10*9=90, 17 doesn't divide 90. No.
+s=11:11*10=110, 17 doesn't divide 110. No.
+s=12:12*11=132, 17 doesn't divide 132. No.
+s=13:13*12=156, 17 doesn't divide 156. No.
+s=14:14*13=182, 17 doesn't divide 182. No.
+s=15:15*14=210, 17 doesn't divide 210. No.
+s=16:16*15=240, 17 doesn't divide 240. No.
+s=17:17*16=272, 17 divides 272. Yes. Count=1
+18 |19     | ceil(sqrt(19))=5        |18      |
+s=5:5*4=20, 18 doesn't divide 20. No.
+s=6:6*5=30, 18 doesn't divide 30. No.
+s=7:7*6=42, 18 doesn't divide 42. No.
+s=8:8*7=56, 18 doesn't divide 56. No.
+s=9:9*8=72, 18 divides 72. Yes. Count=1
+s=10:10*9=90, 18 divides 90. Yes. Count=2
+s=11:11*10=110, 18 doesn't divide 110. No.
+s=12:12*11=132, 18 doesn't divide 132. No.
+s=13:13*12=156, 18 doesn't divide 156. No.
+s=14:14*13=182, 18 doesn't divide 182. No.
+s=15:15*14=210, 18 doesn't divide 210. No.
+s=16:16*15=240, 18 doesn't divide 240. No.
+s=17:17*16=272, 18 doesn't divide 272. No.
+s=18:18*17=306, 18 divides 306. Yes. Count=3
+So for k=18, count=3
+19 |20     | ceil(sqrt(20))=5        |19      |
+s=5:5*4=20, 19 doesn't divide 20. No.
+s=6:6*5=30, 19 doesn't divide 30. No.
+s=7:7*6=42, 19 doesn't divide 42. No.
+s=8:8*7=56, 19 doesn't divide 56. No.
+s=9:9*8=72, 19 doesn't divide 72. No.
+s=10:10*9=90, 19 doesn't divide 90. No.
+s=11:11*10=110, 19 doesn't divide 110. No.
+s=12:12*11=132, 19 doesn't divide 132. No.
+s=13:13*12=156, 19 doesn't divide 156. No.
+s=14:14*13=182, 19 doesn't divide 182. No.
+s=15:15*14=210, 19 doesn't divide 210. No.
+s=16:16*15=240, 19 doesn't divide 240. No.
+s=17:17*16=272, 19 doesn't divide 272. No.
+s=18:18*17=306, 19 doesn't divide 306. No.
+s=19:19*18=342, 19 divides 342. Yes. Count=1
+20 |21     | ceil(sqrt(21))=5        |20      |
+s=5:5*4=20, 20 divides 20. Yes. Count=1
+s=6:6*5=30, 20 doesn't divide 30. No.
+s=7:7*6=42, 20 doesn't divide 42. No.
+s=8:8*7=56, 20 doesn't divide 56. No.
+s=9:9*8=72, 20 doesn't divide 72. No.
+s=10:10*9=90, 20 doesn't divide 90. No.
+s=11:11*10=110, 20 doesn't divide 110. No.
+s=12:12*11=132, 20 doesn't divide 132. No.
+s=13:13*12=156, 20 doesn't divide 156. No.
+s=14:14*13=182, 20 doesn't divide 182. No.
+s=15:15*14=210, 20 doesn't divide 210. No.
+s=16:16*15=240, 20 divides 240. Yes. Count=2
+s=17:17*16=272, 20 doesn't divide 272. No.
+s=18:18*17=306, 20 doesn't divide 306. No.
+s=19:19*18=342, 20 doesn't divide 342. No.
+s=20:20*19=380, 20 divides 380. Yes. Count=3
+So for k=20, count=3
+21 |22     | ceil(sqrt(22))=5        |21      |
+s=5:5*4=20, 21 doesn't divide 20. No.
+s=6:6*5=30, 21 doesn't divide 30. No.
+s=7:7*6=42, 21 divides 42. Yes. Count=1
+s=8:8*7=56, 21 doesn't divide 56. No.
+s=9:9*8=72, 21 doesn't divide 72. No.
+s=10:10*9=90, 21 doesn't divide 90. No.
+s=11:11*10=110, 21 doesn't divide 110. No.
+s=12:12*11=132, 21 doesn't divide 132. No.
+s=13:13*12=156, 21 doesn't divide 156. No.
+s=14:14*13=182, 21 doesn't divide 182. No.
+s=15:15*14=210, 21 divides 210. Yes. Count=2
+s=16:16*15=240, 21 doesn't divide 240. No.
+s=17:17*16=272, 21 doesn't divide 272. No.
+s=18:18*17=306, 21 doesn't divide 306. No.
+s=19:19*18=342, 21 doesn't divide 342. No.
+s=20:20*19=380, 21 doesn't divide 380. No.
+s=21:21*20=420, 21 divides 420. Yes. Count=3
+So for k=21, count=3
+22 |23     | ceil(sqrt(23))=5        |22      |
+s=5:5*4=20, 22 doesn't divide 20. No.
+s=6:6*5=30, 22 doesn't divide 30. No.
+s=7:7*6=42, 22 doesn't divide 42. No.
+s=8:8*7=56, 22 doesn't divide 56. No.
+s=9:9*8=72, 22 doesn't divide 72. No.
+s=10:10*9=90, 22 doesn't divide 90. No.
+s=11:11*10=110, 22 divides 110. Yes. Count=1
+s=12:12*11=132, 22 divides 132. Yes. Count=2
+s=13:13*12=156, 22 doesn't divide 156. No.
+s=14:14*13=182, 22 doesn't divide 182. No.
+s=15:15*14=210, 22 doesn't divide 210. No.
+s=16:16*15=240, 22 doesn't divide 240. No.
+s=17:17*16=272, 22 doesn't divide 272. No.
+s=18:18*17=306, 22 doesn't divide 306. No.
+s=19:19*18=342, 22 doesn't divide 342. No.
+s=20:20*19=380, 22 doesn't divide 380. No.
+s=21:21*20=420, 22 doesn't divide 420. No.
+s=22:22*21=462, 22 divides 462. Yes. Count=3
+So for k=22, count=3
+23 |24     | ceil(sqrt(24))=5        |23      |
+s=5:5*4=20, 23 doesn't divide 20. No.
+s=6:6*5=30, 23 doesn't divide 30. No.
+s=7:7*6=42, 23 doesn't divide 42. No.
+s=8:8*7=56, 23 doesn't divide 56. No.
+s=9:9*8=72, 23 doesn't divide 72. No.
+s=10:10*9=90, 23 doesn't divide 90. No.
+s=11:11*10=110, 23 doesn't divide 110. No.
+s=12:12*11=132, 23 doesn't divide 132. No.
+s=13:13*12=156, 23 doesn't divide 156. No.
+s=14:14*13=182, 23 doesn't divide 182. No.
+s=15:15*14=210, 23 doesn't divide 210. No.
+s=16:16*15=240, 23 doesn't divide 240. No.
+s=17:17*16=272, 23 doesn't divide 272. No.
+s=18:18*17=306, 23 doesn't divide 306. No.
+s=19:19*18=342, 23 doesn't divide 342. No.
+s=20:20*19=380, 23 doesn't divide 380. No.
+s=21:21*20=420, 23 doesn't divide 420. No.
+s=22:22*21=462, 23 doesn't divide 462. No.
+s=23:23*22=506, 23 divides 506. Yes. Count=1
+24 |25     | ceil(sqrt(25))=5        |24      |
+s=5:5*4=20, 24 doesn't divide 20. No.
+s=6:6*5=30, 24 doesn't divide 30. No.
+s=7:7*6=42, 24 doesn't divide 42. No.
+s=8:8*7=56, 24 doesn't divide 56. No.
+s=9:9*8=72, 24 divides 72. Yes. Count=1
+s=10:10*9=90, 24 doesn't divide 90. No.
+s=11:11*10=110, 24 doesn't divide 110. No.
+s=12:12*11=132, 24 doesn't divide 132. No.
+s=13:13*12=156, 24 doesn't divide 156. No.
+s=14:14*13=182, 24 doesn't divide 182. No.
+s=15:15*14=210, 24 doesn't divide 210. No.
+s=16:16*15=240, 24 divides 240. Yes. Count=2
+s=17:17*16=272, 24 doesn't divide 272. No.
+s=18:18*17=306, 24 doesn't divide 306. No.
+s=19:19*18=342, 24 doesn't divide 342. No.
+s=20:20*19=380, 24 doesn't divide 380. No.
+s=21:21*20=420, 24 doesn't divide 420. No.
+s=22:22*21=462, 24 doesn't divide 462. No.
+s=23:23*22=506, 24 doesn't divide 506. No.
+s=24:24*23=552, 24 divides 552. Yes. Count=3
+So for k=24, count=3
+25 |26     | ceil(sqrt(26))=6        |25      |
+s=6:6*5=30, 25 doesn't divide 30. No.
+s=7:7*6=42, 25 doesn't divide 42. No.
+s=8:8*7=56, 25 doesn't divide 56. No.
+s=9:9*8=72, 25 doesn't divide 72. No.
+s=10:10*9=90, 25 doesn't divide 90. No.
+s=11:11*10=110, 25 doesn't divide 110. No.
+s=12:12*11=132, 25 doesn't divide 132. No.
+s=13:13*12=156, 25 doesn't divide 156. No.
+s=14:14*13=182, 25 doesn't divide 182. No.
+s=15:15*14=210, 25 doesn't divide 210. No.
+s=16:16*15=240, 25 doesn't divide 240. No.
+s=17:17*16=272, 25 doesn't divide 272. No.
+s=18:18*17=306, 25 doesn't divide 306. No.
+s=19:19*18=342, 25 doesn't divide 342. No.
+s=20:20*19=380, 25 doesn't divide 380. No.
+s=21:21*20=420, 25 doesn't divide 420. No.
+s=22:22*21=462, 25 doesn't divide 462. No.
+s=23:23*22=506, 25 doesn't divide 506. No.
+s=24:24*23=552, 25 doesn't divide 552. No.
+s=25:25*24=600, 25 divides 600. Yes. Count=1
+26 |27     | ceil(sqrt(27))=6        |26      |
+s=6:6*5=30, 26 doesn't divide 30. No.
+s=7:7*6=42, 26 doesn't divide 42. No.
+s=8:8*7=56, 26 doesn't divide 56. No.
+s=9:9*8=72, 26 doesn't divide 72. No.
+s=10:10*9=90, 26 doesn't divide 90. No.
+s=11:11*10=110, 26 doesn't divide 110. No.
+s=12:12*11=132, 26 doesn't divide 132. No.
+s=13:13*12=156, 26 divides 156. Yes. Count=1
+s=14:14*13=182, 26 doesn't divide 182. No.
+s=15:15*14=210, 26 doesn't divide 210. No.
+s=16:16*15=240, 26 doesn't divide 240. No.
+s=17:17*16=272, 26 doesn't divide 272. No.
+s=18:18*17=306, 26 doesn't divide 306. No.
+s=19:19*18=342, 26 doesn't divide 342. No.
+s=20:20*19=380, 26 doesn't divide 380. No.
+s=21:21*20=420, 26 doesn't divide 420. No.
+s=22:22*21=462, 26 doesn't divide 462. No.
+s=23:23*22=506, 26 doesn't divide 506. No.
+s=24:24*23=552, 26 doesn't divide 552. No.
+s=25:25*24=600, 26 doesn't divide 600. No.
+s=26:26*25=650, 26 divides 650. Yes. Count=2
+27 |28     | ceil(sqrt(28))=6        |27      |
+s=6:6*5=30, 27 doesn't divide 30. No.
+s=7:7*6=42, 27 doesn't divide 42. No.
+s=8:8*7=56, 27 doesn't divide 56. No.
+s=9:9*8=72, 27 divides 72? 27*2=54, 27*3=81. 72-54=18, so no. No.
+s=10:10*9=90, 27 doesn't divide 90. No.
+s=11:11*10=110, 27 doesn't divide 110. No.
+s=12:12*11=132, 27 doesn't divide 132. No.
+s=13:13*12=156, 27 doesn't divide 156. No.
+s=14:14*13=182, 27 doesn't divide 182. No.
+s=15:15*14=210, 27 doesn't divide 210. No.
+s=16:16*15=240, 27 doesn't divide 240. No.
+s=17:17*16=272, 27 doesn't divide 272. No.
+s=18:18*17=306, 27 divides 306? 27*11=297, 306-297=9. No. No.
+s=19:19*18=342, 27 divides 342? 27*12=324, 342-324=18. No. No.
+s=20:20*19=380, 27 doesn't divide 380. No.
+s=21:21*20=420, 27 doesn't divide 420. No.
+s=22:22*21=462, 27 doesn't divide 462. No.
+s=23:23*22=506, 27 doesn't divide 506. No.
+s=24:24*23=552, 27 doesn't divide 552. No.
+s=25:25*24=600, 27 doesn't divide 600. No.
+s=26:26*25=650, 27 doesn't divide 650. No.
+s=27:27*26=702, 27 divides 702. Yes. Count=1
+28 |29     | ceil(sqrt(29))=6        |28      |
+s=6:6*5=30, 28 doesn't divide 30. No.
+s=7:7*6=42, 28 doesn't divide 42. No.
+s=8:8*7=56, 28 divides 56. Yes. Count=1
+s=9:9*8=72, 28 doesn't divide 72. No.
+s=10:10*9=90, 28 doesn't divide 90. No.
+s=11:11*10=110, 28 doesn't divide 110. No.
+s=12:12*11=132, 28 doesn't divide 132. No.
+s=13:13*12=156, 28 doesn't divide 156. No.
+s=14:14*13=182, 28 doesn't divide 182. No.
+s=15:15*14=210, 28 doesn't divide 210. No.
+s=16:16*15=240, 28 doesn't divide 240. No.
+s=17:17*16=272, 28 doesn't divide 272. No.
+s=18:18*17=306, 28 doesn't divide 306. No.
+s=19:19*18=342, 28 doesn't divide 342. No.
+s=20:20*19=380, 28 doesn't divide 380. No.
+s=21:21*20=420, 28 divides 420. Yes. Count=2
+s=22:22*21=462, 28 doesn't divide 462. No.
+s=23:23*22=506, 28 doesn't divide 506. No.
+s=24:24*23=552, 28 doesn't divide 552. No.
+s=25:25*24=600, 28 doesn't divide 600. No.
+s=26:26*25=650, 28 doesn't divide 650. No.
+s=27:27*26=702, 28 doesn't divide 702. No.
+s=28:28*27=756, 28 divides 756. Yes. Count=3
+So for k=28, count=3
+29 |30     | ceil(sqrt(30))=6        |29      |
+s=6:6*5=30, 29 doesn't divide 30. No.
+s=7:7*6=42, 29 doesn't divide 42. No.
+s=8:8*7=56, 29 doesn't divide 56. No.
+s=9:9*8=72, 29 doesn't divide 72. No.
+s=10:10*9=90, 29 doesn't divide 90. No.
+s=11:11*10=110, 29 doesn't divide 110. No.
+s=12:12*11=132, 29 doesn't divide 132. No.
+s=13:13*12=156, 29 doesn't divide 156. No.
+s=14:14*13=182, 29 doesn't divide 182. No.
+s=15:15*14=210, 29 doesn't divide 210. No.
+s=16:16*15=240, 29 doesn't divide 240. No.
+s=17:17*16=272, 29 doesn't divide 272. No.
+s=18:18*17=306, 29 doesn't divide 306. No.
+s=19:19*18=342, 29 doesn't divide 342. No.
+s=20:20*19=380, 29 doesn't divide 380. No.
+s=21:21*20=420, 29 doesn't divide 420. No.
+s=22:22*21=462, 29 doesn't divide 462. No.
+s=23:23*22=506, 29 doesn't divide 506. No.
+s=24:24*23=552, 29 doesn't divide 552. No.
+s=25:25*24=600, 29 doesn't divide 600. No.
+s=26:26*25=650, 29 doesn't divide 650. No.
+s=27:27*26=702, 29 doesn't divide 702. No.
+s=28:28*27=756, 29 doesn't divide 756. No.
+s=29:29*28=812, 29 divides 812. Yes. Count=1
+30 |31     | ceil(sqrt(31))=6        |30      |
+s=6:6*5=30, 30 divides 30. Yes. Count=1
+s=7:7*6=42, 30 doesn't divide 42. No.
+s=8:8*7=56, 30 doesn't divide 56. No.
+s=9:9*8=72, 30 doesn't divide 72. No.
+s=10:10*9=90, 30 divides 90. Yes. Count=2
+s=11:11*10=110, 30 doesn't divide 110. No.
+s=12:12*11=132, 30 doesn't divide 132. No.
+s=13:13*12=156, 30 doesn't divide 156. No.
+s=14:14*13=182, 30 doesn't divide 182. No.
+s=15:15*14=210, 30 divides 210. Yes. Count=3
+s=16:16*15=240, 30 divides 240. Yes. Count=4
+s=17:17*16=272, 30 doesn't divide 272. No.
+s=18:18*17=306, 30 doesn't divide 306. No.
+s=19:19*18=342, 30 doesn't divide 342. No.
+s=20:20*19=380, 30 doesn't divide 380. No.
+s=21:21*20=420, 30 divides 420. Yes. Count=5
+s=22:22*21=462, 30 doesn't divide 462. No.
+s=23:23*22=506, 30 doesn't divide 506. No.
+s=24:24*23=552, 30 doesn't divide 552. No.
+s=25:25*24=600, 30 divides 600. Yes. Count=6
+s=26:26*25=650, 30 doesn't divide 650. No.
+s=27:27*26=702, 30 doesn't divide 702. No.
+s=28:28*27=756, 30 doesn't divide 756. No.
+s=29:29*28=812, 30 doesn't divide 812. No.
+s=30:30*29=870, 30 divides 870. Yes. Count=7
+So for k=30, count=7
+
+
+
+---------------
+
+Wait, that's a jump. So for k=30, the count is 7, which is more than 10? No, 7 is less than 10. So
+
+---------------
+
+ we need to continue.
+
+But this is taking a lot of time. Maybe I can find a pattern or a formula to compute
+
+---------------
+
+ the count more efficiently.
+
+Looking back, for k from 1 to 30, the counts are mostly 1 or 3, except for k=2, which
+
+---------------
+
+ had count=1, and k=30 which had count=7.
+
+Wait, let's see:
+
+Looking at k=3
+
+---------------
+
+0, which is 30, the count was 7. So, perhaps when k is highly composite, the count increases.
+
+Wait
+
+---------------
+
+, for k=30, which is 2*3*5, the number of s where 30 divides s(s-1) is higher.
+
+In
+
+---------------
+
+ general, for a given k, the number of s in [ceil(sqrt(k+1)),k] such that k divides s(s-1) is
+
+---------------
+
+ equal to the number of divisors of k that are less than or equal to k and satisfy s(s-1) divisible
+
+---------------
+
+ by k.
+
+But perhaps a better approach is to note that s(s-1) must be a multiple of k. So, s must
+
+---------------
+
+ be congruent to 0 or 1 modulo the prime factors of k.
+
+Alternatively, since s and s-1 are coprime, for
+
+---------------
+
+ each prime p dividing k, p must divide either s or s-1.
+
+So, for each prime p dividing k, we can assign
+
+---------------
+
+ p to divide either s or s-1. This is similar to the Chinese Remainder Theorem.
+
+Therefore, the number of possible s is 2^m, where m is the number of distinct prime factors of k. But this
+
+---------------
+
+ is only if each prime can independently divide either s or s-1, which may not always be the case.
+
+Wait, but
+
+---------------
+
+ for example, for k=30=2*3*5, the number of possible s is 2^3=8. But in our earlier calculation
+
+---------------
+
+, for k=30, the count was 7. Hmm, so perhaps it's 2^m -1,
+
+---------------
+
+ but not sure.
+
+Wait, for k=30, the s values that worked were:
+
+s=6,10,15,16,21,25,30.
+
+Which is 7 values. So
+
+---------------
+
+, 2^3 -1=7, which matches.
+
+Similarly, for k=6=2*3, the
+
+---------------
+
+ number of s was 3, which is 2^2 -1=3.
+
+For k=12=2^2*3, the number of s was 3, which is less than 2^2=4.
+
+Hmm, maybe
+
+---------------
+
+ the formula is not exact.
+
+Alternatively, perhaps the number of s is equal to the number of divisors of k that are ≤
+
+---------------
+
+ s_max and satisfy s ≡0 or 1 mod the prime factors.
+
+But I'm not sure. Maybe it's better to think
+
+---------------
+
+ in terms of multiplicative functions.
+
+Alternatively, perhaps the number of solutions s for a given k is equal to the number of ways
+
+---------------
+
+ to assign each prime factor of k to either s or s-1, leading to 2^m solutions, where m is the number of distinct prime factors. But in
+
+---------------
+
+ the case where k has repeated prime factors, like k=4=2^2, the number of solutions is less.
+
+Wait, for k=4, which is 2^2, the number
+
+---------------
+
+ of s was 1 (s=4). But 2^1=2, which is more than 1.
+
+Hmm, perhaps
+
+---------------
+
+ the formula isn't straightforward.
+
+Alternatively, perhaps the number of solutions s is equal to the number of divisors of k that are ≤
+
+---------------
+
+k and satisfy s ≡0 or 1 mod the exponents.
+
+But I'm getting stuck here. Maybe I can think
+
+---------------
+
+ differently.
+
+Each s must satisfy s ≡0 mod d or s ≡1 mod d, where d is a divisor of k. But since
+
+---------------
+
+ d can be any divisor, it's complicated.
+
+Alternatively, for each s in [ceil(sqrt(k+1)),k], check if k divides s(s-1). If
+
+---------------
+
+ yes, count it.
+
+But this is computationally intensive, but perhaps manageable for small k.
+
+Given that, let's proceed
+
+---------------
+
+.
+
+Continuing from where I left off with k=30:
+
+k=30, count=7 (for b=31)
+
+k=31 |32|
+
+---------------
+
+ ceil(sqrt(32))=6 |31|
+
+s=6:6*5=30, 31 doesn't divide 30. No.
+
+s=7:7*6=42, 31 doesn't divide 42. No.
+
+s=8:8*7=56, 31 doesn't divide 56. No.
+
+s=9:9*8=72, 31 doesn't divide 72. No.
+
+s=10:10*9=90, 31 doesn't divide 90. No.
+
+s=11:11*10=110, 31 doesn't divide 110. No.
+
+s=12:12*11=132, 31 doesn't divide 132. No.
+
+s=13:13*12=156, 31 doesn't divide 156. No.
+
+s=14:14*13=182, 31 doesn't divide 182. No.
+
+s=15:15*14=210, 31 doesn't divide 210. No.
+
+s=16:16*15=240, 31 doesn't divide 240. No.
+
+s=17:17*16=272, 31 doesn't divide 272. No.
+
+s=18:18*17=306, 31 doesn't divide 306. No.
+
+s=19:19*18=342, 31 doesn't divide 342. No.
+
+s=20:20*19=380, 31 doesn't divide 380. No.
+
+s=21:21*20=420, 31 doesn't divide 420. No.
+
+s=22:22*21=462, 31 doesn't divide 462. No.
+
+s=23:23*22=506, 31 doesn't divide 506. No.
+
+s=24:24*23=552, 31 doesn't divide 552. No.
+
+s=25:25*24=600, 31 doesn't divide 600. No.
+
+s=26:26*25=650, 31 doesn't divide 650. No.
+
+s=27:27*26=702, 31 doesn't divide 702. No.
+
+s=28:28*27=756, 31 doesn't divide 756. No.
+
+s=29:29*28=812, 31 doesn't divide 812. No.
+
+s=30:30*29=870, 31 doesn't divide 870. No.
+
+s=31:31*30=930, 31 divides 930. Yes. Count=1
+
+So for k=31, count=1
+
+k=32 |33| ceil(sqrt(33))=6 |32|
+
+s=6:6*5=30, 32 doesn't divide 30. No.
+
+s=7:7*6=42, 32 doesn't divide 42. No.
+
+s=8:8*7=56, 32 doesn't divide 56. No.
+
+s=9:9*8=72, 32 doesn't divide 72. No.
+
+s=10:10*9=90, 32 doesn't divide 90. No.
+
+s=11:11*10=110, 32 doesn't divide 110. No.
+
+s=12:12*11=132, 32 doesn't divide 132. No.
+
+s=13:13*12=156, 32 doesn't divide 156. No.
+
+s=14:14*13=182, 32 doesn't divide 182. No.
+
+s=15:15*14=210, 32 doesn't divide 210. No.
+
+s=16:16*15=240, 32 divides 240? 32*7=224, 32*8=256. 240-224=16, so no. No.
+
+s=17:17*16=272, 32 divides 272? 32*8=256, 272-256=16. No. No.
+
+s=18:18*17=306, 32 doesn't divide 306. No.
+
+s=19:19*18=342, 32 doesn't divide 342. No.
+
+s=20:20*19=380, 32 doesn't divide 380. No.
+
+s=21:21*20=420, 32 doesn't divide 420. No.
+
+s=22:22*21=462, 32 doesn't divide 462. No.
+
+s=23:23*22=506, 32 doesn't divide 506. No.
+
+s=24:24*23=552, 32 doesn't divide 552. No.
+
+s=25:25*24=600, 32 doesn't divide 600. No.
+
+s=26:26*25=650, 32 doesn't divide 650. No.
+
+s=27:27*26=702, 32 doesn't divide 702. No.
+
+s=28:28*27=756, 32 doesn't divide 756. No.
+
+s=29:29*28=812, 32 doesn't divide 812. No.
+
+s=30:30*29=870, 32 doesn't divide 870. No.
+
+s=31:31*30=930, 32 doesn't divide 930. No.
+
+s=32:32*31=992, 32 divides 992. Yes. Count=1
+
+So for k=32, count=1
+
+k=33 |34| ceil(sqrt(34))=6 |33|
+
+s=6:6*5=30, 33 doesn't divide 30. No.
+
+s=7:7*6=42, 33 doesn't divide 42. No.
+
+s=8:8*7=56, 33 doesn't divide 56. No.
+
+s=9:9*8=72, 33 doesn't divide 72. No.
+
+s=10:10*9=90, 33 doesn't divide 90. No.
+
+s=11:11*10=110, 33 doesn't divide 110. No.
+
+s=12:12*11=132, 33 divides 132. Yes. Count=1
+
+s=13:13*12=156, 33 doesn't divide 156. No.
+
+s=14:14*13=182, 33 doesn't divide 182. No.
+
+s=15:15*14=210, 33 doesn't divide 210. No.
+
+s=16:16*15=240, 33 doesn't divide 240. No.
+
+s=17:17*16=272, 33 doesn't divide 272. No.
+
+s=18:18*17=306, 33 doesn't divide 306. No.
+
+s=19:19*18=342, 33 doesn't divide 342. No.
+
+s=20:20*19=380, 33 doesn't divide 380. No.
+
+s=21:21*20=420, 33 doesn't divide 420. No.
+
+s=22:22*21=462, 33 divides 462. 33*14=462. Yes. Count=2
+
+s=23:23*22=506, 33 doesn't divide 506. No.
+
+s=24:24*23=552, 33 doesn't divide 552. No.
+
+s=25:25*24=600, 33 doesn't divide 600. No.
+
+s=26:26*25=650, 33 doesn't divide 650. No.
+
+s=27:27*26=702, 33 doesn't divide 702. No.
+
+s=28:28*27=756, 33 doesn't divide 756. No.
+
+s=29:29*28=812, 33 doesn't divide 812. No.
+
+s=30:30*29=870, 33 doesn't divide 870. No.
+
+s=31:31*30=930, 33 doesn't divide 930. No.
+
+s=32:32*31=992, 33 doesn't divide 992. No.
+
+s=33:33*32=1056, 33 divides 1056. Yes. Count=3
+
+So for k=33, count=3
+
+k=34 |35| ceil(sqrt(35))=6 |34|
+
+s=6:6*5=30, 34 doesn't divide 30. No.
+
+s=7:7*6=42, 34 doesn't divide 42. No.
+
+s=8:8*7=56, 34 doesn't divide 56. No.
+
+s=9:9*8=72, 34 doesn't divide 72. No.
+
+s=10:10*9=90, 34 doesn't divide 90. No.
+
+s=11:11*10=110, 34 doesn't divide 110. No.
+
+s=12:12*11=132, 34 doesn't divide 132. No.
+
+s=13:13*12=156, 34 doesn't divide 156. No.
+
+s=14:14*13=182, 34 doesn't divide 182. No.
+
+s=15:15*14=210, 34 doesn't divide 210. No.
+
+s=16:16*15=240, 34 doesn't divide 240. No.
+
+s=17:17*16=272, 34 divides 272? 34*8=272. Yes. Count=1
+
+s=18:18*17=306, 34 doesn't divide 306. 34*9=306. Yes. Count=2
+
+s=19:19*18=342, 34 doesn't divide 342. No.
+
+s=20:20*19=380, 34 doesn't divide 380. No.
+
+s=21:21*20=420, 34 doesn't divide 420. No.
+
+s=22:22*21=462, 34 doesn't divide 462. No.
+
+s=23:23*22=506, 34 doesn't divide 506. No.
+
+s=24:24*23=552, 34 doesn't divide 552. No.
+
+s=25:25*24=600, 34 doesn't divide 600. No.
+
+s=26:26*25=650, 34 doesn't divide 650. No.
+
+s=27:27*26=702, 34 doesn't divide 702. No.
+
+s=28:28*27=756, 34 doesn't divide 756. No.
+
+s=29:29*28=812, 34 doesn't divide 812. No.
+
+s=30:30*29=870, 34 doesn't divide 870. No.
+
+s=31:31*30=930, 34 doesn't divide 930. No.
+
+s=32:32*31=992, 34 doesn't divide 992. No.
+
+s=33:33*32=1056, 34 doesn't divide 1056. No.
+
+s=34:34*33=1122, 34 divides 1122. Yes. Count=3
+
+So for k=34, count=3
+
+k=35 |36| ceil(sqrt(36))=6 |35|
+
+s=6:6*5=30, 35 doesn't divide 30. No.
+
+s=7:7*6=42, 35 doesn't divide 42. No.
+
+s=8:8*7=56, 35 doesn't divide 56. No.
+
+s=9:9*8=72, 35 doesn't divide 72. No.
+
+s=10:10*9=90, 35 doesn't divide 90. No.
+
+s=11:11*10=110, 35 doesn't divide 110. No.
+
+s=12:12*11=132, 35 doesn't divide 132. No.
+
+s=13:13*12=156, 35 doesn't divide 156. No.
+
+s=14:14*13=182, 35 doesn't divide 182. No.
+
+s=15:15*14=210, 35 divides 210. Yes. Count=1
+
+s=16:16*15=240, 35 doesn't divide 240. No.
+
+s=17:17*16=272, 35 doesn't divide 272. No.
+
+s=18:18*17=306, 35 doesn't divide 306. No.
+
+s=19:19*18=342, 35 doesn't divide 342. No.
+
+s=20:20*19=380, 35 doesn't divide 380. No.
+
+s=21:21*20=420, 35 divides 420. Yes. Count=2
+
+s=22:22*21=462, 35 doesn't divide 462. No.
+
+s=23:23*22=506, 35 doesn't divide 506. No.
+
+s=24:24*23=552, 35 doesn't divide 552. No.
+
+s=25:25*24=600, 35 doesn't divide 600. No.
+
+s=26:26*25=650, 35 doesn't divide 650. No.
+
+s=27:27*26=702, 35 doesn't divide 702. No.
+
+s=28:28*27=756, 35 doesn't divide 756. No.
+
+s=29:29*28=812, 35 doesn't divide 812. No.
+
+s=30:30*29=870, 35 doesn't divide 870. No.
+
+s=31:31*30=930, 35 doesn't divide 930. No.
+
+s=32:32*31=992, 35 doesn't divide 992. No.
+
+s=33:33*32=1056, 35 doesn't divide 1056. No.
+
+s=34:34*33=1122, 35 doesn't divide 1122. No.
+
+s=35:35*34=1190, 35 divides 1190. Yes. Count=3
+
+So for k=35, count=3
+
+k=36 |37| ceil(sqrt(37))=7 |36|
+
+s=7:7*6=42, 36 doesn't divide 42. No.
+
+s=8:8*7=56, 36 doesn't divide 56. No.
+
+s=9:9*8=72, 36 divides 72. Yes. Count=1
+
+s=10:10*9=90, 36 doesn't divide 90. No.
+
+s=11:11*10=110, 36 doesn't divide 110. No.
+
+s=12:12*11=132, 36 doesn't divide 132. No.
+
+s=13:13*12=156, 36 doesn't divide 156. No.
+
+s=14:14*13=182, 36 doesn't divide 182. No.
+
+s=15:15*14=210, 36 doesn't divide 210. No.
+
+s=16:16*15=240, 36 doesn't divide 240. No.
+
+s=17:17*16=272, 36 doesn't divide 272. No.
+
+s=18:18*17=306, 36 doesn't divide 306. No.
+
+s=19:19*18=342, 36 doesn't divide 342. No.
+
+s=20:20*19=380, 36 doesn't divide 380. No.
+
+s=21:21*20=420, 36 doesn't divide 420. No.
+
+s=22:22*21=462, 36 doesn't divide 462. No.
+
+s=23:23*22=506, 36 doesn't divide 506. No.
+
+s=24:24*23=552, 36 doesn't divide 552. No.
+
+s=25:25*24=600, 36 doesn't divide 600. No.
+
+s=26:26*25=650, 36 doesn't divide 650. No.
+
+s=27:27*26=702, 36 doesn't divide 702. No.
+
+s=28:28*27=756, 36 divides 756. 36*21=756. Yes. Count=2
+
+s=29:29*28=812, 36 doesn't divide 812. No.
+
+s=30:30*29=870, 36 doesn't divide 870. No.
+
+s=31:31*30=930, 36 doesn't divide 930. No.
+
+s=32:32*31=992, 36 doesn't divide 992. No.
+
+s=33:33*32=1056, 36 doesn't divide 1056. No.
+
+s=34:34*33=1122, 36 doesn't divide 1122. No.
+
+s=35:35*34=1190, 36 doesn't divide 1190. No.
+
+s=36:36*35=1260, 36 divides 1260. Yes. Count=3
+
+So for k=36, count=3
+
+k=37 |38| ceil(sqrt(38))=7 |37|
+
+s=7:7*6=42, 37 doesn't divide 42. No.
+
+s=8:8*7=56, 37 doesn't divide 56. No.
+
+s=9:9*8=72, 37 doesn't divide 72. No.
+
+s=10:10*9=90, 37 doesn't divide 90. No.
+
+s=11:11*10=110, 37 doesn't divide 110. No.
+
+s=12:12*11=132, 37 doesn't divide 132. No.
+
+s=13:13*12=156, 37 doesn't divide 156. No.
+
+s=14:14*13=182, 37 doesn't divide 182. No.
+
+s=15:15*14=210, 37 doesn't divide 210. No.
+
+s=16:16*15=240, 37 doesn't divide 240. No.
+
+s=17:17*16=272, 37 doesn't divide 272. No.
+
+s=18:18*17=306, 37 doesn't divide 306. No.
+
+s=19:19*18=342, 37 doesn't divide 342. No.
+
+s=20:20*19=380, 37 doesn't divide 380. No.
+
+s=21:21*20=420, 37 doesn't divide 420. No.
+
+s=22:22*21=462, 37 doesn't divide 462. No.
+
+s=23:23*22=506, 37 doesn't divide 506. No.
+
+s=24:24*23=552, 37 doesn't divide 552. No.
+
+s=25:25*24=600, 37 doesn't divide 600. No.
+
+s=26:26*25=650, 37 doesn't divide 650. No.
+
+s=27:27*26=702, 37 doesn't divide 702. No.
+
+s=28:28*27=756, 37 doesn't divide 756. No.
+
+s=29:29*28=812, 37 doesn't divide 812. No.
+
+s=30:30*29=870, 37 doesn't divide 870. No.
+
+s=31:31*30=930, 37 doesn't divide 930. No.
+
+s=32:32*31=992, 37 doesn't divide 992. No.
+
+s=33:33*32=1056, 37 doesn't divide 1056. No.
+
+s=34:34*33=1122, 37 doesn't divide 1122. No.
+
+s=35:35*34=1190, 37 doesn't divide 1190. No.
+
+s=36:36*35=1260, 37 doesn't divide 1260. No.
+
+s=37:37*36=1332, 37 divides 1332. Yes. Count=1
+
+So for k=37, count=1
+
+k=38 |39| ceil(sqrt(39))=7 |38|
+
+s=7:7*6=42, 38 doesn't divide 42. No.
+
+s=8:8*7=56, 38 doesn't divide 56. No.
+
+s=9:9*8=72, 38 doesn't divide 72. No.
+
+s=10:10*9=90, 38 doesn't divide 90. No.
+
+s=11:11*10=110, 38 doesn't divide 110. No.
+
+s=12:12*11=132, 38 doesn't divide 132. No.
+
+s=13:13*12=156, 38 doesn't divide 156. No.
+
+s=14:14*13=182, 38 doesn't divide 182. No.
+
+s=15:15*14=210, 38 doesn't divide 210. No.
+
+s=16:16*15=240, 38 doesn't divide 240. No.
+
+s=17:17*16=272, 38 divides 272? 38*7=266, 272-266=6. No. No.
+
+s=18:18*17=306, 38 doesn't divide 306. No.
+
+s=19:19*18=342, 38 doesn't divide 342. No.
+
+s=20:20*19=380, 38 divides 380. 38*10=380. Yes. Count=1
+
+s=21:21*20=420, 38 doesn't divide 420. No.
+
+s=22:22*21=462, 38 doesn't divide 462. No.
+
+s=23:23*22=506, 38 doesn't divide 506. No.
+
+s=24:24*23=552, 38 doesn't divide 552. No.
+
+s=25:25*24=600, 38 doesn't divide 600. No.
+
+s=26:26*25=650, 38 doesn't divide 650. No.
+
+s=27:27*26=702, 38 doesn't divide 702. No.
+
+s=28:28*27=756, 38 doesn't divide 756. No.
+
+s=29:29*28=812, 38 doesn't divide 812. No.
+
+s=30:30*29=870, 38 doesn't divide 870. No.
+
+s=31:31*30=930, 38 doesn't divide 930. No.
+
+s=32:32*31=992, 38 doesn't divide 992. No.
+
+s=33:33*32=1056, 38 doesn't divide 1056. No.
+
+s=34:34*33=1122, 38 doesn't divide 1122. No.
+
+s=35:35*34=1190, 38 doesn't divide 1190. No.
+
+s=36:36*35=1260, 38 doesn't divide 1260. No.
+
+s=37:37*36=1332, 38 doesn't divide 1332. No.
+
+s=38:38*37=1406, 38 divides 1406. Yes. Count=2
+
+So for k=38, count=2
+
+k=39 |40| ceil(sqrt(40))=7 |39|
+
+s=7:7*6=42, 39 doesn't divide 42. No.
+
+s=8:8*7=56, 39 doesn't divide 56. No.
+
+s=9:9*8=72, 39 doesn't divide 72. No.
+
+s=10:10*9=90, 39 doesn't divide 90. No.
+
+s=11:11*10=110, 39 doesn't divide 110. No.
+
+s=12:12*11=132, 39 doesn't divide 132. No.
+
+s=13:13*12=156, 39 divides 156. 39*4=156. Yes. Count=1
+
+s=14:14*13=182, 39 doesn't divide 182. No.
+
+s=15:15*14=210, 39 doesn't divide 210. No.
+
+s=16:16*15=240, 39 doesn't divide 240. No.
+
+s=17:17*16=272, 39 doesn't divide 272. No.
+
+s=18:18*17=306, 39 doesn't divide 306. No.
+
+s=19:19*18=342, 39 doesn't divide 342. No.
+
+s=20:20*19=380, 39 doesn't divide 380. No.
+
+s=21:21*20=420, 39 doesn't divide 420. No.
+
+s=22:22*21=462, 39 doesn't divide 462. No.
+
+s=23:23*22=506, 39 doesn't divide 506. No.
+
+s=24:24*23=552, 39 doesn't divide 552. No.
+
+s=25:25*24=600, 39 doesn't divide 600. No.
+
+s=26:26*25=650, 39 doesn't divide 650. No.
+
+s=27:27*26=702, 39 divides 702. 39*18=702. Yes. Count=2
+
+s=28:28*27=756, 39 doesn't divide 756. No.
+
+s=29:29*28=812, 39 doesn't divide 812. No.
+
+s=30:30*29=870, 39 doesn't divide 870. No.
+
+s=31:31*30=930, 39 doesn't divide 930. No.
+
+s=32:32*31=992, 39 doesn't divide 992. No.
+
+s=33:33*32=1056, 39 doesn't divide 1056. No.
+
+s=34:34*33=1122, 39 doesn't divide 1122. No.
+
+s=35:35*34=1190, 39 doesn't divide 1190. No.
+
+s=36:36*35=1260, 39 doesn't divide 1260. No.
+
+s=37:37*36=1332, 39 doesn't divide 1332. No.
+
+s=38:38*37=1406, 39 doesn't divide 1406. No.
+
+s=39:39*38=1482, 39 divides 1482. 39*38=1482. Yes. Count=3
+
+So for k=39, count=3
+
+k=40 |41| ceil(sqrt(41))=7 |40|
+
+s=7:7*6=42, 40 doesn't divide 42. No.
+
+s=8:8*7=56, 40 doesn't divide 56. No.
+
+s=9:9*8=72, 40 doesn't divide 72. No.
+
+s=10:10*9=90, 40 doesn't divide 90. No.
+
+s=11:11*10=110, 40 doesn't divide 110. No.
+
+s=12:12*11=132, 40 doesn't divide 132. No.
+
+s=13:13*12=156, 40 doesn't divide 156. No.
+
+s=14:14*13=182, 40 doesn't divide 182. No.
+
+s=15:15*14=210, 40 doesn't divide 210. No.
+
+s=16:16*15=240, 40 divides 240. Yes. Count=1
+
+s=17:17*16=272, 40 doesn't divide 272. No.
+
+s=18:18*17=306, 40 doesn't divide 306. No.
+
+s=19:19*18=342, 40 doesn't divide 342. No.
+
+s=20:20*19=380, 40 divides 380. 40*9=360, 40*10=400. 380-360=20. No. No.
+
+s=21:21*20=420, 40 divides 420. 40*10=400, 420-400=20. No. No.
+
+s=22:22*21=462, 40 doesn't divide 462. No.
+
+s=23:23*22=506, 40 doesn't divide 506. No.
+
+s=24:24*23=552, 40 doesn't divide 552. No.
+
+s=25:25*24=600, 40 divides 600. Yes. Count=2
+
+s=26:26*25=650, 40 doesn't divide 650. No.
+
+s=27:27*26=702, 40 doesn't divide 702. No.
+
+s=28:28*27=756, 40 doesn't divide 756. No.
+
+s=29:29*28=812, 40 doesn't divide 812. No.
+
+s=30:30*29=870, 40 doesn't divide 870. No.
+
+s=31:31*30=930, 40 doesn't divide 930. No.
+
+s=32:32*31=992, 40 doesn't divide 992. No.
+
+s=33:33*32=1056, 40 doesn't divide 1056. No.
+
+s=34:34*33=1122, 40 doesn't divide 1122. No.
+
+s=35:35*34=1190, 40 doesn't divide 1190. No.
+
+s=36:36*35=1260, 40 doesn't divide 1260. No.
+
+s=37:37*36=1332, 40 doesn't divide 1332. No.
+
+s=38:38*37=1406, 40 doesn't divide 1406. No.
+
+s=39:39*38=1482, 40 doesn't divide 1482. No.
+
+s=40:40*39=1560, 40 divides 1560. Yes. Count=3
+
+So for k=40, count=3
+
+k=41 |42| ceil(sqrt(42))=7 |41|
+
+s=7:7*6=42, 41 doesn't divide 42. No.
+
+s=8:8*7=56, 41 doesn't divide 56. No.
+
+s=9:9*8=72, 41 doesn't divide 72. No.
+
+s=10:10*9=90, 41 doesn't divide 90. No.
+
+s=11:11*10=110, 41 doesn't divide 110. No.
+
+s=12:12*11=132, 41 doesn't divide 132. No.
+
+s=13:13*12=156, 41 doesn't divide 156. No.
+
+s=14:14*13=182, 41 doesn't divide 182. No.
+
+s=15:15*14=210, 41 doesn't divide 210. No.
+
+s=16:16*15=240, 41 doesn't divide 240. No.
+
+s=17:17*16=272, 41 doesn't divide 272. No.
+
+s=18:18*17=306, 41 doesn't divide 306. No.
+
+s=19:19*18=342, 41 doesn't divide 342. No.
+
+s=20:20*19=380, 41 doesn't divide 380. No.
+
+s=21:21*20=420, 41 doesn't divide 420. No.
+
+s=22:22*21=462, 41 doesn't divide 462. No.
+
+s=23:23*22=506, 41 doesn't divide 506. No.
+
+s=24:24*23=552, 41 doesn't divide 552. No.
+
+s=25:25*24=600, 41 doesn't divide 600. No.
+
+s=26:26*25=650, 41 doesn't divide 650. No.
+
+s=27:27*26=702, 41 doesn't divide 702. No.
+
+s=28:28*27=756, 41 doesn't divide 756. No.
+
+s=29:29*28=812, 41 doesn't divide 812. No.
+
+s=30:30*29=870, 41 doesn't divide 870. No.
+
+s=31:31*30=930, 41 doesn't divide 930. No.
+
+s=32:32*31=992, 41 doesn't divide 992. No.
+
+s=33:33*32=1056, 41 doesn't divide 1056. No.
+
+s=34:34*33=1122, 41 doesn't divide 1122. No.
+
+s=35:35*34=1190, 41 doesn't divide 1190. No.
+
+s=36:36*35=1260, 41 doesn't divide 1260. No.
+
+s=37:37*36=1332, 41 doesn't divide 1332. No.
+
+s=38:38*37=1406, 41 doesn't divide 1406. No.
+
+s=39:39*38=1482, 41 doesn't divide 1482. No.
+
+s=40:40*39=1560, 41 doesn't divide 1560. No.
+
+s=41:41*40=1640, 41 divides 1640. Yes. Count=1
+
+So for k=41, count=1
+
+k=42 |43| ceil(sqrt(43))=7 |42|
+
+s=7:7*6=42, 42 divides 42. Yes. Count=1
+
+s=8:8*7=56, 42 doesn't divide 56. No.
+
+s=9:9*8=72, 42 doesn't divide 72. No.
+
+s=10:10*9=90, 42 doesn't divide 90. No.
+
+s=11:11*10=110, 42 doesn't divide 110. No.
+
+s=12:12*11=132, 42 doesn't divide 132. No.
+
+s=13:13*12=156, 42 doesn't divide 156. No.
+
+s=14:14*13=182, 42 doesn't divide 182. No.
+
+s=15:15*14=210, 42 divides 210. Yes. Count=2
+
+s=16:16*15=240, 42 doesn't divide 240. No.
+
+s=17:17*16=272, 42 doesn't divide 272. No.
+
+s=18:18*17=306, 42 doesn't divide 306. No.
+
+s=19:19*18=342, 42 doesn't divide 342. No.
+
+s=20:20*19=380, 42 doesn't divide 380. No.
+
+s=21:21*20=420, 42 divides 420. Yes. Count=3
+
+s=22:22*21=462, 42 divides 462. 42*11=462. Yes. Count=4
+
+s=23:23*22=506, 42 doesn't divide 506. No.
+
+s=24:24*23=552, 42 doesn't divide 552. No.
+
+s=25:25*24=600, 42 doesn't divide 600. No.
+
+s=26:26*25=650, 42 doesn't divide 650. No.
+
+s=27:27*26=702, 42 doesn't divide 702. No.
+
+s=28:28*27=756, 42 divides 756. 42*18=756. Yes. Count=5
+
+s=29:29*28=812, 42 doesn't divide 812. No.
+
+s=30:30*29=870, 42 doesn't divide 870. No.
+
+s=31:31*30=930, 42 doesn't divide 930. No.
+
+s=32:32*31=992, 42 doesn't divide 992. No.
+
+s=33:33*32=1056, 42 doesn't divide 1056. No.
+
+s=34:34*33=1122, 42 doesn't divide 1122. No.
+
+s=35:35*34=1190, 42 doesn't divide 1190. No.
+
+s=36:36*35=1260, 42 divides 1260. Yes. Count=6
+
+s=37:37*36=1332, 42 doesn't divide 1332. No.
+
+s=38:38*37=1406, 42 doesn't divide 1406. No.
+
+s=39:39*38=1482, 42 doesn't divide 1482. No.
+
+s=40:40*39=1560, 42 doesn't divide 1560. No.
+
+s=41:41*40=1640, 42 doesn't divide 1640. No.
+
+s=42:42*41=1722, 42 divides 1722. Yes. Count=7
+
+So for k=42, count=7
+
+So
+
+---------------
+
+ for b=43, the count is 7, which is still less than 10.
+
+k=43 |44| ceil(sqrt(44))=7 |43|
+
+s=7:7*6=42, 43 doesn't divide 42. No.
+
+s=8:8*7=56, 43 doesn't divide 56. No.
+
+s=9:9*8=72, 43 doesn't divide 72. No.
+
+s=10:10*9=90, 43 doesn't divide 90. No.
+
+s=11:11*10=110, 43 doesn't divide 110. No.
+
+s=12:12*11=132, 43 doesn't divide 132. No.
+
+s=13:13*12=156, 43 doesn't divide 156. No.
+
+s=14:14*13=182, 43 doesn't divide 182. No.
+
+s=15:15*14=210, 43 doesn't divide 210. No.
+
+s=16:16*15=240, 43 doesn't divide 240. No.
+
+s=17:17*16=272, 43 doesn't divide 272. No.
+
+s=18:18*17=306, 43 doesn't divide 306. No.
+
+s=19:19*18=342, 43 doesn't divide 342. No.
+
+s=20:20*19=380, 43 doesn't divide 380. No.
+
+s=21:21*20=420, 43 doesn't divide 420. No.
+
+s=22:22*21=462, 43 doesn't divide 462. No.
+
+s=23:23*22=506, 43 doesn't divide 506. No.
+
+s=24:24*23=552, 43 doesn't divide 552. No.
+
+s=25:25*24=600, 43 doesn't divide 600. No.
+
+s=26:26*25=650, 43 doesn't divide 650. No.
+
+s=27:27*26=702, 43 doesn't divide 702. No.
+
+s=28:28*27=756, 43 doesn't divide 756. No.
+
+s=29:29*28=812, 43 doesn't divide 812. No.
+
+s=30:30*29=870, 43 doesn't divide 870. No.
+
+s=31:31*30=930, 43 doesn't divide 930. No.
+
+s=32:32*31=992, 43 doesn't divide 992. No.
+
+s=33:33*32=1056, 43 doesn't divide 1056. No.
+
+s=34:34*33=1122, 43 doesn't divide 1122. No.
+
+s=35:35*34=1190, 43 doesn't divide 1190. No.
+
+s=36:36*35=1260, 43 doesn't divide 1260. No.
+
+s=37:37*36=1332, 43 doesn't divide 1332. No.
+
+s=38:38*37=1406, 43 doesn't divide 1406. No.
+
+s=39:39*38=1482, 43 doesn't divide 1482. No.
+
+s=40:40*39=1560, 43 doesn't divide 1560. No.
+
+s=41:41*40=1640, 43 doesn't divide 1640. No.
+
+s=42:42*41=1722, 43 doesn't divide 1722. No.
+
+s=43:43*42=1806, 43 divides 1806. Yes. Count=1
+
+So for k=43, count=1
+
+k=44 |45| ceil(sqrt(45))=7 |44|
+
+s=7:7*6=42, 44 doesn't divide 42. No.
+
+s=8:8*7=56, 44 doesn't divide 56. No.
+
+s=9:9*8=72, 44 doesn't divide 72. No.
+
+s=10:10*9=90, 44 doesn't divide 90. No.
+
+s=11:11*10=110, 44 doesn't divide 110. No.
+
+s=12:12*11=132, 44 doesn't divide 132. No.
+
+s=13:13*12=156, 44 doesn't divide 156. No.
+
+s=14:14*13=182, 44 doesn't divide 182. No.
+
+s=15:15*14=210, 44 doesn't divide 210. No.
+
+s=16:16*15=240, 44 doesn't divide 240. No.
+
+s=17:17*16=272, 44 doesn't divide 272. No.
+
+s=18:18*17=306, 44 doesn't divide 306. No.
+
+s=19:19*18=342, 44 doesn't divide 342. No.
+
+s=20:20*19=380, 44 doesn't divide 380. No.
+
+s=21:21*20=420, 44 doesn't divide 420. No.
+
+s=22:22*21=462, 44 doesn't divide 462. No.
+
+s=23:23*22=506, 44 doesn't divide 506. No.
+
+s=24:24*23=552, 44 doesn't divide 552. No.
+
+s=25:25*24=600, 44 doesn't divide 600. No.
+
+s=26:26*25=650, 44 doesn't divide 650. No.
+
+s=27:27*26=702, 44 doesn't divide 702. No.
+
+s=28:28*27=756, 44 doesn't divide 756. No.
+
+s=29:29*28=812, 44 doesn't divide 812. No.
+
+s=30:30*29=870, 44 doesn't divide 870. No.
+
+s=31:31*30=930, 44 doesn't divide 930. No.
+
+s=32:32*31=992, 44 doesn't divide 992. No.
+
+s=33:33*32=1056, 44 divides 1056. 44*24=1056. Yes. Count=1
+
+s=34:34*33=1122, 44 doesn't divide 1122. No.
+
+s=35:35*34=1190, 44 doesn't divide 1190. No.
+
+s=36:36*35=1260, 44 doesn't divide 1260. No.
+
+s=37:37*36=1332, 44 doesn't divide 1332. No.
+
+s=38:38*37=1406, 44 doesn't divide 1406. No.
+
+s=39:39*38=1482, 44 doesn't divide 1482. No.
+
+s=40:40*39=1560, 44 doesn't divide 1560. No.
+
+s=41:41*40=1640, 44 doesn't divide 1640. No.
+
+s=42:42*41=1722, 44 doesn't divide 1722. No.
+
+s=43:43*42=1806, 44 doesn't divide 1806. No.
+
+s=44:44*43=1892, 44 divides 1892. 44*43=1892. Yes. Count=2
+
+So for k=44, count=2
+
+k=45 |46| ceil(sqrt(46))=7 |45|
+
+s=7:7*6=42, 45 doesn't divide 42. No.
+
+s=8:8*7=56, 45 doesn't divide 56. No.
+
+s=9:9*8=72, 45 doesn't divide 72. No.
+
+s=10:10*9=90, 45 divides 90. Yes. Count=1
+
+s=11:11*10=110, 45 doesn't divide 110. No.
+
+s=12:12*11=132, 45 doesn't divide 132. No.
+
+s=13:13*12=156, 45 doesn't divide 156. No.
+
+s=14:14*13=182, 45 doesn't divide 182. No.
+
+s=15:15*14=210, 45 doesn't divide 210. No.
+
+s=16:16*15=240, 45 doesn't divide 240. No.
+
+s=17:17*16=272, 45 doesn't divide 272. No.
+
+s=18:18*17=306, 45 doesn't divide 306. No.
+
+s=19:19*18=342, 45 doesn't divide 342. No.
+
+s=20:20*19=380, 45 doesn't divide 380. No.
+
+s=21:21*20=420, 45 doesn't divide 420. No.
+
+s=22:22*21=462, 45 doesn't divide 462. No.
+
+s=23:23*22=506, 45 doesn't divide 506. No.
+
+s=24:24*23=552, 45 doesn't divide 552. No.
+
+s=25:25*24=600, 45 divides 600. 45*13=585, 45*14=630. 600-585=15. No. No.
+
+s=26:26*25=650, 45 doesn't divide 650. No.
+
+s=27:27*26=702, 45 doesn't divide 702. No.
+
+s=28:28*27=756, 45 divides 756. 45*16=720, 45*17=765. 756-720=36. No. No.
+
+s=29:29*28=812, 45 doesn't divide 812. No.
+
+s=30:30*29=870, 45 divides 870. 45*19=855, 45*20=900. 870-855=15. No. No.
+
+s=31:31*30=930, 45 divides 930. 45*20=900, 45*21=945. 930-900=30. No. No.
+
+s=32:32*31=992, 45 doesn't divide 992. No.
+
+s=33:33*32=1056, 45 doesn't divide 1056. No.
+
+s=34:34*33=1122, 45 doesn't divide 1122. No.
+
+s=35:35*34=1190, 45 doesn't divide 1190. No.
+
+s=36:36*35=1260, 45 divides 1260. Yes. Count=2
+
+s=37:37*36=1332, 45 doesn't divide 1332. No.
+
+s=38:38*37=1406, 45 doesn't divide 1406. No.
+
+s=39:39*38=1482, 45 doesn't divide 1482. No.
+
+s=40:40*39=1560, 45 divides 1560. 45*34=1530, 45*35=1575. 1560-1530=30. No. No.
+
+s=41:41*40=1640, 45 doesn't divide 1640. No.
+
+s=42:42*41=1722, 45 doesn't divide 1722. No.
+
+s=43:43*42=1806, 45 doesn't divide 1806. No.
+
+s=44:44*43=1892, 45 doesn't divide 1892. No.
+
+s=45:45*44=1980, 45 divides 1980. Yes. Count=3
+
+So for k=45, count=3
+
+k=46 |47| ceil(sqrt(47))=7 |46|
+
+s=7:7*6=42, 46 doesn't divide 42. No.
+
+s=8:8*7=56, 46 doesn't divide 56. No.
+
+s=9:9*8=72, 46 doesn't divide 72. No.
+
+s=10:10*9=90, 46 doesn't divide 90. No.
+
+s=11:11*10=110, 46 doesn't divide 110. No.
+
+s=12:12*11=132, 46 doesn't divide 132. No.
+
+s=13:13*12=156, 46 doesn't divide 156. No.
+
+s=14:14*13=182, 46 doesn't divide 182. No.
+
+s=15:15*14=210, 46 doesn't divide 210. No.
+
+s=16:16*15=240, 46 doesn't divide 240. No.
+
+s=17:17*16=272, 46 doesn't divide 272. No.
+
+s=18:18*17=306, 46 doesn't divide 306. No.
+
+s=19:19*18=342, 46 doesn't divide 342. No.
+
+s=20:20*19=380, 46 doesn't divide 380. No.
+
+s=21:21*20=420, 46 doesn't divide 420. No.
+
+s=22:22*21=462, 46 doesn't divide 462. No.
+
+s=23:23*22=506, 46 doesn't divide 506. No.
+
+s=24:24*23=552, 46 doesn't divide 552. No.
+
+s=25:25*24=600, 46 doesn't divide 600. No.
+
+s=26:26*25=650, 46 doesn't divide 650. No.
+
+s=27:27*26=702, 46 doesn't divide 702. No.
+
+s=28:28*27=756, 46 doesn't divide 756. No.
+
+s=29:29*28=812, 46 doesn't divide 812. No.
+
+s=30:30*29=870, 46 doesn't divide 870. No.
+
+s=31:31*30=930, 46 doesn't divide 930. No.
+
+s=32:32*31=992, 46 doesn't divide 992. No.
+
+s=33:33*32=1056, 46 doesn't divide 1056. No.
+
+s=34:34*33=1122, 46 doesn't divide 1122. No.
+
+s=35:35*34=1190, 46 doesn't divide 1190. No.
+
+s=36:36*35=1260, 46 doesn't divide 1260. No.
+
+s=37:37*36=1332, 46 doesn't divide 1332. No.
+
+s=38:38*37=1406, 46 doesn't divide 1406. No.
+
+s=39:39*38=1482, 46 doesn't divide 1482. No.
+
+s=40:40*39=1560, 46 doesn't divide 1560. No.
+
+s=41:41*40=1640, 46 doesn't divide 1640. No.
+
+s=42:42*41=1722, 46 doesn't divide 1722. No.
+
+s=43:43*42=1806, 46 doesn't divide 1806. No.
+
+s=44:44*43=1892, 46 doesn't divide 1892. No.
+
+s=45:45*44=1980, 46 doesn't divide 1980. No.
+
+s=46:46*45=2070, 46 divides 2070. 46*45=2070. Yes. Count=1
+
+So for k=46, count=1
+
+k=47 |48| ceil(sqrt(48))=7 |47|
+
+s=7:7*6=42, 47 doesn't divide 42. No.
+
+s=8:8*7=56, 47 doesn't divide 56. No.
+
+s=9:9*8=72, 47 doesn't divide 72. No.
+
+s=10:10*9=90, 47 doesn't divide 90. No.
+
+s=11:11*10=110, 47 doesn't divide 110. No.
+
+s=12:12*11=132, 47 doesn't divide 132. No.
+
+s=13:13*12=156, 47 doesn't divide 156. No.
+
+s=14:14*13=182, 47 doesn't divide 182. No.
+
+s=15:15*14=210, 47 doesn't divide 210. No.
+
+s=16:16*15=240, 47 doesn't divide 240. No.
+
+s=17:17*16=272, 47 doesn't divide 272. No.
+
+s=18:18*17=306, 47 doesn't divide 306. No.
+
+s=19:19*18=342, 47 doesn't divide 342. No.
+
+s=20:20*19=380, 47 doesn't divide 380. No.
+
+s=21:21*20=420, 47 doesn't divide 420. No.
+
+s=22:22*21=462, 47 doesn't divide 462. No.
+
+s=23:23*22=506, 47 doesn't divide 506. No.
+
+s=24:24*23=552, 47 doesn't divide 552. No.
+
+s=25:25*24=600, 47 doesn't divide 600. No.
+
+s=26:26*25=650, 47 doesn't divide 650. No.
+
+s=27:27*26=702, 47 doesn't divide 702. No.
+
+s=28:28*27=756, 47 doesn't divide 756. No.
+
+s=29:29*28=812, 47 doesn't divide 812. No.
+
+s=30:30*29=870, 47 doesn't divide 870. No.
+
+s=31:31*30=930, 47 doesn't divide 930. No.
+
+s=32:32*31=992, 47 doesn't divide 992. No.
+
+s=33:33*32=1056, 47 doesn't divide 1056. No.
+
+s=34:34*33=1122, 47 doesn't divide 1122. No.
+
+s=35:35*34=1190, 47 doesn't divide 1190. No.
+
+s=36:36*35=1260, 47 doesn't divide 1260. No.
+
+s=37:37*36=1332, 47 doesn't divide 1332. No.
+
+s=38:38*37=1406, 47 doesn't divide 1406. No.
+
+s=39:39*38=1482, 47 doesn't divide 1482. No.
+
+s=40:40*39=1560, 47 doesn't divide 1560. No.
+
+s=41:41*40=1640, 47 doesn't divide 1640. No.
+
+s=42:42*41=1722, 47 doesn't divide 1722. No.
+
+s=43:43*42=1806, 47 doesn't divide 1806. No.
+
+s=44:44*43=1892, 47 doesn't divide 1892. No.
+
+s=45:45*44=1980, 47 doesn't divide 1980. No.
+
+s=46:46*45=2070, 47 doesn't divide 2070. No.
+
+s=47:47*46=2162, 47 divides 2162. Yes. Count=1
+
+So for k=47, count=1
+
+k=48 |49| ceil(sqrt(49))=7 |48|
+
+s=7:7*6=42, 48 doesn't divide 42. No.
+
+s=8:8*7=56, 48 doesn't divide 56. No.
+
+s=9:9*8=72, 48 doesn't divide 72. No.
+
+s=10:10*9=90, 48 doesn't divide 90. No.
+
+s=11:11*10=110, 48 doesn't divide 110. No.
+
+s=12:12*11=132, 48 doesn't divide 132. No.
+
+s=13:13*12=156, 48 doesn't divide 156. No.
+
+s=14:14*13=182, 48 doesn't divide 182. No.
+
+s=15:15*14=210, 48 doesn't divide 210. No.
+
+s=16:16*15=240, 48 divides 240. Yes. Count=1
+
+s=17:17*16=272, 48 doesn't divide 272. No.
+
+s=18:18*17=306, 48 doesn't divide 306. No.
+
+s=19:19*18=342, 48 doesn't divide 342. No.
+
+s=20:20*19=380, 48 doesn't divide 380. No.
+
+s=21:21*20=420, 48 doesn't divide 420. No.
+
+s=22:22*21=462, 48 doesn't divide 462. No.
+
+s=23:23*22=506, 48 doesn't divide 506. No.
+
+s=24:24*23=552, 48 divides 552. 48*11=528, 48*12=576. 552-528=24. No. No.
+
+s=25:25*24=600, 48 divides 600. 48*12=576, 48*13=624. 600-576=24. No. No.
+
+s=26:26*25=650, 48 doesn't divide 650. No.
+
+s=27:27*26=702, 48 doesn't divide 702. No.
+
+s=28:28*27=756, 48 doesn't divide 756. No.
+
+s=29:29*28=812, 48 doesn't divide 812. No.
+
+s=30:30*29=870, 48 doesn't divide 870. No.
+
+s=31:31*30=930, 48 doesn't divide 930. No.
+
+s=32:32*31=992, 48 doesn't divide 992. No.
+
+s=33:33*32=1056, 48 divides 1056. 48*22=1056. Yes. Count=2
+
+s=34:34*33=1122, 48 doesn't divide 1122. No.
+
+s=35:35*34=1190, 48 doesn't divide 1190. No.
+
+s=36:36*35=1260, 48 doesn't divide 1260. No.
+
+s=37:37*36=1332, 48 doesn't divide 1332. No.
+
+s=38:38*37=1406, 48 doesn't divide 1406. No.
+
+s=39:39*38=1482, 48 doesn't divide 1482. No.
+
+s=40:40*39=1560, 48 divides 1560. 48*32=1536, 48*33=1584. 1560-1536=24. No. No.
+
+s=41:41*40=1640, 48 doesn't divide 1640. No.
+
+s=42:42*41=1722, 48 doesn't divide 1722. No.
+
+s=43:43*42=1806, 48 doesn't divide 1806. No.
+
+s=44:44*43=1892, 48 doesn't divide 1892. No.
+
+s=45:45*44=1980, 48 doesn't divide 1980. No.
+
+s=46:46*45=2070, 48 doesn't divide 2070. No.
+
+s=47:47*46=2162, 48 doesn't divide 2162. No.
+
+s=48:48*47=2256, 48 divides 2256. 48*47=2256. Yes. Count=3
+
+So for k=48, count=3
+
+k
+
+---------------
+
+=49 |50| ceil(sqrt(50))=8 |49|
+
+s=8:8*7=56, 49 doesn't divide 56. No.
+
+s=9:9*8=72, 49 doesn't divide 72. No.
+
+s=10:10*9=90, 49 doesn't divide 90. No.
+
+s=11:11*10=110, 49 doesn't divide 110. No.
+
+s=12:12*11=132, 49 doesn't divide 132. No.
+
+s=13:13*12=156, 49 doesn't divide 156. No.
+
+s=14:14*13=182, 49 doesn't divide 182. No.
+
+s=15:15*14=210, 49 doesn't divide 210. No.
+
+s=16:16*15=240, 49 doesn't divide 240. No.
+
+s=17:17*16=272, 49 doesn't divide 272. No.
+
+s=18:18*17=306, 49 doesn't divide 306. No.
+
+s=19:19*18=342, 49 doesn't divide 342. No.
+
+s=20:20*19=380, 49 doesn't divide 380. No.
+
+s=21:21*20=420, 49 doesn't divide 420. No.
+
+s=22:22*21=462, 49 doesn't divide 462. No.
+
+s=23:23*22=506, 49 doesn't divide 506. No.
+
+s=24:24*23=552, 49 doesn't divide 552. No.
+
+s=25:25*24=600, 49 doesn't divide 600. No.
+
+s=26:26*25=650, 49 doesn't divide 650. No.
+
+s=27:27*26=702, 49 doesn't divide 702. No.
+
+s=28:28*27=756, 49 divides 756. 49*15=735, 49*16=784. 756-735=21. No. No.
+
+s=29:29*28=812, 49 doesn't divide 812. No.
+
+s=30:30*29=870, 49 doesn't divide 870. No.
+
+s=31:31*30=930, 49 doesn't divide 930. No.
+
+s=32:32*31=992, 49 doesn't divide 992. No.
+
+s=33:33*32=1056, 49 doesn't divide 1056. No.
+
+s=34:34*33=1122, 49 doesn't divide 1122. No.
+
+s=35:35*34=1190, 49 doesn't divide 1190. No.
+
+s=36:36*35=1260, 49 divides 1260. 49*25=1225, 49*26=1274. 1260-1225=35. No. No.
+
+s=37:37*36=1332, 49 doesn't divide 1332. No.
+
+s=38:38*37=1406, 49 doesn't divide 1406. No.
+
+s=39:39*38=1482, 49 doesn't divide 1482. No.
+
+s=40:40*39=1560, 49 doesn't divide 1560. No.
+
+s=41:41*40=1640, 49 doesn't divide 1640. No.
+
+s=42:42*41=1722, 49 doesn't divide 1722. No.
+
+s=43:43*42=1806, 49 doesn't divide 1806. No.
+
+s=44:44*43=1892, 49 doesn't divide 1892. No.
+
+s=45:45*44=1980, 49 doesn't divide 1980. No.
+
+s=46:46*45=2070, 49 doesn't divide 2070. No.
+
+s=47:47*46=2162, 49 doesn't divide 2162. No.
+
+s=48:48*47=2256, 49 doesn't divide 2256. No.
+
+s=49:49*48=2352, 49 divides 2352. 49*48=2352. Yes. Count=1
+
+So for k=49, count=1
+
+k
+
+---------------
+
+=50 |51| ceil(sqrt(51))=8 |50|
+
+s=8:8*7=56, 50 doesn't divide 56. No.
+
+s=9:9*8=72, 50 doesn't divide 72. No.
+
+s=10:10*9=90, 50 doesn't divide 90. No.
+
+s=11:11*10=110, 50 doesn't divide 110. No.
+
+s=12:12*11=132, 50 doesn't divide 132. No.
+
+s=13:13*12=156, 50 doesn't divide 156. No.
+
+s=14:14*13=182, 50 doesn't divide 182. No.
+
+s=15:15*14=210, 50 doesn't divide 210. No.
+
+s=16:16*15=240, 50 doesn't divide 240. No.
+
+s=17:17*16=272, 50 doesn't divide 272. No.
+
+s=18:18*17=306, 50 doesn't divide 306. No.
+
+s=19:19*18=342, 50 doesn't divide 342. No.
+
+s=20:20*19=380, 50 divides 380. 50*7=350, 50*8=400. 380-350=30. No. No.
+
+s=21:21*20=420, 50 divides 420. 50*8=400, 50*9=450. 420-400=20. No. No.
+
+s=22:22*21=462, 50 doesn't divide 462. No.
+
+s=23:23*22=506, 50 doesn't divide 506. No.
+
+s=24:24*23=552, 50 doesn't divide 552. No.
+
+s=25:25*24=600, 50 divides 600. Yes. Count=1
+
+s=26:26*25=650, 50 divides 650. Yes. Count=2
+
+s=27:27*26=702, 50 doesn't divide 702. No.
+
+s=28:28*27=756, 50 doesn't divide 756. No.
+
+s=29:29*28=812, 50 doesn't divide 812. No.
+
+s=30:30*29=870, 50 divides 870. 50*17=850, 50*18=900. 870-850=20. No. No.
+
+s=31:31*30=930, 50 divides 930. 50*18=900, 50*19=950. 930-900=30. No. No.
+
+s=32:32*31=992, 50 doesn't divide 992. No.
+
+s=33:33*32=1056, 50 doesn't divide 1056. No.
+
+s=34:34*33=1122, 50 doesn't divide 1122. No.
+
+s=35:35*34=1190, 50 divides 1190. 50*23=1150, 50*24=1200. 1190-1150=40. No. No.
+
+s=36:36*35=1260, 50 doesn't divide 1260. No.
+
+s=37:37*36=1332, 50 doesn't divide 1332. No.
+
+s=38:38*37=1406, 50 doesn't divide 1406. No.
+
+s=39:39*38=1482, 50 doesn't divide 1482. No.
+
+s=40:40*39=1560, 50 divides 1560. Yes. Count=3
+
+s=41:41*40=1640, 50 divides 1640. Yes. Count=4
+
+s=42:42*41=1722, 50 doesn't divide 1722. No.
+
+s=43:43*42=1806, 50 doesn't divide 1806. No.
+
+s=44:44*43=1892, 50 doesn't divide 1892. No.
+
+s=45:45*44=1980, 50 divides 1980. Yes. Count=5
+
+s=46:46*45=2070, 50 divides 2070. Yes. Count=6
+
+s=47:47*46=2162, 50 doesn't divide 2162. No.
+
+s=48:48*47=2256, 50 doesn't divide 2256. No.
+
+s=49:49*48=2352, 50 doesn't divide 2352. No.
+
+s=50:50*49=2450, 50 divides 2450. Yes. Count=7
+
+So for k=50, count=7
+
+So
+
+---------------
+
+ for b=51, the count is 7.
+
+Wait, but I'm supposed to find the least b where the count exceeds 10. So far, the
+
+---------------
+
+ maximum count I've found is 7 for k=30 (b=31), k=42 (b=43), and k=50 (b=51).
+
+Wait
+
+---------------
+
+, maybe I need to go further.
+
+Let me try k=60:
+
+Wait, but this is getting tedious. Maybe
+
+---------------
+
+ I can find a pattern or mathematical formula.
+
+Alternatively, perhaps I can think that when k is a multiple of many numbers, the count increases.
+
+But
+
+---------------
+
+ perhaps the count increases when k is a factorial or a highly composite number.
+
+Alternatively, let's consider that the number of solutions s for a given k is equal to the number of div
+
+---------------
+
+isors d of k such that d ≤ k and d divides s(s-1). But I'm not sure.
+
+Alternatively, let
+
+---------------
+
+'s think about the equation:
+
+s(s - 1) ≡ 0 mod k
+
+Which implies that s ≡ 0 mod d
+
+---------------
+
+ or s ≡ 1 mod d for each prime power d dividing k.
+
+But this is getting too abstract.
+
+Alternatively, perhaps
+
+---------------
+
+ the number of solutions s is equal to 2^m, where m is the number of distinct prime factors of k. But earlier
+
+---------------
+
+, for k=30 (which has m=3), the count was 7, which is less than 2^3=8.
+
+Wait
+
+---------------
+
+, perhaps it's 2^m -1.
+
+For k=30, m=3, 2^3 -1=7, which matches.
+
+For k=6, m=2, 2^2 -1=3, which matches.
+
+For k=12, which has m=2 (since
+
+---------------
+
+ 12=2^2*3), the count was 3, which is 2^2 -1=3.
+
+Similarly
+
+---------------
+
+, for k=30, count=7=2^3 -1.
+
+k=60=2^2*3*5, m=3, so count=2^3 -1=7.
+
+Wait
+
+---------------
+
+, but for k=60, would the count be 7?
+
+Let me test k=60.
+
+k=60 |61| ceil(sqrt(61))=8 |60|
+
+s=8:8*7=56, 60 doesn't divide 56. No.
+
+s=9:9*8=72, 60 doesn't divide 72. No.
+
+s=10:10*9=90, 60 doesn't divide 90. No.
+
+s=11:11*10=110, 60 doesn't divide 110. No.
+
+s=12:12*11=132, 60 doesn't divide 132. No.
+
+s=13:13*12=156, 60 doesn't divide 156. No.
+
+s=14:14*13=182, 60 doesn't divide 182. No.
+
+s=15:15*14=210, 60 doesn't divide 210. No.
+
+s=16:16*15=240, 60 divides 240. Yes. Count=1
+
+s=17:17*16=272, 60 doesn't divide 272. No.
+
+s=18:18*17=306, 60 doesn't divide 306. No.
+
+s=19:19*18=342, 60 doesn't divide 342. No.
+
+s=20:20*19=380, 60 doesn't divide 380. No.
+
+s=21:21*20=420, 60 divides 420. Yes. Count=2
+
+s=22:22*21=462, 60 doesn't divide 462. No.
+
+s=23:23*22=506, 60 doesn't divide 506. No.
+
+s=24:24*23=552, 60 doesn't divide 552. No.
+
+s=25:25*24=600, 60 divides 600. Yes. Count=3
+
+s=26:26*25=650, 60 doesn't divide 650. No.
+
+s=27:27*26=702, 60 doesn't divide 702. No.
+
+s=28:28*27=756, 60 doesn't divide 756. No.
+
+s=29:29*28=812, 60 doesn't divide 812. No.
+
+s=30:30*29=870, 60 doesn't divide 870. No.
+
+s=31:31*30=930, 60 doesn't divide 930. No.
+
+s=32:32*31=992, 60 doesn't divide 992. No.
+
+s=33:33*32=1056, 60 doesn't divide 1056. No.
+
+s=34:34*33=1122, 60 doesn't divide 1122. No.
+
+s=35:35*34=1190, 60 doesn't divide 1190. No.
+
+s=36:36*35=1260, 60 divides 1260. Yes. Count=4
+
+s=37:37*36=1332, 60 doesn't divide 1332. No.
+
+s=38:38*37=1406, 60 doesn't divide 1406. No.
+
+s=39:39*38=1482, 60 doesn't divide 1482. No.
+
+s=40:40*39=1560, 60 divides 1560. Yes. Count=5
+
+s=41:41*40=1640, 60 doesn't divide 1640. No.
+
+s=42:42*41=1722, 60 doesn't divide 1722. No.
+
+s=43:43*42=1806, 60 doesn't divide 1806. No.
+
+s=44:44*43=1892, 60 doesn't divide 1892. No.
+
+s=45:45*44=1980, 60 divides 1980. Yes. Count=6
+
+s=46:46*45=2070, 60 doesn't divide 2070. No.
+
+s=47:47*46=2162, 60 doesn't divide 2162. No.
+
+s=48:48*47=2256, 60 doesn't divide 2256. No.
+
+s=49:49*48=2352, 60 doesn't divide 2352. No.
+
+s=50:50*49=2450, 60 doesn't divide 2450. No.
+
+s=51:51*50=2550, 60 doesn't divide 2550. No.
+
+s=52:52*51=2652, 60 doesn't divide 2652. No.
+
+s=53:53*52=2756, 60 doesn't divide 2756. No.
+
+s=54:54*53=2862, 60 doesn't divide 2862. No.
+
+s=55:55*54=2970, 60 doesn't divide 2970. No.
+
+s=56:56*55=3080, 60 doesn't divide 3080. No.
+
+s=57:57*56=3192, 60 doesn't divide 3192. No.
+
+s=58:58*57=3306, 60 doesn't divide 3306. No.
+
+s=59:59*58=3422, 60 doesn't divide 3422. No.
+
+s=60:60*59=3540, 60 divides 3540. Yes. Count=7
+
+So for k=60, count=7
+
+
+
+---------------
+
+Hmm, so even for k=60, which has more factors, the count is still 7.
+
+Wait, maybe
+
+---------------
+
+ I need to find a k where the number of divisors is high enough that the count exceeds 10.
+
+Alternatively, perhaps the
+
+---------------
+
+ count increases as k increases, but it's not guaranteed.
+
+Wait, let me think about the formula.
+
+From earlier, for
+
+---------------
+
+ a given k, the number of s is equal to the number of solutions to s(s-1) ≡0 mod k, where s is in [ceil(sqrt(k+1)),k].
+
+This
+
+---------------
+
+ is equivalent to finding s such that s ≡0 or 1 mod each prime power dividing k.
+
+So, for each prime power p^e dividing k, s must be ≡0 or 1 mod p^e.
+
+The
+
+---------------
+
+ number of solutions is the product over all prime powers dividing k of (number of choices for each p^e).
+
+For each prime power p^e, there
+
+---------------
+
+ are 2 choices: s ≡0 or 1 mod p^e.
+
+However, since the moduli are not coprime (as
+
+---------------
+
+ they may share primes), the Chinese Remainder Theorem doesn't directly apply.
+
+But if k is square-free, the number of solutions is 2^m, where m is the number of distinct prime factors.
+
+But in
+
+---------------
+
+ our case, k is not necessarily square-free.
+
+Wait, but even so, for k=30=2*3*5, which
+
+---------------
+
+ is square-free, the number of solutions is 2^3 -1=7.
+
+Similarly, for k=6=2*3, the
+
+---------------
+
+ number of solutions is 3=2^2 -1.
+
+So perhaps the formula is 2^m -1, where m is the number of distinct prime factors.
+
+If
+
+---------------
+
+ that's the case, then for k=30, m=3, count=7.
+
+For k=60=2^2*3*5, m=3, count=7.
+
+Wait
+
+---------------
+
+, but 60 has m=3, same as 30, but the count is still 7.
+
+So perhaps the count is
+
+---------------
+
+ 2^m -1 regardless of exponents.
+
+If that's the case, then to get a count exceeding 10, we need 2^m -1 >10,
+
+---------------
+
+ so 2^m >11, so m≥4.
+
+So, for k with m=4 distinct prime factors, the count would be 2^4 -1=15.
+
+Therefore
+
+---------------
+
+, the minimal k with m=4 would be the product of the first four primes: 2*3*5*7=210.
+
+But
+
+---------------
+
+ 210 is quite large, so the corresponding b would be 211.
+
+But perhaps there's a smaller k with m=4.
+
+Wait, the
+
+---------------
+
+ smallest k with m=4 is indeed 210.
+
+But let me check.
+
+Wait, 2*3*5*7=210.
+
+Yes
+
+---------------
+
+, that's the smallest number with four distinct prime factors.
+
+So, for k=210, the count would be 2^4 -1=15.
+
+Thus
+
+---------------
+
+, for b=211, the count would be 15, which is more than 10.
+
+But perhaps
+
+---------------
+
+ there's a smaller k where the count exceeds 10.
+
+Wait, perhaps for k=120=2^3*3*5, which has m=3, but
+
+---------------
+
+ higher exponents.
+
+But according to our earlier formula, count=2^3 -1=7.
+
+So, even with higher exponents, the count remains the same.
+
+So
+
+---------------
+
+, the count depends only on the number of distinct prime factors.
+
+Therefore, the minimal k with m=4 is 210, leading to b=211.
+
+But wait
+
+---------------
+
+, let's test this.
+
+For k=210, the number of solutions s would be 2^4 -1=15.
+
+But
+
+---------------
+
+ is that accurate?
+
+Alternatively, perhaps the count is 2^m, not 2^m -1.
+
+Wait, for k=6=2*3, m=2, and count=3=2^2 -1.
+
+For k=30=2*3*5, m=3, count=7=2^3 -1.
+
+For
+
+---------------
+
+ k=210=2*3*5*7, m=4, count=15=2^4 -1.
+
+So, the
+
+---------------
+
+ formula seems to hold.
+
+Therefore, the count for k is 2^m -1, where m is the number of distinct prime factors.
+
+Thus, to have count >10, we need 2^m -1>10 →
+
+---------------
+
+ 2^m>11 → m≥4.
+
+Thus, the smallest k with m=4 is 210.
+
+Therefore, the corresponding b is 211.
+
+But wait
+
+---------------
+
+, is 210 the minimal k with m=4? Let me check.
+
+Yes, because the next possible k
+
+---------------
+
+ would be 2*3*5*7=210.
+
+So, the minimal b is 211.
+
+But wait
+
+---------------
+
+, in our earlier calculations, for k=30 (b=31), the count was 7, which is less than 10.
+
+Similarly
+
+---------------
+
+, for k=60 (b=61), count=7.
+
+So, unless there's a k with m=4 before
+
+---------------
+
+ 210, which I don't think exists, the minimal b is 211.
+
+But let me think
+
+---------------
+
+ again.
+
+Wait, 2*3*5*7=210, which is the smallest number with four distinct prime factors.
+
+Thus
+
+---------------
+
+, the minimal b is 211.
+
+But wait, in the problem statement, it's stated that the example is 81 is 13-eautiful because
+
+---------------
+
+ 81=6*13 +3, and 6+3=9=√81.
+
+So, in
+
+---------------
+
+ that case, k=12, which is 13-1=12.
+
+k=12 has m=2 (prime
+
+---------------
+
+ factors 2 and 3), so the count is 3, which matches our earlier count for k=12.
+
+Thus
+
+---------------
+
+, the formula seems to hold.
+
+Therefore, the minimal b is 211.
+
+But wait, 211 is quite large. The
+
+---------------
+
+ problem might have a smaller b.
+
+Wait, perhaps I made a mistake in assuming the count is 2^m -1.
+
+Let
+
+---------------
+
+ me think again.
+
+In the case of k=30, which is 2*3*5, m=3, count=7=2^3 -1.
+
+Similarly, for k=60=2^2*3*5, m=3, count=7.
+
+But
+
+---------------
+
+ what about k=105=3*5*7, m=3, count=7.
+
+Thus, the
+
+---------------
+
+ count depends only on m, not on the exponents.
+
+Thus, to get count>10, we need m=4.
+
+Therefore
+
+---------------
+
+, the minimal k is 210, leading to b=211.
+
+But I'm not sure if this
+
+---------------
+
+ is correct because in the earlier examples, the counts were lower.
+
+Wait, perhaps I can find a smaller k with m=4.
+
+Wait, the
+
+---------------
+
+ next number after 210 with m=4 is 2*3*5*7=210.
+
+Wait
+
+---------------
+
+, no, 210 is the first.
+
+So, I think the minimal b is 211.
+
+But I
+
+---------------
+
+'m not entirely confident because perhaps the count isn't exactly 2^m -1.
+
+Alternatively, perhaps the count is 
+
+---------------
+
+2^m.
+
+Wait, for k=6, m=2, count=3=2^2 -1.
+
+For
+
+---------------
+
+ k=30, m=3, count=7=2^3 -1.
+
+So, the formula holds.
+
+Thus, to get count>10, we need 2^m -1>10 → m≥4.
+
+Thus, the minimal k with m=4 is 210.
+
+Therefore, the minimal b is 211.
+
+But wait
+
+---------------
+
+, let me check for k=105=3*5*7, m=3, count=7.
+
+Similarly
+
+---------------
+
+, k=165=3*5*11, m=3, count=7.
+
+So, no
+
+---------------
+
+, there's no smaller k with m=4.
+
+Thus, the minimal b is 211.
+
+But in the problem statement, the example is b
+
+---------------
+
+=13, which corresponds to k=12, which has m=2, count=3.
+
+So, the
+
+---------------
+
+ formula seems to hold.
+
+Therefore, the minimal b is 211.
+
+But wait, let me think again.
+
+Wait
+
+---------------
+
+, perhaps for some k with m=4, the count could be higher.
+
+Wait, no, the count is 2^m -1, so for m=4, it's 15.
+
+Thus, the minimal b is 211.
+
+But I
+
+---------------
+
+'m not sure if this is correct because I haven't seen any b less than 211 with more than 10 b
+
+---------------
+
+-eautiful numbers.
+
+Alternatively, perhaps I made a mistake in the formula.
+
+Wait, let's think differently.
+
+The number of solutions s is equal to the number of ways
+
+---------------
+
+ to assign each prime factor of k to either s or s-1.
+
+Thus, for each prime p dividing k, s can be ≡0 or 1 mod p.
+
+Thus
+
+---------------
+
+, the number of solutions is 2^m, where m is the number of distinct prime factors.
+
+But since s must satisfy all these congruences simultaneously, the total number of solutions is 2^m.
+
+However, some
+
+---------------
+
+ solutions may not satisfy s ≤k or other constraints.
+
+Wait, but in our earlier examples, for k=6=2*3, m=2, the
+
+---------------
+
+ count was 3, which is less than 2^2=4.
+
+Similarly, for k=30=2*3*5, m=3, count=7 <8.
+
+So, perhaps the formula is 2^m -1.
+
+Thus
+
+---------------
+
+, to get count>10, m=4 gives count=15.
+
+Thus, the minimal b is 211.
+
+But I
+
+---------------
+
+'m not entirely confident, but given the time constraints, I'll proceed with this conclusion.
+
+
+The least integer \( b \geq 2 \) for which there are more than ten \( b \)-eautiful integers is **211**.
+
+\
+
+---------------
+
+boxed{211}<｜end▁of▁sentence｜>

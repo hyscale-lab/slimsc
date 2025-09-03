@@ -92,16 +92,25 @@ async def profile_single_dataset(dataset_name: str, args):
             "mean_entropy": np.mean(entropy_list),
             "std_dev_entropy": np.std(entropy_list)
         })
+
+    logger.info(f"Filtering for tokens with minimum frequency of {args.min_frequency}...")
+    frequent_token_stats = [
+        stat for stat in all_token_stats if stat['frequency'] >= args.min_frequency
+    ]
+    if not frequent_token_stats:
+        logger.warning(f"No tokens met the minimum frequency threshold of {args.min_frequency}. Word clouds and stats files for frequent tokens will be empty.")
+        return
+    logger.info(f"Found {len(frequent_token_stats)} unique tokens (out of {len(all_token_stats)}) meeting the frequency threshold.")
         
-    # --- TOP 100 (HIGH ENTROPY) ---
-    top_100_stats = sorted(all_token_stats, key=lambda x: x['mean_entropy'], reverse=True)[:100]
-    stats_filename_top = f"{args.model_name}_{dataset_name}_top_100_entropy_tokens.csv"
+    # --- TOP 100 (HIGH ENTROPY from frequent tokens) ---
+    top_100_stats = sorted(frequent_token_stats, key=lambda x: x['mean_entropy'], reverse=True)[:100]
+    stats_filename_top = f"{args.model_name}_{dataset_name}_top_100_frequent_entropy_tokens.csv"
     stats_path_top = os.path.join(dataset_output_dir, stats_filename_top)
     with open(stats_path_top, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=["token", "frequency", "mean_entropy", "std_dev_entropy"])
         writer.writeheader()
         writer.writerows(top_100_stats)
-    logger.info(f"Top 100 token stats saved to: {stats_path_top}")
+    logger.info(f"Top 100 frequent token stats saved to: {stats_path_top}")
 
     wordcloud_data_top = {item['token']: item['mean_entropy'] for item in top_100_stats}
     wordcloud_top = WordCloud(
@@ -109,23 +118,21 @@ async def profile_single_dataset(dataset_name: str, args):
         collocations=False, random_state=args.seed, font_path=args.font_path
     ).generate_from_frequencies(wordcloud_data_top)
     
-    wc_filename_top = f"{args.model_name}_{dataset_name}_top_100_wordcloud.png"
+    wc_filename_top = f"{args.model_name}_{dataset_name}_top_100_frequent_wordcloud.png"
     wc_path_top = os.path.join(dataset_output_dir, wc_filename_top)
     wordcloud_top.to_file(wc_path_top)
-    logger.info(f"Top 100 word cloud saved to: {wc_path_top}")
+    logger.info(f"Top 100 frequent word cloud saved to: {wc_path_top}")
 
-    # --- BOTTOM 100 (LOW ENTROPY) ---
-    bottom_100_stats = sorted(all_token_stats, key=lambda x: x['mean_entropy'])[:100]
-    stats_filename_bottom = f"{args.model_name}_{dataset_name}_bottom_100_entropy_tokens.csv"
+    # --- BOTTOM 100 (LOW ENTROPY from frequent tokens) ---
+    bottom_100_stats = sorted(frequent_token_stats, key=lambda x: x['mean_entropy'])[:100]
+    stats_filename_bottom = f"{args.model_name}_{dataset_name}_bottom_100_frequent_entropy_tokens.csv"
     stats_path_bottom = os.path.join(dataset_output_dir, stats_filename_bottom)
     with open(stats_path_bottom, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=["token", "frequency", "mean_entropy", "std_dev_entropy"])
         writer.writeheader()
         writer.writerows(bottom_100_stats)
-    logger.info(f"Bottom 100 token stats saved to: {stats_path_bottom}")
+    logger.info(f"Bottom 100 frequent token stats saved to: {stats_path_bottom}")
 
-    # For the low entropy word cloud, we want larger words for *lower* entropy.
-    # We can invert the values for visualization: size = max_entropy - entropy
     if bottom_100_stats:
         max_entropy_in_bottom_100 = bottom_100_stats[-1]['mean_entropy']
         wordcloud_data_bottom = {
@@ -137,10 +144,10 @@ async def profile_single_dataset(dataset_name: str, args):
             collocations=False, random_state=args.seed, font_path=args.font_path
         ).generate_from_frequencies(wordcloud_data_bottom)
         
-        wc_filename_bottom = f"{args.model_name}_{dataset_name}_bottom_100_wordcloud.png"
+        wc_filename_bottom = f"{args.model_name}_{dataset_name}_bottom_100_frequent_wordcloud.png"
         wc_path_bottom = os.path.join(dataset_output_dir, wc_filename_bottom)
         wordcloud_bottom.to_file(wc_path_bottom)
-        logger.info(f"Bottom 100 word cloud saved to: {wc_path_bottom}")
+        logger.info(f"Bottom 100 frequent word cloud saved to: {wc_path_bottom}")
 
 async def main_async(args):
     logger.info(f"Starting parallel entropy profiling for datasets: {args.datasets}")
@@ -158,7 +165,8 @@ def main():
     parser.add_argument('--output_dir', type=str, default="prune/analysis/thought_segmentation_comparison/profiles")
     parser.add_argument('--num_samples', type=int, default=5)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--font_path', type=str, default=None, help="Path to a .ttf or .otf font file for word cloud generation (e.g., for Mandarin support).")
+    parser.add_argument('--font_path', type=str, default=None, help="Path to a .ttf or .otf font file for word cloud generation.")
+    parser.add_argument('--min_frequency', type=int, default=3, help="Minimum frequency for a token to be included in word cloud and stats analysis.")
     args = parser.parse_args()
     asyncio.run(main_async(args))
 

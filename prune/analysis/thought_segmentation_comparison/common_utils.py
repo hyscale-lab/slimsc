@@ -29,12 +29,13 @@ def get_entropy(logprobs: List[float]) -> float:
     """Calculates entropy from a list of log probabilities."""
     if not logprobs:
         return 0.0
-    probs = np.exp(logprobs)
-    total_prob = np.sum(probs)
-    if total_prob == 0:
-        return 0.0
-    normalized_probs = probs / total_prob
-    entropy = -np.sum(normalized_probs * np.log2(normalized_probs, where=(normalized_probs > 0)))
+    probs = np.exp(logprobs) # confirm if logprobs already factor in T; check if sum of probs == 1 when using the top_logp == topk
+    # total_prob = np.sum(probs)
+    # if total_prob == 0:
+    #     return 0.0
+    # normalized_probs = probs / total_prob
+    # entropy = -np.sum(normalized_probs * np.log2(normalized_probs, where=(normalized_probs > 0)))
+    entropy = -np.sum(probs * np.log2(probs, where=(probs > 0)))
     return entropy
 
 async def get_generation_data(
@@ -52,7 +53,7 @@ async def get_generation_data(
         model_name=model_identifier,
         request_id=request_id,
         temperature=0.6,
-        top_logprobs=10,
+        top_logprobs=20,
     )
     
     chunks = [chunk async for chunk in stream_generator]
