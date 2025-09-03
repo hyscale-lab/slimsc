@@ -91,7 +91,7 @@ def extract_answer_gpqa(content: Optional[str]) -> Optional[str]:
 
     # Regex to find "Answer: $LETTER" potentially with spaces, $, case-insensitive
     # It captures only the letter A, B, C, or D
-    ANSWER_PATTERN = r"(?i)Answer[ \t]*:[ \t]*\$?([A-D])\$?" # Matches end of string
+    ANSWER_PATTERN = r"(?i)(?:answer|final answer)[ \t]*[:=\-]?[ \t]*[\$]?([A-D])[\$]?[\.]?(?:\s|$)"
 
     # Search the entire content, but prioritize the last match if multiple exist
     matches = list(re.finditer(ANSWER_PATTERN, content))
@@ -106,11 +106,11 @@ def extract_answer_gpqa(content: Optional[str]) -> Optional[str]:
         # This is less robust but can catch cases where formatting is slightly off
         stripped_content = content.strip()
         if stripped_content and stripped_content[-1].upper() in ['A', 'B', 'C', 'D']:
-             # Check if preceded by something like "Answer:" to reduce false positives
-             context_window = stripped_content[-10:] # Look at last few chars
-             if "answer" in context_window.lower() or ":" in context_window:
-                  return stripped_content[-1].upper()
-        return None # No answer found
+            # Check if preceded by something like "Answer:" to reduce false positives
+            last_part = stripped_content[-15:].lower()
+            if any(keyword in last_part for keyword in ['answer']):
+                return stripped_content[-1].upper()
+        return None
 
 
 def calculate_score_gpqa(extracted_answer: Optional[str], correct_answer_letter: str) -> int:

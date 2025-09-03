@@ -93,25 +93,27 @@ def extract_answer_aqua_rat(content: Optional[str]) -> Optional[str]:
     if content is None:
         return None
 
-    # Regex to find "Answer: $LETTER" (A-E)
-    ANSWER_PATTERN = rf"(?i)Answer[ \t]*:[ \t]*\$?([{OPTION_LABELS}])\$?"
-
-    matches = list(re.finditer(ANSWER_PATTERN, content))
-
-    if matches:
-        last_match = matches[-1]
+    # Regex to find answer patterns like "Answer: A", "Final answer: B", etc.
+    # Case insensitive and allows for various spacings
+    ANSWER_PATTERNS = [
+        rf"(?i)Answer[ \t]*:[ \t]*\$?([{OPTION_LABELS}])\$?",  # Answer: A
+        rf"(?i)Final[ \t]+Answer[ \t]*:[ \t]*\$?([{OPTION_LABELS}])\$?",  # Final Answer: A
+        rf"(?i)answer[ \t]*is[ \t]*([{OPTION_LABELS}])[\.!?,;:]*$",  # answer is A
+    ]
+    
+    # Try each pattern and return the last match
+    all_matches = []
+    for pattern in ANSWER_PATTERNS:
+        matches = list(re.finditer(pattern, content))
+        all_matches.extend(matches)
+    
+    if all_matches:
+        # Always take the last match
+        last_match = all_matches[-1]
         extracted_letter = last_match.group(1).upper()
         return extracted_letter
-    else:
-        # Fallback similar to GPQA
-        stripped_content = content.strip()
-        if stripped_content and stripped_content[-1].upper() in OPTION_LABELS:
-            context_window = stripped_content[-15:] # Look at last few chars
-            if "answer" in context_window.lower() or ":" in context_window:
-                 # Added check to ensure it's not part of the options list like "E)"
-                 if not (len(stripped_content) >= 2 and stripped_content[-2:].endswith(')')):
-                      return stripped_content[-1].upper()
-        return None
+    
+    return None
 
 def calculate_score_aqua_rat(extracted_answer: Optional[str], correct_answer_letter: str) -> int:
     """
