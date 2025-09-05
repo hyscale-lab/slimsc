@@ -1,3 +1,4 @@
+# slimsc/prune/evaluation/similarity_prune_eval.py
 import os
 import pandas as pd
 import argparse

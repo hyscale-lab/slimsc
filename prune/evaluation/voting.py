@@ -61,7 +61,6 @@ def _get_best_chain_by_key(
     lower_index_better: bool = True, # Secondary tie-breaker
 ) -> Optional[Dict]:
     """Finds the best chain based on a numeric key, with index as tie-breaker."""
-    best_chain: Optional[Dict] = None
     best_value = float('inf') if minimize else float('-inf')
 
     candidate_chains = [] # Chains with the current best_value
@@ -73,11 +72,11 @@ def _get_best_chain_by_key(
 
         comparison = (value < best_value) if minimize else (value > best_value)
 
-        if best_chain is None or comparison:
+        if comparison:
             best_value = value
-            candidate_chains = [chain] # Reset candidates
+            candidate_chains = [chain] # Reset candidates, we have a new best
         elif value == best_value:
-            candidate_chains.append(chain) # Add to candidates
+            candidate_chains.append(chain) # Add to candidates for a tie
 
     if not candidate_chains:
         return None # No chains had the key
