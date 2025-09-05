@@ -30,10 +30,10 @@ async def get_aiohttp_session() -> aiohttp.ClientSession:
 async def close_aiohttp_session():
     """Closes the shared aiohttp session."""
     global _aiohttp_session
-    if _aiohttp_session:
+    if _aiohttp_session and not _aiohttp_session.closed:
         await _aiohttp_session.close()
-        _aiohttp_session = None
-    await asyncio.sleep(0.1)
+    _aiohttp_session = None
+    await asyncio.sleep(0.1) # Allow time for connections to close gracefully
 
 async def stream_vllm_request(
     prompt: str,
@@ -71,8 +71,12 @@ async def stream_vllm_request(
         "stream": True, # Enable streaming
         "stream_options": {"include_usage": True, "continuous_usage_stats": True},
         # Logprobs in stream might need specific server support / format
-        **({"logprobs": 1, "top_logprobs": logprobs} if logprobs is not None else {})
+        **({"logprobs": True, "top_logprobs": logprobs} if logprobs is not None else {})
     }
+    # Fix for payload where logprobs=1 was used instead of True
+    if logprobs is not None:
+        payload["logprobs"] = True
+
 
     session = await get_aiohttp_session()
     start_time = time.time()
