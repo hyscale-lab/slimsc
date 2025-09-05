@@ -1,595 +1,235 @@
-"""Tests for prune.evaluation.processing module."""
-
 import pytest
+import os
+import json
 import asyncio
-from unittest.mock import Mock, MagicMock, patch, AsyncMock
-from typing import Dict, Optional, List, Any
+from unittest.mock import AsyncMock, MagicMock, call
 
-from prune.evaluation.processing import (
-    process_single_stream,
+# Mark all tests in this module as asyncio
+pytestmark = pytest.mark.asyncio
+
+# Import the functions to be tested
+from slimsc.prune.evaluation.processing import (
     process_question_sc_stream,
-    process_question_esc_stream
+    process_question_esc_stream,
+    process_single_stream,
 )
 
+# --- Fixtures ---
 
-class TestProcessSingleStream:
-    """Test the process_single_stream function."""
-    
-    @pytest.mark.asyncio
-    async def test_process_single_stream_success(self):
-        """Test successful stream processing."""
-        # Mock stream generator
-        async def mock_stream_generator():
-            yield {"choices": [{"delta": {"content": "Hello"}}]}
-            yield {"choices": [{"delta": {"content": " world"}}]}
-            yield {"usage": {"completion_tokens": 2, "prompt_tokens": 5}}
-        
-        # Mock process_stream_chunks
-        with patch('prune.evaluation.processing.process_stream_chunks') as mock_process:
-            mock_process.return_value = {
-                "full_content": "Hello world",
-                "completion_tokens": 2,
-                "prompt_tokens": 5
-            }
-            
-            result = await process_single_stream(mock_stream_generator(), chain_index=1)
-            
-            assert result["full_content"] == "Hello world"
-            assert result["completion_tokens"] == 2
-            assert result["prompt_tokens"] == 5
-            mock_process.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_process_single_stream_exception(self):
-        """Test stream processing with exception."""
-        # Mock stream generator that raises exception
-        async def mock_stream_generator():
-            yield {"choices": [{"delta": {"content": "Hello"}}]}
-            raise Exception("Stream error")
-        
-        with patch('prune.evaluation.processing.process_stream_chunks') as mock_process:
-            mock_process.side_effect = Exception("Processing error")
-            
-            result = await process_single_stream(mock_stream_generator(), chain_index=1)
-            
-            assert "error" in result
-            assert result["error"]["status"] == "stream_processing_failed"
-            assert "Processing error" in result["error"]["message"]
-    
-    @pytest.mark.asyncio
-    async def test_process_single_stream_empty_chunks(self):
-        """Test stream processing with empty chunks."""
-        # Mock empty stream generator
-        async def mock_stream_generator():
-            return
-            yield  # Never reached
-        
-        with patch('prune.evaluation.processing.process_stream_chunks') as mock_process:
-            mock_process.return_value = {"full_content": "", "completion_tokens": 0}
-            
-            result = await process_single_stream(mock_stream_generator(), chain_index=1)
-            
-            assert result["full_content"] == ""
-            assert result["completion_tokens"] == 0
+@pytest.fixture
+def mock_paths(tmp_path):
+    """Provides a temporary directory structure for test outputs."""
+    paths = {
+        "chains": tmp_path / "chains",
+        "summaries": tmp_path / "summaries",
+    }
+    os.makedirs(paths["chains"])
+    os.makedirs(paths["summaries"])
+    return paths
 
+@pytest.fixture
+def mock_example():
+    """Provides a sample dataset example."""
+    return {"id": "test_q1", "question": "What is 2+2?"}
 
-class TestProcessQuestionScStream:
-    """Test the process_question_sc_stream function."""
+@pytest.fixture
+def mock_dependencies(mocker):
+    """Mocks all external dependencies for the processing functions."""
     
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Set up common mocks for SC stream processing tests."""
-        with patch.multiple(
-            'prune.evaluation.processing',
-            DatasetHandler=Mock(),
-            stream_vllm_request=AsyncMock(),
-            process_single_stream=AsyncMock(),
-            majority_vote=Mock(),
-            extract_kv_cache_usage_for_question=Mock()
-        ) as mocks:
-            yield mocks
+    # Mock the async generator returned by the client
+    async def mock_stream_generator(*args, **kwargs):
+        yield {"chunk": 1}
+        yield {"chunk": 2}
+
+    mocks = {
+        "DatasetHandler": mocker.patch("slimsc.prune.evaluation.processing.DatasetHandler"),
+        "stream_vllm_request": mocker.patch(
+            "slimsc.prune.evaluation.processing.stream_vllm_request", 
+            side_effect=mock_stream_generator
+        ),
+        "process_stream_chunks": mocker.patch("slimsc.prune.evaluation.processing.process_stream_chunks"),
+        "extract_kv_cache": mocker.patch("slimsc.prune.evaluation.processing.extract_kv_cache_usage_for_question"),
+        "majority_vote": mocker.patch("slimsc.prune.evaluation.processing.majority_vote"),
+        "count_tokens": mocker.patch("slimsc.prune.evaluation.processing.count_tokens"),
+    }
     
-    @pytest.mark.asyncio
-    async def test_process_question_sc_stream_basic(self, mock_dependencies):
-        """Test basic SC stream processing."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.return_value = "A"
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing
-        mock_dependencies['process_single_stream'].return_value = {
-            "full_content": "The answer is A",
-            "completion_tokens": 10,
-            "prompt_tokens": 5
-        }
-        
-        # Setup mock voting
-        mock_dependencies['majority_vote'].return_value = ("A", 1, ["A", "A", "B"])
-        
-        # Setup mock KV cache extraction
-        mock_dependencies['extract_kv_cache_usage_for_question'].return_value = {
-            "mean_gpu_cache_perc": 0.65
-        }
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {
-            "source_usage_file": "/tmp/usage.json",
-            "summaries_dir": "/tmp/summaries"
-        }
-        
-        result = await process_question_sc_stream(
-            example=example,
-            iteration=1,
-            n_chains=3,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path="/path/to/tokenizer",
-            dataset_name="gpqa_diamond"
-        )
-        
-        # Verify result structure
-        assert result is not None
-        assert result["iteration"] == 1
-        assert result["question_id"] == "test_1"
-        assert result["n_chains"] == 3
-        assert result["voted_answer"] == "A"
-        assert result["score"] == 1
-        assert "kv_cache_usage" in result
-        
-        # Verify mocks were called
-        mock_handler.create_prompt.assert_called_once_with(example)
-        assert mock_dependencies['stream_vllm_request'].call_count == 3  # n_chains
-        assert mock_dependencies['process_single_stream'].call_count == 3
-        mock_dependencies['majority_vote'].assert_called_once()
+    # Default successful return values for mocks
+    mocks["DatasetHandler"].return_value.create_prompt.return_value = ("Test Prompt", "Correct Answer")
+    mocks["DatasetHandler"].return_value.extract_answer.return_value = "A"
+    mocks["DatasetHandler"].return_value.calculate_score.return_value = 1.0
+    mocks["process_stream_chunks"].return_value = {
+        "chain_index": 1, "full_content": "The answer is A.", "final_answer_text": "A",
+        "prompt_tokens": 10, "completion_tokens": 5,
+    }
+    mocks["extract_kv_cache"].return_value = {"avg_kv_cache_usage": 0.5, "max_kv_cache_usage": 0.6}
+    mocks["majority_vote"].return_value = ("A", 1.0, ["A", "A", "B"])
+    mocks["count_tokens"].return_value = 10 # Simulate successful token counting
+
+    return mocks
+
+# --- Tests for process_single_stream ---
+
+async def test_process_single_stream(mocker):
+    """Tests the helper coroutine that consumes a stream."""
+    mock_process_chunks = mocker.patch("slimsc.prune.evaluation.processing.process_stream_chunks")
     
-    @pytest.mark.asyncio
-    async def test_process_question_sc_stream_prompt_creation_failure(self, mock_dependencies):
-        """Test handling of prompt creation failure."""
-        # Setup mock dataset handler to fail
-        mock_handler = Mock()
-        mock_handler.create_prompt.side_effect = Exception("Prompt creation failed")
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        example = {"id": "test_1", "question": "Test question?"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_sc_stream(
-            example=example,
-            iteration=1,
-            n_chains=3,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is None
-        mock_handler.create_prompt.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_process_question_sc_stream_stream_failures(self, mock_dependencies):
-        """Test handling of stream processing failures."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.return_value = "A"
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing with some failures
-        mock_dependencies['process_single_stream'].side_effect = [
-            {"full_content": "Answer A", "completion_tokens": 10},
-            {"error": {"status": "failed", "message": "Stream failed"}},
-            {"full_content": "Answer A", "completion_tokens": 12}
-        ]
-        
-        # Setup mock voting
-        mock_dependencies['majority_vote'].return_value = ("A", 1, ["A", "A"])
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_sc_stream(
-            example=example,
-            iteration=1,
-            n_chains=3,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is not None
-        assert result["n_chains"] == 3
-        assert result["n_successful_chains"] == 2  # Only 2 successful
-        assert result["voted_answer"] == "A"
-    
-    @pytest.mark.asyncio
-    async def test_process_question_sc_stream_different_dataset(self, mock_dependencies):
-        """Test SC processing with different dataset (non-GPQA)."""
-        # Setup mock dataset handler for AIME
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", "42")  # AIME returns answer directly
-        mock_handler.extract_answer.return_value = "42"
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing
-        mock_dependencies['process_single_stream'].return_value = {
-            "full_content": "The answer is 42",
-            "completion_tokens": 8
-        }
-        
-        # Setup mock voting
-        mock_dependencies['majority_vote'].return_value = ("42", 1, ["42", "42"])
-        
-        example = {"id": "aime_1", "question": "AIME question?", "answer": "42"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_sc_stream(
-            example=example,
-            iteration=1,
-            n_chains=2,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="aime"
-        )
-        
-        assert result is not None
-        assert result["voted_answer"] == "42"
-        assert result["score"] == 1
+    async def mock_generator():
+        yield {"data": "first"}
+        yield {"data": "second"}
+
+    stream_gen = mock_generator()
+    await process_single_stream(stream_gen, chain_index=1)
+
+    # Verify that it collected all chunks and passed them to the processing function
+    expected_chunks = [{"data": "first"}, {"data": "second"}]
+    mock_process_chunks.assert_called_once_with(expected_chunks, 1)
 
 
-class TestProcessQuestionEscStream:
-    """Test the process_question_esc_stream function."""
+# --- Tests for process_question_sc_stream ---
+
+async def test_sc_stream_happy_path(mock_dependencies, mock_paths, mock_example):
+    """Tests the successful, standard execution of a self-consistency question."""
+    n_chains = 3
     
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Set up common mocks for ESC stream processing tests."""
-        with patch.multiple(
-            'prune.evaluation.processing',
-            DatasetHandler=Mock(),
-            stream_vllm_request=AsyncMock(),
-            process_single_stream=AsyncMock(),
-            majority_vote_for_sim_prune=Mock(),
-            fallback_tie_break_logic=Mock(),
-            extract_kv_cache_usage_for_question=Mock()
-        ) as mocks:
-            yield mocks
-    
-    @pytest.mark.asyncio
-    async def test_process_question_esc_stream_early_consensus(self, mock_dependencies):
-        """Test ESC processing with early consensus."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.return_value = "A"
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing - all return same answer
-        mock_dependencies['process_single_stream'].return_value = {
-            "full_content": "The answer is A",
-            "completion_tokens": 10
-        }
-        
-        # Setup mock voting to return early consensus
-        mock_dependencies['majority_vote_for_sim_prune'].return_value = (
-            "winner", "A", 1, ["A", "A"], [], None
-        )
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_esc_stream(
-            example=example,
-            iteration=1,
-            n_chains_max=6,
-            window_size=2,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is not None
-        assert result["voted_answer"] == "A"
-        assert result["score"] == 1
-        assert result["consensus_found"] == True
-        assert result["consensus_window"] == 1  # Found in first window
-        assert result["n_chains_generated"] == 2  # Only first window processed
-    
-    @pytest.mark.asyncio
-    async def test_process_question_esc_stream_no_consensus(self, mock_dependencies):
-        """Test ESC processing without reaching consensus."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.side_effect = ["A", "B", "A", "C"]  # Mixed answers
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing
-        mock_dependencies['process_single_stream'].side_effect = [
-            {"full_content": "Answer A", "completion_tokens": 10},
-            {"full_content": "Answer B", "completion_tokens": 12},
-            {"full_content": "Answer A", "completion_tokens": 11},
-            {"full_content": "Answer C", "completion_tokens": 9}
-        ]
-        
-        # Setup mock voting - never reaches consensus, requires tie-break
-        mock_dependencies['majority_vote_for_sim_prune'].side_effect = [
-            ("REQUIRES_LLM_TIEBREAK", None, 0, ["A", "B"], 
-             [{"extracted_answer": "A"}, {"extracted_answer": "B"}], ["A", "B"]),
-            ("REQUIRES_LLM_TIEBREAK", None, 0, ["A", "B", "A", "C"], 
-             [{"extracted_answer": "A"}, {"extracted_answer": "C"}], ["A", "C"])
-        ]
-        
-        # Setup fallback tie-breaking
-        mock_dependencies['fallback_tie_break_logic'].return_value = ("A", 1)
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_esc_stream(
-            example=example,
-            iteration=1,
-            n_chains_max=4,
-            window_size=2,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path="/path/to/tokenizer",
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is not None
-        assert result["voted_answer"] == "A"
-        assert result["score"] == 1
-        assert result["consensus_found"] == False
-        assert result["n_chains_generated"] == 4  # All chains processed
-        assert result["n_windows_processed"] == 2
-        
-        # Verify fallback was called
-        mock_dependencies['fallback_tie_break_logic'].assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_process_question_esc_stream_window_processing(self, mock_dependencies):
-        """Test ESC window-based processing logic."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.side_effect = ["A", "B", "A", "A", "A"]
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing
-        mock_dependencies['process_single_stream'].return_value = {
-            "full_content": "Answer", "completion_tokens": 10
-        }
-        
-        # Setup mock voting - consensus in second window
-        mock_dependencies['majority_vote_for_sim_prune'].side_effect = [
-            ("REQUIRES_LLM_TIEBREAK", None, 0, ["A", "B"], [], ["A", "B"]),  # Window 1: tie
-            ("winner", "A", 1, ["A", "B", "A"], [], None)  # Window 2: consensus
-        ]
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_esc_stream(
-            example=example,
-            iteration=1,
-            n_chains_max=6,
-            window_size=2,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is not None
-        assert result["consensus_found"] == True
-        assert result["consensus_window"] == 2
-        assert result["n_chains_generated"] == 3  # Stopped after consensus
-        assert result["n_windows_processed"] == 2
-    
-    @pytest.mark.asyncio
-    async def test_process_question_esc_stream_stream_failures(self, mock_dependencies):
-        """Test ESC processing with stream failures."""
-        # Setup mock dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("Test prompt", ("choices", "A"))
-        mock_handler.extract_answer.side_effect = ["A", "A"]  # Only successful streams
-        mock_dependencies['DatasetHandler'].return_value = mock_handler
-        
-        # Setup mock stream processing with failures
-        mock_dependencies['process_single_stream'].side_effect = [
-            {"full_content": "Answer A", "completion_tokens": 10},
-            {"error": {"status": "failed"}},  # Failure
-            {"full_content": "Answer A", "completion_tokens": 10},
-            {"error": {"status": "timeout"}}  # Another failure
-        ]
-        
-        # Setup mock voting - consensus with successful streams
-        mock_dependencies['majority_vote_for_sim_prune'].return_value = (
-            "winner", "A", 1, ["A", "A"], [], None
-        )
-        
-        example = {"id": "test_1", "question": "Test question?", "correct_answer": "A"}
-        paths = {"source_usage_file": "/tmp/usage.json"}
-        
-        result = await process_question_esc_stream(
-            example=example,
-            iteration=1,
-            n_chains_max=4,
-            window_size=2,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        assert result is not None
-        assert result["n_chains_generated"] == 4  # All attempted
-        assert result["n_successful_chains"] == 2  # Only 2 successful
-        assert result["voted_answer"] == "A"
+    # Make process_stream_chunks return slightly different results for each chain
+    mock_dependencies["process_stream_chunks"].side_effect = [
+        {"chain_index": 1, "full_content": "Ans A", "final_answer_text": "A", "prompt_tokens": 10, "completion_tokens": 5},
+        {"chain_index": 2, "full_content": "Ans A", "final_answer_text": "A", "prompt_tokens": 10, "completion_tokens": 6},
+        {"chain_index": 3, "full_content": "Ans B", "final_answer_text": "B", "prompt_tokens": 10, "completion_tokens": 7},
+    ]
+
+    result = await process_question_sc_stream(
+        example=mock_example, iteration=1, n_chains=n_chains, paths=mock_paths,
+        vllm_url="fake_url", model_name="test_model", tokenizer_path="/fake/tokenizer", dataset_name="gpqa_diamond"
+    )
+
+    # Assertions
+    assert result is not None
+    assert result["final_score"] == 1.0
+    assert result["voted_answer"] == "A"
+    assert result["total_completion_tokens"] == 18 # 5 + 6 + 7
+    assert mock_dependencies["stream_vllm_request"].call_count == n_chains
+    assert mock_dependencies["majority_vote"].call_count == 1
+    assert mock_dependencies["count_tokens"].call_count > 0 # Was called because tokenizer_path was provided
+
+    # Check that summary and chain files were created
+    summary_file = mock_paths["summaries"] / "question_1_summary.json"
+    assert summary_file.exists()
+    chain_file = mock_paths["chains"] / "question_1_chain_1_used_for_voting.txt"
+    assert chain_file.exists()
 
 
-class TestProcessingIntegration:
-    """Integration tests for processing functionality."""
+async def test_sc_stream_prompt_creation_failure(mock_dependencies, mock_paths, mock_example, caplog):
+    """Tests that the function handles errors during prompt creation."""
+    mock_dependencies["DatasetHandler"].return_value.create_prompt.side_effect = ValueError("Bad prompt data")
+
+    result = await process_question_sc_stream(
+        example=mock_example, iteration=1, n_chains=3, paths=mock_paths,
+        vllm_url="fake_url", model_name="test_model", tokenizer_path=None, dataset_name="gpqa_diamond"
+    )
     
-    @pytest.mark.asyncio
-    @patch('prune.evaluation.processing.stream_vllm_request')
-    @patch('prune.evaluation.processing.process_stream_chunks')
-    @patch('prune.evaluation.processing.DatasetHandler')
-    @patch('prune.evaluation.processing.majority_vote')
-    async def test_sc_processing_complete_workflow(
-        self, mock_majority_vote, mock_dataset_handler, 
-        mock_process_chunks, mock_stream_request
-    ):
-        """Test complete SC processing workflow."""
-        # Setup dataset handler
-        mock_handler = Mock()
-        mock_handler.create_prompt.return_value = ("What is 2+2?", ("A) 3", "B) 4", "C) 5"), "B")
-        mock_handler.extract_answer.side_effect = ["B", "B", "A"]  # Majority B
-        mock_dataset_handler.return_value = mock_handler
-        
-        # Setup stream processing
-        async def mock_stream():
-            yield {"choices": [{"delta": {"content": "The answer is B"}}]}
-            yield {"usage": {"completion_tokens": 5}}
-        
-        mock_stream_request.return_value = mock_stream()
-        mock_process_chunks.return_value = {
-            "full_content": "The answer is B",
-            "completion_tokens": 5,
-            "prompt_tokens": 10
-        }
-        
-        # Setup voting
-        mock_majority_vote.return_value = ("B", 1, ["B", "B", "A"])
-        
-        example = {
-            "id": "q1",
-            "question": "What is 2+2?",
-            "Correct Answer": "B"
-        }
-        paths = {
-            "source_usage_file": "/tmp/usage.json",
-            "summaries_dir": "/tmp/summaries"
-        }
-        
-        result = await process_question_sc_stream(
-            example=example,
-            iteration=1,
-            n_chains=3,
-            paths=paths,
-            vllm_url="http://localhost:8000",
-            model_name="test_model",
-            tokenizer_path=None,
-            dataset_name="gpqa_diamond"
-        )
-        
-        # Verify complete workflow
-        assert result is not None
-        assert result["question_id"] == "q1"
-        assert result["voted_answer"] == "B"
-        assert result["score"] == 1
-        assert result["n_chains"] == 3
-        assert "total_time" in result
-        
-        # Verify all components called
-        mock_handler.create_prompt.assert_called_once()
-        assert mock_stream_request.call_count == 3
-        assert mock_process_chunks.call_count == 3
-        assert mock_handler.extract_answer.call_count == 3
-        mock_majority_vote.assert_called_once()
+    assert result is None
+    assert "Error creating prompt for question 1" in caplog.text
     
-    @pytest.mark.asyncio
-    async def test_error_handling_and_recovery(self):
-        """Test error handling and recovery in processing."""
-        with patch.multiple(
-            'prune.evaluation.processing',
-            DatasetHandler=Mock(),
-            stream_vllm_request=AsyncMock(),
-            process_single_stream=AsyncMock(),
-            majority_vote=Mock()
-        ) as mocks:
-            
-            # Setup handler that works
-            mock_handler = Mock()
-            mock_handler.create_prompt.return_value = ("prompt", "A")
-            mock_handler.extract_answer.return_value = "A"
-            mocks['DatasetHandler'].return_value = mock_handler
-            
-            # Setup stream processing with mixed success/failure
-            mocks['process_single_stream'].side_effect = [
-                Exception("First stream failed"),
-                {"full_content": "Answer A", "completion_tokens": 5},
-                {"error": {"status": "timeout"}}
-            ]
-            
-            # Setup voting to work with available data
-            mocks['majority_vote'].return_value = ("A", 1, ["A"])
-            
-            example = {"id": "test", "question": "Test?", "answer": "A"}
-            paths = {"source_usage_file": "/tmp/usage.json"}
-            
-            # Should not raise exception despite stream failures
-            result = await process_question_sc_stream(
-                example=example,
-                iteration=1,
-                n_chains=3,
-                paths=paths,
-                vllm_url="http://localhost:8000",
-                model_name="test_model",
-                tokenizer_path=None,
-                dataset_name="test_dataset"
-            )
-            
-            # Should still produce result with partial data
-            assert result is not None
-            assert result["voted_answer"] == "A"
-            assert result["n_chains"] == 3
-            assert result["n_successful_chains"] == 1  # Only one succeeded
+    # Check that a specific failure summary was written
+    summary_file = mock_paths["summaries"] / "question_1_summary.json"
+    assert summary_file.exists()
+    with open(summary_file, 'r') as f:
+        summary_data = json.load(f)
+    assert summary_data["status"] == "PROMPT_ERROR"
+
+
+async def test_sc_stream_partial_failure(mock_dependencies, mock_paths, mock_example):
+    """Tests handling when some streams fail and some succeed."""
+    # Simulate one stream raising an exception and one returning an error dict
+    mock_dependencies["process_stream_chunks"].side_effect = [
+        {"chain_index": 1, "full_content": "Ans A", "final_answer_text": "A", "prompt_tokens": 10, "completion_tokens": 5},
+        Exception("Task failed"),
+        {"error": {"status": "client_error", "message": "Connection lost"}},
+    ]
+
+    result = await process_question_sc_stream(
+        example=mock_example, iteration=1, n_chains=3, paths=mock_paths,
+        vllm_url="fake_url", model_name="test_model", tokenizer_path=None, dataset_name="gpqa_diamond"
+    )
+
+    assert result is not None
+    # majority_vote is mocked, so it will still return its default "A" based on the one successful chain
+    assert result["voted_answer"] == "A"
     
-    def test_chain_result_data_structure(self):
-        """Test that chain result data structures are consistent."""
-        # This test verifies the expected structure of chain results
-        # that would be used by voting functions
-        
-        expected_chain_result_keys = {
-            "chain_index",
-            "extracted_answer", 
-            "full_content",
-            "completion_tokens",
-            "prompt_tokens",
-            "reasoning_text",
-            "final_answer_text"
-        }
-        
-        # Mock a typical chain result
-        chain_result = {
-            "chain_index": 0,
-            "extracted_answer": "A",
-            "full_content": "Let me think... The answer is A",
-            "completion_tokens": 15,
-            "prompt_tokens": 50,
-            "reasoning_text": "Let me think...",
-            "final_answer_text": "The answer is A"
-        }
-        
-        # Verify all expected keys are present
-        assert all(key in chain_result for key in expected_chain_result_keys)
-        
-        # Verify data types
-        assert isinstance(chain_result["chain_index"], int)
-        assert isinstance(chain_result["extracted_answer"], str)
-        assert isinstance(chain_result["completion_tokens"], int)
-        assert isinstance(chain_result["prompt_tokens"], int)
+    # Check summary for partial success status
+    summary_file = mock_paths["summaries"] / "question_1_summary.json"
+    with open(summary_file, 'r') as f:
+        summary_data = json.load(f)
+    assert summary_data["status"] == "PARTIAL_SUCCESS (2_failed)"
+    assert summary_data["n_chains_completed_stream_for_voting"] == 1
+    assert len(summary_data["error_chain_details"]) == 2
+
+
+async def test_sc_stream_no_extractable_answers(mock_dependencies, mock_paths, mock_example, caplog):
+    """Tests the case where content is generated but no answers can be extracted."""
+    mock_dependencies["DatasetHandler"].return_value.extract_answer.return_value = None
+
+    result = await process_question_sc_stream(
+        example=mock_example, iteration=1, n_chains=2, paths=mock_paths,
+        vllm_url="fake_url", model_name="test_model", tokenizer_path=None, dataset_name="gpqa_diamond"
+    )
+    
+    assert result is not None
+    assert result["final_score"] == 0
+    assert result["voted_answer"] is None
+    assert "No chains with extracted answers" in caplog.text
+    mock_dependencies["majority_vote"].assert_not_called()
+
+# --- Tests for process_question_esc_stream ---
+
+async def test_esc_stream_early_stop(mock_dependencies, mock_paths, mock_example):
+    """Tests that ESC stops early when consensus is found in the first window."""
+    n_chains_max, window_size = 8, 2
+    
+    # Mock stream chunks to return two identical answers in the first window
+    mock_dependencies["process_stream_chunks"].side_effect = [
+        {"chain_index": 1, "full_content": "The answer is A.", "completion_tokens": 5},
+        {"chain_index": 2, "full_content": "I think it's A.", "completion_tokens": 6},
+    ]
+    # Mock extract_answer to return the same answer for both
+    mock_dependencies["DatasetHandler"].return_value.extract_answer.return_value = "A"
+
+    result = await process_question_esc_stream(
+        example=mock_example, iteration=1, n_chains_max=n_chains_max, window_size=window_size,
+        paths=mock_paths, vllm_url="fake_url", model_name="test_model", tokenizer_path=None, dataset_name="gpqa_diamond"
+    )
+
+    assert result["stopped_early"] is True
+    assert result["n_chains_generated"] == window_size
+    assert result["final_answer"] == "A"
+    assert mock_dependencies["stream_vllm_request"].call_count == window_size
+    mock_dependencies["majority_vote"].assert_not_called() # No vote needed on early stop
+
+
+async def test_esc_stream_no_early_stop(mock_dependencies, mock_paths, mock_example):
+    """Tests that ESC runs to max chains when no consensus is found."""
+    n_chains_max, window_size = 4, 2
+
+    # Mock different answers for each chain to prevent early stopping
+    mock_dependencies["process_stream_chunks"].side_effect = [
+        {"chain_index": 1, "full_content": "A", "completion_tokens": 5},
+        {"chain_index": 2, "full_content": "B", "completion_tokens": 6},
+        {"chain_index": 3, "full_content": "A", "completion_tokens": 7},
+        {"chain_index": 4, "full_content": "C", "completion_tokens": 8},
+    ]
+    mock_dependencies["DatasetHandler"].return_value.extract_answer.side_effect = ["A", "B", "A", "C"]
+    
+    # Mock majority vote to return 'A' as it's the most common
+    mock_dependencies["majority_vote"].return_value = ("A", 1.0, ["A", "B", "A", "C"])
+
+    result = await process_question_esc_stream(
+        example=mock_example, iteration=1, n_chains_max=n_chains_max, window_size=window_size,
+        paths=mock_paths, vllm_url="fake_url", model_name="test_model", tokenizer_path=None, dataset_name="gpqa_diamond"
+    )
+
+    assert result["stopped_early"] is False
+    assert result["n_chains_generated"] == n_chains_max
+    assert result["final_answer"] == "A" # From the final majority vote
+    assert mock_dependencies["stream_vllm_request"].call_count == n_chains_max
+    mock_dependencies["majority_vote"].assert_called_once()
