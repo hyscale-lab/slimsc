@@ -108,6 +108,8 @@ def extract_answer_aqua_rat(content: Optional[str]) -> Optional[str]:
         all_matches.extend(matches)
     
     if all_matches:
+        # Sort matches by their start position to find the last one in the text
+        all_matches.sort(key=lambda m: m.start())
         # Always take the last match
         last_match = all_matches[-1]
         extracted_letter = last_match.group(1).upper()

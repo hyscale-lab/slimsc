@@ -73,10 +73,6 @@ async def stream_vllm_request(
         # Logprobs in stream might need specific server support / format
         **({"logprobs": True, "top_logprobs": logprobs} if logprobs is not None else {})
     }
-    # Fix for payload where logprobs=1 was used instead of True
-    if logprobs is not None:
-        payload["logprobs"] = True
-
 
     session = await get_aiohttp_session()
     start_time = time.time()
