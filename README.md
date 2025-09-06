@@ -107,9 +107,19 @@ singularity pull vllm_modified.sif docker://broccolin/vllm-nscc-edit:latest
 ```
 Let's refer to the pulled image file as `vllm_modified.sif`.
 
-## Reproducing Main Results (Table 1)
+## Accessing and Reproducing Results
 
-This section provides a step-by-step guide to reproduce the main results from our paper.
+### Accessing Pre-computed Results (Table 1)
+To facilitate analysis without requiring a full reproduction, the complete set of raw results, logs, and generated outputs for the experiments in our paper are available as a downloadable archive.
+
+You can find the `slimsc-paper-results.zip` file on our **[GitHub Releases page](https://github.com/hyscale-lab/slimsc/releases)**.
+
+### Reproducing Results from Scratch
+This repository is configured for you to reproduce our findings from a clean slate. All output files will be generated in the `prune/results` directory automatically when you run the evaluation scripts.
+
+The general workflow involves two steps:
+1.  **Start the modified vLLM server** in one terminal.
+2.  **Run the evaluation client script** in a second terminal.
 
 ### Hardware Configuration
 Our experiments were conducted on **NVIDIA A100 40GB GPUs**. The number of GPUs required for the vLLM server depends on the model size:
