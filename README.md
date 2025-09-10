@@ -1,6 +1,6 @@
 # Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency
 
-This is the official repository for the paper **"Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency"**.
+This is the official repository for the EMNLP 2025 accepted paper **"Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency"**.
 
 **[🔗 Paper on arXiv (coming soon)]**
 
@@ -60,6 +60,28 @@ Slim-SC consistently matches or improves accuracy while substantially reducing l
   <em><b>Table 1:</b> Main experimental results comparing Slim-SC with baselines across various datasets and models. Slim-SC (RP/DP) achieves higher accuracy than efficiency-focused baselines (ESC, CCoT-SC) and significantly lower latency than standard SC.</em>
 </p>
 
+## Prerequisites
+
+Before setting up the environment, please ensure you have the following ready:
+
+**1. Log in to Hugging Face Hub**
+You will need to download the model weights from the Hugging Face Hub. First, install the CLI and log in.
+```bash
+pip install -U "huggingface_hub[cli]"
+huggingface-cli login
+```
+
+**2. Download Model Weights**
+Download the two models used in our experiments to a local directory of your choice (e.g., `/path/to/your/models`).
+
+```bash
+# Download Qwen/QwQ-32B
+huggingface-cli download Qwen/QwQ-32B --local-dir /path/to/your/models/Qwen-QwQ-32B
+
+# Download deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Qwen-14B --local-dir /path/to/your/models/DeepSeek-R1-Distill-Qwen-14B
+```
+
 ## Environment Setup
 
 To reproduce our results, you will need a Python environment and a modified version of the vLLM inference server that logs KV cache usage. We provide two methods for setup: **Conda** (for manual setup) and **Docker/Singularity** (recommended for convenience).
@@ -94,18 +116,25 @@ pip install -e .
 ```
 
 ### Method 2: Docker / Singularity (Recommended)
-We provide a pre-built `CUDA_VERSION=12.2.2` container image with the modified vLLM and all dependencies installed. This is the simplest way to ensure a reproducible environment.
+We provide pre-built container images with all dependencies. This is the simplest way to ensure a reproducible environment. You will need two images: one for the modified vLLM server and one for the evaluation client.
 
-**Using Docker:**
+**For the vLLM Server with `CUDA_VERSION=12.2.2`:**
 ```bash
+# Using Singularity (recommended for HPC)
+singularity pull vllm_modified.sif docker://broccolin/vllm-nscc-edit:latest
+
+# Using Docker
 docker pull docker://broccolin/vllm-nscc-edit:latest
 ```
 
-**Using Singularity (for HPC environments):**
+**For the Slim-SC Client:**
 ```bash
-singularity pull vllm_modified.sif docker://broccolin/vllm-nscc-edit:latest
+# Using Singularity (recommended for HPC)
+singularity pull slimsc_client.sif docker://broccolin/slimsc:latest
+
+# Using Docker
+docker pull docker://broccolin/slimsc:latest
 ```
-Let's refer to the pulled image file as `vllm_modified.sif`.
 
 ## Accessing and Reproducing Results
 
@@ -168,6 +197,9 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 # Example for an SC control run on AIME with QwQ-32B (N=8, run_index=1):
 export KVC_USAGE_FILE="~/slimsc/prune/results/QwQ-32B/aime/sc_8_control/run1/kvcache_usages.csv"
 
+# Example for a Slim-SC (random pruning) run on GPQA with R1-Distill-14B (N=64, thresh=0.98, delay=20):
+# export KVC_USAGE_FILE="~/slimsc/prune/results/R1-Distill-14B/gpqa_diamond/random_n64_thresh0.98_delay20/run1/kvcache_usages.csv"
+
 # 4. Create the directory for the log file
 mkdir -p "$(dirname "$KVC_USAGE_FILE")"
 
@@ -222,7 +254,8 @@ python -m prune.evaluation.sc_control_eval \
     --model_identifier "/path/to/your/Qwen-QwQ-32B" \
     --tokenizer_path "/path/to/your/Qwen-QwQ-32B" \
     --dataset_name "aime" \
-    --run_index 1
+    --run_index 1 \
+    --vllm_url "http://localhost:8000"
 ```
 
 **Using Singularity:**
@@ -234,7 +267,7 @@ singularity exec --nv \
     -B .:/app \
     -B /path/to/your/models:/models \
     -B $HOME/slimsc/prune/results:/results \
-    ./vllm_modified.sif \
+    ./slimsc_client.sif \
     python -m prune.evaluation.sc_control_eval \
         --n_start 1 \
         --model_name "QwQ-32B" \
@@ -267,7 +300,8 @@ python -m prune.evaluation.sc_control_eval \
     --model_identifier "/path/to/your/Qwen-QwQ-32B" \
     --tokenizer_path "/path/to/your/Qwen-QwQ-32B" \
     --dataset_name "aime" \
-    --run_index 1
+    --run_index 1 \
+    --vllm_url "http://localhost:8000"
 ```
 
 **Using Singularity:**
@@ -279,7 +313,7 @@ singularity exec --nv \
     -B .:/app \
     -B /path/to/your/models:/models \
     -B $HOME/slimsc/prune/results:/results \
-    ./vllm_modified.sif \
+    ./slimsc_client.sif \
     python -m prune.evaluation.sc_control_eval \
         --n_start 8 \
         --model_name "QwQ-32B" \
@@ -318,7 +352,8 @@ python -m prune.evaluation.similarity_prune_eval \
     --model_identifier "/path/to/your/DeepSeek-R1-Distill-Qwen-14B" \
     --tokenizer_path "/path/to/your/DeepSeek-R1-Distill-Qwen-14B" \
     --dataset_name "gpqa_diamond" \
-    --run_index 1
+    --run_index 1 \
+    --vllm_url "http://localhost:8000"
 ```
 
 **Using Singularity:**
@@ -333,7 +368,7 @@ singularity exec --nv \
     -B /path/to/your/models:/models \
     -B $HOME/slimsc/prune/results:/results \
     -B $HOME/.cache/huggingface:/root/.cache/huggingface \
-    ./vllm_modified.sif \
+    ./slimsc_client.sif \
     python -m prune.evaluation.similarity_prune_eval \
         --n_start 64 \
         --threshold 0.98 \
