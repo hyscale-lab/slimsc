@@ -6,7 +6,7 @@ This is the official repository for the EMNLP 2025 accepted paper **"Slim-SC: Th
 
 ## Overview
 
-Standard Self-Consistency (SC) improves LLM reasoning but is computationally expensive and slow due to generating many full reasoning chains. Our analysis reveals that correct and incorrect reasoning chains form distinct semantic clusters, with incorrect chains often being highly redundant. We propose **Slim-SC**, a dynamic thought-pruning method that identifies and removes these redundant chains step-by-step during generation based on their semantic similarity. This approach significantly reduces computational overhead and latency while maintaining or even improving accuracy by creating a more diverse and effective set of candidate chains for the final vote.
+Standard Self-Consistency (SC) improves LLM reasoning but is computationally expensive and slow due to generating many full reasoning chains. Our analysis reveals that correct and incorrect chains form distinct semantic clusters, with incorrect chains often being highly redundant. We propose **Slim-SC**, a dynamic thought-pruning method that identifies and removes these redundant chains step-by-step during generation based on their semantic similarity. Our method achieves significant efficiency gains, **reducing end-to-end latency by up to 45%** (on GPQA) and **token usage by up to 32%** (on AIME-2024), while also **lowering mean KV Cache usage by 10pp**. Crucially, these gains are achieved while maintaining or even slightly improving accuracy (**+0.5pp on GPQA**) by retaining a more effective set of diverse candidate chains for the final vote.
 
 <p align="center">
   <img src="assets/figure8.png" alt="KV Cache Usage Over Time" width="900"/>
@@ -348,15 +348,19 @@ Results for each run are saved in the `output_dir`. The structure is:
 -   `aggregated_metrics.json`: The overall aggregated metrics for that single run.
 -   `mean_aggregated_metrics.json`: **This file, located in the `<run_name>` parent directory, contains the final averaged metrics across all runs (e.g., `run1`, `run2`, `run3`). These are the values that correspond to Table 1.**
 
+## License
+This project is licensed under the terms of the MIT License. See the [LICENSE](LICENSE.md) file for details.
+
 ## Citation
 If you find our work useful, please cite our paper:
 ```bibtex
 @misc{hong2025slimsc,
       title={Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency}, 
       author={Colin Hong Fung Heng and Xu Guo and Anand Chaanan Singh and Esha Choukse and Dmitrii Ustiugov},
+      booktitle={Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
       year={2025},
-      eprint={...},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+      publisher={Association for Computational Linguistics},
+      location={Suzhou, China},
+      note={to be published}
 }
 ```
