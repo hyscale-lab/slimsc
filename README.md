@@ -19,8 +19,8 @@ Standard Self-Consistency (SC) improves LLM reasoning but is computationally exp
 
 Before setting up the environment, please ensure you have the following ready:
 
-**1. Log in to Hugging Face Hub**
-You will need to download the model weights from the Hugging Face Hub. First, install the CLI and log in.
+**1. Log in to HuggingFace Hub**
+You will need to download the model weights from the HuggingFace Hub. First, install the CLI and log in.
 ```bash
 pip install -U "huggingface_hub[cli]"
 huggingface-cli login
@@ -347,6 +347,55 @@ Results for each run are saved in the `output_dir`. The structure is:
 -   `evaluation_summary.csv`: Per-question metrics for the run.
 -   `aggregated_metrics.json`: The overall aggregated metrics for that single run.
 -   `mean_aggregated_metrics.json`: **This file, located in the `<run_name>` parent directory, contains the final averaged metrics across all runs (e.g., `run1`, `run2`, `run3`). These are the values that correspond to Table 1.**
+
+## Troubleshooting & Resuming Incomplete Runs
+Experiments can sometimes be interrupted (e.g., due to GPU time limits). Our evaluation scripts are designed to be resumable. If a run is incomplete, you can clean up the partial results for the failed questions and rerun the same command to finish the job.
+
+**Step 1: Identify Incomplete Questions**
+
+First, find which questions did not complete by checking the `evaluation_summary.csv` file for that run. Incomplete questions will have a missing value in the `voted_answer` column. You can identify them with this short Python script:
+```python
+import pandas as pd
+
+# Replace with the actual path to your CSV file
+csv_path = 'prune/results/R1-Distill-14B/gpqa_diamond/random_n64_thresh0.98_delay20/run1/evaluation_summary.csv'
+
+df = pd.read_csv(csv_path)
+incomplete_qns = df[df['voted_answer'].isnull()]['iteration'].tolist()
+
+if incomplete_qns:
+    print(f"Incomplete question iterations found: {incomplete_qns}")
+else:
+    print("No incomplete questions found.")
+```
+
+**Step 2: Clean Up Partial Files**
+
+Once you have the list of iteration numbers (e.g., `[85, 92]`), you must remove all partial files associated with them.
+
+```bash
+# 1. Set the base path to your specific run directory
+RUN_DIR="prune/results/R1-Distill-14B/gpqa_diamond/random_n64_thresh0.98_delay20/run1"
+
+# 2. List the iteration numbers that failed
+FAILED_QNS=(85 92) # Example numbers from Step 1
+
+# 3. Loop and remove the files
+for QN in "${FAILED_QNS[@]}"; do
+    echo "Cleaning up files for question $QN..."
+    # Remove chain outputs (uses wildcard)
+    rm -f "${RUN_DIR}/individual_chains/question_${QN}_chain_"*.txt
+    # Remove summary JSON
+    rm -f "${RUN_DIR}/summaries/question_${QN}_summary.json"
+done
+
+# 4. Finally, open the evaluation_summary.csv file in a text editor or spreadsheet
+#    program and manually delete the rows corresponding to the FAILED_QNS.
+```
+
+**Step 3: Rerun the Evaluation**
+
+Rerun the **exact same evaluation command** you used originally. The script will automatically detect the missing questions in the `evaluation_summary.csv` file and will only run those, appending the new results upon completion.
 
 ## License
 This project is licensed under the terms of the MIT License. See the [LICENSE](LICENSE.md) file for details.
