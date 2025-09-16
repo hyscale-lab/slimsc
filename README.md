@@ -1,6 +1,6 @@
 # Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency
 
-This is the official repository for the paper **"Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency"**.
+This is the official repository for the EMNLP 2025 paper **"Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency"**.
 
 **[🔗 Paper on arXiv (coming soon)]**
 
