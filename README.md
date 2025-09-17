@@ -403,13 +403,11 @@ This project is licensed under the terms of the MIT License. See the [LICENSE](L
 ## Citation
 If you find our work useful, please cite our paper:
 ```bibtex
-@misc{hong2025slimsc,
+@inproceedings{hong2025slimsc,
       title={Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency}, 
-      author={Colin Hong Fung Heng and Xu Guo and Anand Chaanan Singh and Esha Choukse and Dmitrii Ustiugov},
+      author={Colin Hong, and Xu Guo, and Anand Chaanan Singh, and Esha Choukse, and Dmitrii Ustiugov},
       booktitle={Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
       year={2025},
-      publisher={Association for Computational Linguistics},
-      location={Suzhou, China},
-      note={to be published}
+}
 }
 ```
