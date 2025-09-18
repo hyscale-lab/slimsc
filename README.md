@@ -174,7 +174,7 @@ export CUDA_VISIBLE_DEVICES=0,1
 
 # 3. Set the KV cache log path.
 # Example for a Slim-SC (random pruning) run on GPQA with R1-Distill-14B:
-export KVC_USAGE_FILE="~/slimsc/prune/results/R1-Distill-14B/gpqa_diamond/random_n64_thresh0.98_delay20/run1/kvcache_usages.csv"
+export KVC_USAGE_FILE="$HOME/slimsc/prune/results/R1-Distill-14B/gpqa_diamond/random_n64_thresh0.98_delay20/run1/kvcache_usages.csv"
 
 # 4. Create the directory for the log file
 mkdir -p "$(dirname "$KVC_USAGE_FILE")"
