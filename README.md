@@ -405,9 +405,8 @@ If you find our work useful, please cite our paper:
 ```bibtex
 @inproceedings{hong2025slimsc,
       title={Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency}, 
-      author={Colin Hong, and Xu Guo, and Anand Chaanan Singh, and Esha Choukse, and Dmitrii Ustiugov},
+      author={Colin Hong and Xu Guo and Anand Chaanan Singh and Esha Choukse and Dmitrii Ustiugov},
       booktitle={Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
-      year={2025},
-}
+      year={2025}
 }
 ```
