@@ -2,7 +2,7 @@
 
 This is the official repository for the EMNLP 2025 accepted paper **"Slim-SC: Thought Pruning for Efficient Scaling with Self-Consistency"**.
 
-**[🔗 Paper on arXiv (coming soon)]**
+**[🔗 Paper on [arXiv](https://arxiv.org/abs/2509.13990)]**
 
 ## Overview
 
